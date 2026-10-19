@@ -1,0 +1,19 @@
+{
+ "category.playermodel": "玩家模型工坊",
+ "key.playermodel.toggle_view": "切换自定义玩家模型显示",
+ "message.playermodel.view_on": "已显示自定义玩家模型",
+ "message.playermodel.view_off": "已隐藏自定义玩家模型",
+ "message.playermodel.self_on": "已启用你的自定义模型",
+ "message.playermodel.self_off": "已关闭你的自定义模型",
+ "message.playermodel.imported": "已导入 %s [%s]，骨骼数: %s",
+ "message.playermodel.valid": "模型校验通过：骨骼=%s，贴图=%sx%s",
+ "message.playermodel.using": "已切换到 %s [%s]",
+ "message.playermodel.empty": "没有本地模型。用 /pmodel import <路径.bbmodel> 导入",
+ "message.playermodel.list_header": "本地模型（%s）：",
+ "message.playermodel.reloaded": "模型列表已重载（%s 个）",
+ "message.playermodel.status": "自己: %s | 查看: %s | 自己启用: %s | 服务端同步: %s",
+ "message.playermodel.protocol_mismatch": "服务端与客户端模型同步版本不一致，已关闭同步",
+ "message.playermodel.upload_missing": "本地没有可上传的该模型",
+ "message.playermodel.model_too_large": "模型超过服务器大小限制",
+ "message.playermodel.upload_failed": "服务器拒绝了模型上传"
+}

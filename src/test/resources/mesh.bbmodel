@@ -1,0 +1,10 @@
+{
+  "meta": {"format_version": 4, "model_format": "java_block"},
+  "name": "mesh",
+  "resolution": {"width": 64, "height": 64},
+  "elements": [
+    {"name": "bad", "uuid": "m1", "type": "mesh", "vertices": {}, "faces": {}}
+  ],
+  "outliner": [],
+  "textures": [{"name": "t", "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lK3Q6wAAAABJRU5ErkJggg=="}]
+}

@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "playermodel",
+  "version": "${version}",
+  "name": "Player Model Importer",
+  "description": "Import Blockbench player models and use them in-game. Keeps the vanilla player skeleton and animations.",
+  "authors": [
+    "playermodel"
+  ],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/playermodel/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "dev.playermodel.PlayerModelMod"
+    ],
+    "client": [
+      "dev.playermodel.client.PlayerModelClient"
+    ],
+    "server": [
+      "dev.playermodel.server.PlayerModelServer"
+    ]
+  },
+  "mixins": [
+    {
+      "config": "playermodel.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "accessWidener": "playermodel.accesswidener",
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

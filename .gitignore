@@ -1,0 +1,28 @@
+# Gradle
+.gradle/
+build/
+.tmp/
+.tools/
+
+# Minecraft dev run directory
+run/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# Logs and crash reports
+logs/
+crash-reports/
+*.log
+hs_err_pid*
+
+# Local machine config
+local.properties
+
+# Third-party compatibility jars (not part of this project's source)
+dist/compat/

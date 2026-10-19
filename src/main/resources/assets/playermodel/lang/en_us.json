@@ -1,0 +1,19 @@
+{
+ "category.playermodel": "Player Model Importer",
+ "key.playermodel.toggle_view": "Toggle custom player models",
+ "message.playermodel.view_on": "Custom player models: shown",
+ "message.playermodel.view_off": "Custom player models: hidden",
+ "message.playermodel.self_on": "Your custom model: enabled",
+ "message.playermodel.self_off": "Your custom model: disabled",
+ "message.playermodel.imported": "Imported %s [%s], bones: %s",
+ "message.playermodel.valid": "Model valid: bones=%s, texture=%sx%s",
+ "message.playermodel.using": "Now using %s [%s]",
+ "message.playermodel.empty": "No local models. Use /pmodel import <path.bbmodel>",
+ "message.playermodel.list_header": "Local models (%s):",
+ "message.playermodel.reloaded": "Model list reloaded (%s models)",
+ "message.playermodel.status": "Self: %s | View: %s | Self enabled: %s | Server sync: %s",
+ "message.playermodel.protocol_mismatch": "Server and client model sync versions differ; sync disabled",
+ "message.playermodel.upload_missing": "This model is not available locally for upload",
+ "message.playermodel.model_too_large": "Model exceeds the server size limit",
+ "message.playermodel.upload_failed": "Server rejected the model upload"
+}

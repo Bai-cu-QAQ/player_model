@@ -1,0 +1,23 @@
+accessWidener	v2	named
+
+accessible	class	net/minecraft/client/model/ModelPart$Cuboid
+accessible	class	net/minecraft/client/model/ModelPart$Quad
+accessible	class	net/minecraft/client/model/ModelPart$Vertex
+
+accessible	field	net/minecraft/client/model/ModelPart	cuboids	Ljava/util/List;
+mutable	field	net/minecraft/client/model/ModelPart	cuboids	Ljava/util/List;
+accessible	field	net/minecraft/client/model/ModelPart	children	Ljava/util/Map;
+mutable	field	net/minecraft/client/model/ModelPart	children	Ljava/util/Map;
+
+accessible	field	net/minecraft/client/model/ModelPart$Cuboid	sides	[Lnet/minecraft/client/model/ModelPart$Quad;
+mutable	field	net/minecraft/client/model/ModelPart$Cuboid	sides	[Lnet/minecraft/client/model/ModelPart$Quad;
+
+accessible	field	net/minecraft/client/model/ModelPart$Quad	vertices	[Lnet/minecraft/client/model/ModelPart$Vertex;
+accessible	field	net/minecraft/client/model/ModelPart$Quad	direction	Lorg/joml/Vector3f;
+
+accessible	field	net/minecraft/client/model/ModelPart$Vertex	pos	Lorg/joml/Vector3f;
+accessible	field	net/minecraft/client/model/ModelPart$Vertex	u	F
+accessible	field	net/minecraft/client/model/ModelPart$Vertex	v	F
+
+accessible	method	net/minecraft/client/model/ModelPart$Quad	<init>	([Lnet/minecraft/client/model/ModelPart$Vertex;FFFFFFZLnet/minecraft/util/math/Direction;)V
+accessible	method	net/minecraft/client/model/ModelPart$Vertex	<init>	(FFFFF)V
