@@ -219,7 +219,9 @@ public final class CustomModel {
         int count = Math.min(current.size(), rest.size());
         for (int i = 0; i < count; i++) {
             for (Aabb box : boxes) {
-                if (box.contains(current.get(i)) && !box.contains(rest.get(i))) {
+                float currentDepth = box.depth(current.get(i));
+                float restDepth = box.depth(rest.get(i));
+                if (currentDepth > 0.0F && currentDepth > Math.max(0.0F, restDepth) + 0.02F) {
                     return true;
                 }
             }
@@ -332,10 +334,15 @@ public final class CustomModel {
             maxZ = Math.max(maxZ, z);
         }
 
-        boolean contains(Vector3f point) {
-            return point.x >= minX && point.x <= maxX
-                    && point.y >= minY && point.y <= maxY
-                    && point.z >= minZ && point.z <= maxZ;
+        float depth(Vector3f point) {
+            if (point.x < minX || point.x > maxX || point.y < minY || point.y > maxY
+                    || point.z < minZ || point.z > maxZ) {
+                return -1.0F;
+            }
+            float dx = Math.min(point.x - minX, maxX - point.x);
+            float dy = Math.min(point.y - minY, maxY - point.y);
+            float dz = Math.min(point.z - minZ, maxZ - point.z);
+            return Math.min(dx, Math.min(dy, dz));
         }
 
         boolean intersects(Aabb other, float margin) {

@@ -97,6 +97,7 @@ public final class PhysicsManager {
             for (int step = 0; step < 20; step++) {
                 boneState.simulate(bone, parent, localAccel, speed, dt * 0.5F, model, step == 0);
             }
+            boneState.resolveCollision(model, bone);
         }
     }
 
@@ -219,6 +220,17 @@ public final class PhysicsManager {
             bone.part().yaw = (float) Math.toRadians(yaw);
             bone.part().roll = (float) Math.toRadians(roll);
             lastParent.set(parent);
+        }
+
+        void resolveCollision(CustomModel model, CustomModel.PhysicsBoneRuntime bone) {
+            for (int i = 0; i < 6; i++) {
+                if (!model.collides(bone)) {
+                    return;
+                }
+                bone.part().pitch *= 0.5F;
+                bone.part().yaw *= 0.5F;
+                bone.part().roll *= 0.5F;
+            }
         }
 
         private static Vector3f parentAngularVelocity(Quaternionf current, Quaternionf last, float dt) {
