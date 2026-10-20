@@ -358,9 +358,6 @@ public final class BbmodelParser {
         group.name = string(data, "name", string(node, "name", ""));
         group.origin = floats(data, "origin", 3, new float[]{0, 0, 0});
         group.rotation = floats(data, "rotation", 3, new float[]{0, 0, 0});
-        if (nonzero(group.rotation)) {
-            throw new ImportException("骨骼分组 '" + safeName(group) + "' 带有旋转；请先在 Blockbench 中把骨骼旋转归零（本 mod 保留原版骨骼动画，不支持静态骨骼旋转）");
-        }
         if (data.has("scale")) {
             float[] scale = floats(data, "scale", 3, null);
             if (scale != null && (Math.abs(scale[0] - 1) > 1e-3 || Math.abs(scale[1] - 1) > 1e-3 || Math.abs(scale[2] - 1) > 1e-3)) {
@@ -442,6 +439,10 @@ public final class BbmodelParser {
                 element.rotation[2] = -element.rotation[2];
             }
         }
+        if (space == ModelSpace.BLOCKBENCH) {
+            group.rotation[0] = -group.rotation[0];
+            group.rotation[2] = -group.rotation[2];
+        }
         for (RawGroup child : group.children) {
             convertSpace(child, space);
         }
@@ -465,7 +466,8 @@ public final class BbmodelParser {
                 throw new ImportException("物理骨骼重名: " + rawName);
             }
             RawPhysicsBone physics = new RawPhysicsBone(rawName, current,
-                    currentPhysics == null ? null : currentPhysics.name, group.origin.clone());
+                    currentPhysics == null ? null : currentPhysics.name, group.origin.clone(),
+                    group.rotation.clone());
             physicsBones.add(physics);
             physics.elements.addAll(group.elements);
             for (RawGroup child : group.children) {
@@ -490,7 +492,7 @@ public final class BbmodelParser {
             next = mapped;
             RawBone bone = bones.get(mapped);
             if (bone == null) {
-                bones.put(mapped, new RawBone(mapped, group.origin.clone()));
+                bones.put(mapped, new RawBone(mapped, group.origin.clone(), group.rotation.clone()));
             } else if (group.elements.size() > 0) {
                 warnings.add("骨骼 '" + mapped.modelName() + "' 出现多次，方块已合并");
             }

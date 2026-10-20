@@ -139,6 +139,19 @@ class ModelPipelineTest {
     }
 
     @Test
+    void supportsStaticBoneRotation() throws Exception {
+        Path rotated = Path.of("src/test/resources/player_rotated.bbmodel");
+        RawModel raw = BbmodelParser.parse(rotated, "rotated");
+        RawBone head = raw.bone(BoneKind.HEAD);
+        assertNotNull(head);
+        assertTrue(Math.abs(head.rotation[1] - 15.0F) < 0.001F);
+        NormalizedModel model = ModelCompiler.compile(raw, "model", "model");
+        NormalizedBone normalized = model.bone(BoneKind.HEAD);
+        assertNotNull(normalized);
+        assertTrue(Math.abs(normalized.rotY() - 15.0F) < 0.001F);
+    }
+
+    @Test
     void strictPhysicsSuffixAndOverrides() {
         assertTrue(PhysicsBoneName.hasSuffix("hair_physics"));
         assertEquals("hair", PhysicsBoneName.baseName("Hair_Physics"));

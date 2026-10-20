@@ -218,9 +218,13 @@ public final class PhysicsManager {
             vYaw = 0.0F;
             vRoll = 0.0F;
 
-            bone.part().pitch = (float) Math.toRadians(pitch);
-            bone.part().yaw = (float) Math.toRadians(yaw);
-            bone.part().roll = (float) Math.toRadians(roll);
+            Quaternionf offset = new Quaternionf().rotationZYX((float) Math.toRadians(roll),
+                    (float) Math.toRadians(yaw), (float) Math.toRadians(pitch));
+            Quaternionf composed = new Quaternionf(bone.staticRotation()).mul(offset);
+            Vector3f euler = composed.getEulerAnglesZYX(new Vector3f());
+            bone.part().roll = euler.x;
+            bone.part().yaw = euler.y;
+            bone.part().pitch = euler.z;
             lastParent.set(parent);
         }
 

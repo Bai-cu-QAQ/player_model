@@ -7,10 +7,12 @@ import java.util.List;
 public final class RawBone {
     public final BoneKind kind;
     public float[] pivot;
+    public float[] rotation = {0, 0, 0};
     public final List<RawElement> elements = new ArrayList<>();
 
-    public RawBone(BoneKind kind, float[] pivot) {
+    public RawBone(BoneKind kind, float[] pivot, float[] rotation) {
         this.kind = kind;
         this.pivot = pivot;
+        this.rotation = rotation;
     }
 }

@@ -60,7 +60,8 @@ public final class ModelCompiler {
                 }
             }
             if (!cubes.isEmpty()) {
-                bones.add(new NormalizedBone(rawBone.kind, rawBone.pivot[0], rawBone.pivot[1], rawBone.pivot[2], cubes));
+                bones.add(new NormalizedBone(rawBone.kind, rawBone.pivot[0], rawBone.pivot[1], rawBone.pivot[2],
+                        rawBone.rotation[0], rawBone.rotation[1], rawBone.rotation[2], cubes));
             }
         }
         if (bones.isEmpty()) {
@@ -88,7 +89,8 @@ public final class ModelCompiler {
             }
             physicsBones.add(new NormalizedPhysicsBone(rawPhysics.name, rawPhysics.parentBone,
                     rawPhysics.parentPhysics, rawPhysics.pivot[0], rawPhysics.pivot[1],
-                    rawPhysics.pivot[2], physicsCubes));
+                    rawPhysics.pivot[2], rawPhysics.rotation[0], rawPhysics.rotation[1],
+                    rawPhysics.rotation[2], physicsCubes));
         }
         model.physicsBones = List.copyOf(physicsBones);
         return model;
