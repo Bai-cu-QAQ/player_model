@@ -44,6 +44,8 @@ config/playermodel/models/
 
 `textureMode`：`model` / `skin`。`pivotMode`：`model`（小体型）/ `vanilla`。
 
+`meta.json` 支持 `//` 行注释和 `/* ... */` 块注释；完整字段示例见 `dist/meta.example.jsonc`。
+
 ## 3. 模板
 
 `/pmodel template` 生成：

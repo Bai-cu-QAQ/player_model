@@ -1,0 +1,102 @@
+{
+  // 模型显示名称；留空时使用文件夹名。
+  "displayName": "我的模型",
+
+  // 贴图来源：
+  // "model" = 使用 bbmodel 内嵌/模型贴图（含多贴图图集）；
+  // "skin"  = 使用玩家当前皮肤。
+  "textureMode": "model",
+
+  // 骨骼 pivot 来源：
+  // "model"   = 使用 bbmodel 骨骼 pivot（小体型推荐）；
+  // "vanilla" = 使用原版玩家骨骼 pivot。
+  "pivotMode": "model",
+
+  // 是否启用锚点位置偏移。
+  // false：只使用 anchor_*_size 的缩放，feature 保持与自定义骨骼对齐；
+  // true ：同时使用 anchor_* 分组的位置做微调。
+  "customAnchors": false,
+
+  // 旧版兼容字段；当前版本不使用双层皮肤，请保持 true 或删除。
+  "doubleLayer": true,
+
+  // 细手臂（Alex）模型；通常由 bbmodel 自动检测，也可显式指定。
+  "slim": false,
+
+  // 模型贴图的 UV 尺寸；0 表示从 bbmodel/贴图自动读取。
+  "textureWidth": 64,
+  "textureHeight": 64,
+
+  // 锚点微调（需要 customAnchors=true 才会应用位置）。
+  // 可覆盖 anchor_helmet / anchor_chest / anchor_legs / anchor_boots /
+  // anchor_right_hand / anchor_left_hand / anchor_cape。
+  "anchors": {
+    // 例：
+    // "chest":       { "x": 0, "y": 0, "z": 0, "scale": 0.6 },
+    // "right_hand":  { "x": -3, "y": 7, "z": 0, "scale": 0.6 },
+    // "cape":        { "x": 0, "y": 0, "z": -2, "scale": 0.6 }
+  },
+
+  // 物理骨骼配置；只有名字以 _physics 结尾的骨骼会使用这些设置。
+  "physics": {
+    // 所有物理骨骼的默认值。
+    "defaultSettings": {
+      // "pendulum" = 单骨骼弹簧/重力/惯性；
+      // "cloth"    = 连续 _physics 骨骼链组成的链式布料。
+      "mode": "pendulum",
+
+      // 弹簧刚度；越大回正越快、摆动越小。
+      "stiffness": 90,
+
+      // 阻尼；越大越快停止摆动。
+      "damping": 14,
+
+      // 重力影响；越大越接近自然下垂。
+      "gravity": 0.6,
+
+      // 父骨骼旋转/移动产生的惯性强度。
+      "inertia": 0.8,
+
+      // 单轴最大旋转角度，单位度。
+      "maxAngle": 55,
+
+      // 额外风力，通常保持 0。
+      "wind": 0.0,
+
+      // 速度阻尼/拖拽系数（预留给后续版本）。
+      "drag": 0.0,
+
+      // cloth 模式的约束迭代次数（预留给后续版本）。
+      "iterations": 3,
+
+      // 按轴禁用物理效果；只影响对应骨骼。
+      // X 轴：前后/上下拖尾（pitch）。
+      "disablePitch": false,
+
+      // Y 轴：左右转向（yaw）。
+      "disableYaw": false,
+
+      // Z 轴：侧向摆动（roll）。
+      "disableRoll": false
+    },
+
+    // 单个物理骨骼的覆盖值；未写的字段继承 defaultSettings。
+    "bones": {
+      "hair_physics": {
+        // 头发使用两段 cloth 链。
+        "mode": "cloth",
+        "stiffness": 60,
+        "maxAngle": 75,
+        // 禁用侧向摆动，只保留前后拖动。
+        "disableRoll": true
+      },
+      "skirt_physics": {
+        "mode": "cloth",
+        "stiffness": 50,
+        "maxAngle": 65,
+        // 禁止裙摆左右转。
+        "disableYaw": true
+      }
+    }
+  }
+}

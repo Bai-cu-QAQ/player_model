@@ -14,6 +14,7 @@ import dev.playermodel.model.PhysicsConfig;
 import dev.playermodel.model.RawBone;
 import dev.playermodel.model.RawModel;
 import dev.playermodel.runtime.PreparedModel;
+import dev.playermodel.util.JsonComments;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
@@ -149,6 +150,15 @@ class ModelPipelineTest {
         NormalizedBone normalized = model.bone(BoneKind.HEAD);
         assertNotNull(normalized);
         assertTrue(Math.abs(normalized.rotY() - 15.0F) < 0.001F);
+    }
+
+    @Test
+    void stripsJsonCommentsSafely() {
+        String input = "{\n  // line\n  \"url\": \"http://example.com/a//b\",\n  /* block */\n  \"value\": 1\n}";
+        String stripped = JsonComments.strip(input);
+        assertTrue(stripped.contains("http://example.com/a//b"));
+        assertTrue(!stripped.contains("line"));
+        assertTrue(!stripped.contains("block"));
     }
 
     @Test

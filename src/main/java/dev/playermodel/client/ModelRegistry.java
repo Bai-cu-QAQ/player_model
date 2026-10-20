@@ -12,6 +12,7 @@ import dev.playermodel.model.PhysicsConfig;
 import dev.playermodel.model.RawModel;
 import dev.playermodel.model.RawTexture;
 import dev.playermodel.runtime.PreparedModel;
+import dev.playermodel.util.JsonComments;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.util.Identifier;
 
@@ -95,7 +96,7 @@ public final class ModelRegistry {
             Path metaFile = folder.resolve("meta.json");
             Meta meta = new Meta();
             if (Files.isRegularFile(metaFile)) {
-                Meta parsed = GSON.fromJson(Files.readString(metaFile), Meta.class);
+                Meta parsed = GSON.fromJson(JsonComments.strip(Files.readString(metaFile)), Meta.class);
                 if (parsed != null) {
                     meta = parsed;
                 }
