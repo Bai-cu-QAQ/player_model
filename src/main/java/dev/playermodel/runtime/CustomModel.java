@@ -152,10 +152,10 @@ public final class CustomModel {
                 parentZ = parentPhysics.pivotZ();
             } else {
                 parent = coreParts[physics.parentBone().ordinal()];
-                float[] pivot = prepared.pivot(physics.parentBone());
+                float[] pivot = modelPivots ? prepared.pivot(physics.parentBone())
+                        : basePivots.get(physics.parentBone());
                 if (pivot == null) {
-                    float[] base = basePivots.get(physics.parentBone());
-                    pivot = base == null ? new float[]{0, 0, 0} : base;
+                    pivot = new float[]{0, 0, 0};
                 }
                 parentX = pivot[0];
                 parentY = pivot[1];
