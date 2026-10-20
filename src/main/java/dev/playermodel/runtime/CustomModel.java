@@ -372,7 +372,8 @@ public final class CustomModel {
             Quaternionf staticRotation = staticRotations.get(kind);
             if (staticRotation != null) {
                 Quaternionf animated = new Quaternionf().rotationZYX(to.roll, to.yaw, to.pitch);
-                Vector3f euler = animated.mul(staticRotation).getEulerAnglesZYX(new Vector3f());
+                Vector3f euler = new Quaternionf(staticRotation).mul(animated)
+                        .getEulerAnglesZYX(new Vector3f());
                 to.roll = euler.x;
                 to.yaw = euler.y;
                 to.pitch = euler.z;
