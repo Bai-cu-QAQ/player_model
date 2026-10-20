@@ -97,7 +97,6 @@ public final class PhysicsManager {
             for (int step = 0; step < 20; step++) {
                 boneState.simulate(bone, parent, localAccel, speed, dt * 0.5F, model, step == 0);
             }
-            boneState.resolveCollision(model, bone);
         }
     }
 
@@ -149,6 +148,7 @@ public final class PhysicsManager {
         float vPitch;
         float vYaw;
         float vRoll;
+        float collisionScale = 1.0F;
         Quaternionf lastParent;
         boolean initialized;
 
@@ -156,6 +156,7 @@ public final class PhysicsManager {
                       Vector3f speed, float dt, CustomModel model, boolean applyCollision) {
             if (!initialized || lastParent == null) {
                 lastParent = new Quaternionf(parent);
+                collisionScale = 1.0F;
                 initialized = true;
             }
             PhysicsConfig.Settings settings = bone.settings();
@@ -203,7 +204,8 @@ public final class PhysicsManager {
                     - clamp(omega.z, -90.0F, 90.0F) * 0.6F
                     - gravity * gravityLocal.x / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
             if (applyCollision) {
-                float collisionScale = model.collisionScale(bone, targetPitch, targetYaw, targetRoll);
+                float measured = model.collisionScale(bone, targetPitch, targetYaw, targetRoll);
+                collisionScale += (measured - collisionScale) * 0.25F;
                 targetPitch *= collisionScale;
                 targetYaw *= collisionScale;
                 targetRoll *= collisionScale;
@@ -220,17 +222,6 @@ public final class PhysicsManager {
             bone.part().yaw = (float) Math.toRadians(yaw);
             bone.part().roll = (float) Math.toRadians(roll);
             lastParent.set(parent);
-        }
-
-        void resolveCollision(CustomModel model, CustomModel.PhysicsBoneRuntime bone) {
-            for (int i = 0; i < 6; i++) {
-                if (!model.collides(bone)) {
-                    return;
-                }
-                bone.part().pitch *= 0.5F;
-                bone.part().yaw *= 0.5F;
-                bone.part().roll *= 0.5F;
-            }
         }
 
         private static Vector3f parentAngularVelocity(Quaternionf current, Quaternionf last, float dt) {
