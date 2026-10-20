@@ -192,14 +192,17 @@ public final class PhysicsManager {
             // Vertical motion has no horizontal component: rising keeps the cloth hanging down,
             // falling lifts it upward. Horizontal speed is only an additional trail force.
             float rise = speedLocal.y;
-            float lift = rise < 0.0F ? Math.min(maxAngle, -rise * (maxAngle / 1.25F)) : 0.0F;
-            float targetPitch = clamp(speedLocal.z * gain
-                    - clamp(omega.x, -90.0F, 90.0F) * 0.6F
+            boolean falling = rise < -0.05F;
+            float lift = falling ? Math.min(maxAngle, -rise * (maxAngle / 1.25F)) : 0.0F;
+            float horizontalPitch = falling ? 0.0F
+                    : speedLocal.z * gain - clamp(omega.x, -90.0F, 90.0F) * 0.6F;
+            float targetPitch = clamp(horizontalPitch
                     + gravity * gravityLocal.z / Math.max(5.0F, stiffness)
                     + lift, -maxAngle, maxAngle);
             float targetYaw = clamp(-clamp(omega.y, -90.0F, 90.0F) * 0.4F + wind, -maxAngle, maxAngle);
-            float targetRoll = clamp(speedLocal.x * gain
-                    - clamp(omega.z, -90.0F, 90.0F) * 0.6F
+            float horizontalRoll = falling ? 0.0F
+                    : speedLocal.x * gain - clamp(omega.z, -90.0F, 90.0F) * 0.6F;
+            float targetRoll = clamp(horizontalRoll
                     - gravity * gravityLocal.x / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
             float blend = 1.0F - (float) Math.exp(-response * dt);
             pitch += (targetPitch - pitch) * blend;
