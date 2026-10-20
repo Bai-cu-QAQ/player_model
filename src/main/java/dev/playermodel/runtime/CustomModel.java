@@ -374,9 +374,9 @@ public final class CustomModel {
                 Quaternionf animated = new Quaternionf().rotationZYX(to.roll, to.yaw, to.pitch);
                 Vector3f euler = new Quaternionf(staticRotation).mul(animated)
                         .getEulerAnglesZYX(new Vector3f());
-                to.roll = euler.x;
+                to.pitch = euler.x;
                 to.yaw = euler.y;
-                to.pitch = euler.z;
+                to.roll = euler.z;
             }
             // EMF/CEM player models can bake different part scales into their rest pose. Copy the
             // animation delta relative to the rest scale so the imported geometry keeps its size.
