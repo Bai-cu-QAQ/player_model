@@ -58,8 +58,9 @@ public final class PhysicsManager {
         } else if (nowNanos - state.sampleNanos >= 50_000_000L) {
             double seconds = (nowNanos - state.sampleNanos) / 1_000_000_000.0;
             Vec3d sampled = pos.subtract(state.samplePos).multiply(1.0 / seconds);
-            state.smoothedSpeed = new Vector3f((float) (sampled.x * 0.1), (float) (sampled.y * 0.1),
+            Vector3f target = new Vector3f((float) (sampled.x * 0.1), (float) (sampled.y * 0.1),
                     (float) (sampled.z * 0.1));
+            state.smoothedSpeed.lerp(target, 0.35F);
             state.samplePos = pos;
             state.sampleNanos = nowNanos;
         }
@@ -70,16 +71,27 @@ public final class PhysicsManager {
         if (accel.lengthSquared() > 900.0F) {
             accel.normalize(30.0F);
         }
-        Vector3f speed = new Vector3f(state.smoothedSpeed);
-
+        // Entity yaw is applied by the renderer outside the model. Convert world movement into the
+        // entity model frame before applying part-local physics.
+        float yaw = (float) Math.toRadians(player.getBodyYaw());
+        float cos = (float) Math.cos(yaw);
+        float sin = (float) Math.sin(yaw);
+        Vector3f speed = new Vector3f(
+                state.smoothedSpeed.x * cos + state.smoothedSpeed.z * sin,
+                state.smoothedSpeed.y,
+                -state.smoothedSpeed.x * sin + state.smoothedSpeed.z * cos);
+        Vector3f localAccel = new Vector3f(
+                accel.x * cos + accel.z * sin,
+                accel.y,
+                -accel.x * sin + accel.z * cos);
         for (CustomModel.PhysicsBoneRuntime bone : model.physicsBones()) {
             BoneState boneState = state.bones.computeIfAbsent(bone.name().toLowerCase(java.util.Locale.ROOT),
                     key -> new BoneState());
             Quaternionf parent = model.worldRotation(bone.parent());
-            // Ten substeps give the secondary motion a much snappier response without changing the
-            // equilibrium angle; each substep advances one normal render frame.
-            for (int step = 0; step < 10; step++) {
-                boneState.simulate(bone, parent, accel, speed, dt);
+            // Twenty half-steps equal ten normal render steps; the smaller integration step removes
+            // the jitter that the 10x response previously caused in the stiff spring.
+            for (int step = 0; step < 20; step++) {
+                boneState.simulate(bone, parent, localAccel, speed, dt * 0.5F);
             }
         }
     }
@@ -99,6 +111,7 @@ public final class PhysicsManager {
         Vec3d lastPos;
         Vec3d samplePos;
         long sampleNanos;
+        long lastLogNanos;
         Vector3f smoothedSpeed = new Vector3f();
         final Map<String, BoneState> bones = new HashMap<>();
 
@@ -109,6 +122,7 @@ public final class PhysicsManager {
             this.lastPos = null;
             this.samplePos = null;
             this.sampleNanos = 0L;
+            this.lastLogNanos = 0L;
             this.smoothedSpeed = new Vector3f();
             this.bones.clear();
         }
@@ -165,39 +179,28 @@ public final class PhysicsManager {
             Vector3f speedLocal = new Vector3f(speed);
             new Quaternionf(parent).invert().transform(speedLocal);
 
-            float aPitch = -stiffness * pitch - damping * vPitch
-                    + gravity * gravityLocal.z
-                    - inertia * omega.x
-                    - 2.5F * accelLocal.z
-                    - 3000.0F * speedLocal.z
-                    - 1200.0F * speedLocal.y
-                    - 4.0F * accelLocal.y;
-            float aYaw = -stiffness * yaw - damping * vYaw
-                    - inertia * omega.y
-                    + wind
-                    + 1.5F * accelLocal.x;
-            float aRoll = -stiffness * roll - damping * vRoll
-                    - gravity * gravityLocal.x
-                    - inertia * omega.z
-                    - 2.5F * accelLocal.x
-                    + 3000.0F * speedLocal.x
-                    + 400.0F * speedLocal.y;
-
-            vPitch = clamp(vPitch + aPitch * dt, -18.0F, 18.0F);
-            vYaw = clamp(vYaw + aYaw * dt, -18.0F, 18.0F);
-            vRoll = clamp(vRoll + aRoll * dt, -18.0F, 18.0F);
-            pitch = clamp(pitch + vPitch * dt, -maxAngle, maxAngle);
-            yaw = clamp(yaw + vYaw * dt, -maxAngle, maxAngle);
-            roll = clamp(roll + vRoll * dt, -maxAngle, maxAngle);
-            if (Math.abs(vPitch) < 0.002F) {
-                vPitch = 0.0F;
+            float gain = 3000.0F / Math.max(5.0F, stiffness);
+            float response = 8.0F + damping * 2.0F;
+            if (cloth) {
+                gain *= 0.8F;
+                response *= 0.75F;
             }
-            if (Math.abs(vYaw) < 0.002F) {
-                vYaw = 0.0F;
-            }
-            if (Math.abs(vRoll) < 0.002F) {
-                vRoll = 0.0F;
-            }
+            float targetPitch = clamp(-speedLocal.z * gain
+                    - speedLocal.y * (1200.0F / Math.max(5.0F, stiffness))
+                    - omega.x * 0.6F
+                    + gravity * gravityLocal.z / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
+            float targetYaw = clamp(-omega.y * 0.4F + wind, -maxAngle, maxAngle);
+            float targetRoll = clamp(speedLocal.x * gain
+                    + speedLocal.y * (400.0F / Math.max(5.0F, stiffness))
+                    - omega.z * 0.6F
+                    - gravity * gravityLocal.x / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
+            float blend = 1.0F - (float) Math.exp(-response * dt);
+            pitch += (targetPitch - pitch) * blend;
+            yaw += (targetYaw - yaw) * blend;
+            roll += (targetRoll - roll) * blend;
+            vPitch = 0.0F;
+            vYaw = 0.0F;
+            vRoll = 0.0F;
 
             bone.part().pitch = (float) Math.toRadians(pitch);
             bone.part().yaw = (float) Math.toRadians(yaw);
