@@ -196,7 +196,7 @@ public final class PhysicsManager {
             float targetPitch = clamp(speedLocal.z * gain
                     - clamp(omega.x, -90.0F, 90.0F) * 0.6F
                     + gravity * gravityLocal.z / Math.max(5.0F, stiffness)
-                    - lift, -maxAngle, maxAngle);
+                    + lift, -maxAngle, maxAngle);
             float targetYaw = clamp(-clamp(omega.y, -90.0F, 90.0F) * 0.4F + wind, -maxAngle, maxAngle);
             float targetRoll = clamp(speedLocal.x * gain
                     - clamp(omega.z, -90.0F, 90.0F) * 0.6F
