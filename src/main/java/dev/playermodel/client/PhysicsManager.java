@@ -211,6 +211,11 @@ public final class PhysicsManager {
             pitch += (targetPitch - pitch) * blend;
             yaw += (targetYaw - yaw) * blend;
             roll += (targetRoll - roll) * blend;
+            if (falling) {
+                pitch = 0.0F;
+                yaw = 0.0F;
+                roll = 0.0F;
+            }
             vPitch = 0.0F;
             vYaw = 0.0F;
             vRoll = 0.0F;
