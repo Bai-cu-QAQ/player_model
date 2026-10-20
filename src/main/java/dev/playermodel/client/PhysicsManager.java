@@ -195,14 +195,14 @@ public final class PhysicsManager {
             // falling lifts it upward. Horizontal speed is only an additional trail force.
             float rise = speedLocal.y;
             float lift = rise < 0.0F ? Math.min(maxAngle, -rise * (maxAngle / 1.25F)) : 0.0F;
-            float targetPitch = clamp(speedLocal.x * gain
+            float targetPitch = clamp(speedLocal.z * gain
                     - clamp(omega.x, -90.0F, 90.0F) * 0.6F
-                    + gravity * gravityLocal.x / Math.max(5.0F, stiffness)
+                    + gravity * gravityLocal.z / Math.max(5.0F, stiffness)
                     + lift, -maxAngle, maxAngle);
             float targetYaw = clamp(-clamp(omega.y, -90.0F, 90.0F) * 0.4F + wind, -maxAngle, maxAngle);
-            float targetRoll = clamp(speedLocal.z * gain
+            float targetRoll = clamp(speedLocal.x * gain
                     - clamp(omega.z, -90.0F, 90.0F) * 0.6F
-                    + gravity * gravityLocal.z / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
+                    - gravity * gravityLocal.x / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
             if (applyCollision) {
                 float measured = model.collisionScale(bone, targetPitch, targetYaw, targetRoll);
                 collisionScale += (measured - collisionScale) * 0.25F;
