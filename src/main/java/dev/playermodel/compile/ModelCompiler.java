@@ -7,10 +7,12 @@ import dev.playermodel.model.FaceVertex;
 import dev.playermodel.model.NormalizedBone;
 import dev.playermodel.model.NormalizedCube;
 import dev.playermodel.model.NormalizedModel;
+import dev.playermodel.model.NormalizedPhysicsBone;
 import dev.playermodel.model.RawBone;
 import dev.playermodel.model.RawElement;
 import dev.playermodel.model.RawFace;
 import dev.playermodel.model.RawModel;
+import dev.playermodel.model.RawPhysicsBone;
 import dev.playermodel.model.RawTexture;
 import net.minecraft.client.model.ModelPart;
 import net.minecraft.util.math.Direction;
@@ -65,6 +67,30 @@ public final class ModelCompiler {
             throw new CompileException("模型没有生成任何方块");
         }
         model.bones = List.copyOf(bones);
+
+        List<NormalizedPhysicsBone> physicsBones = new ArrayList<>();
+        java.util.Set<String> physicsNames = new java.util.HashSet<>();
+        for (RawPhysicsBone rawPhysics : raw.physicsBones) {
+            String key = rawPhysics.name.toLowerCase(java.util.Locale.ROOT);
+            if (!physicsNames.add(key)) {
+                throw new CompileException("物理骨骼重名: " + rawPhysics.name);
+            }
+            if (rawPhysics.parentPhysics != null && !physicsNames.contains(
+                    rawPhysics.parentPhysics.toLowerCase(java.util.Locale.ROOT))) {
+                throw new CompileException("物理骨骼父节点不存在或顺序错误: " + rawPhysics.name);
+            }
+            List<NormalizedCube> physicsCubes = new ArrayList<>();
+            for (RawElement element : rawPhysics.elements) {
+                NormalizedCube cube = compileCube(raw, element, atlas);
+                if (cube != null) {
+                    physicsCubes.add(cube);
+                }
+            }
+            physicsBones.add(new NormalizedPhysicsBone(rawPhysics.name, rawPhysics.parentBone,
+                    rawPhysics.parentPhysics, rawPhysics.pivot[0], rawPhysics.pivot[1],
+                    rawPhysics.pivot[2], physicsCubes));
+        }
+        model.physicsBones = List.copyOf(physicsBones);
         return model;
     }
 

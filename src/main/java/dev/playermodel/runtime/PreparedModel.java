@@ -7,12 +7,15 @@ import dev.playermodel.model.FaceVertex;
 import dev.playermodel.model.NormalizedBone;
 import dev.playermodel.model.NormalizedCube;
 import dev.playermodel.model.NormalizedModel;
+import dev.playermodel.model.NormalizedPhysicsBone;
+import dev.playermodel.model.PhysicsConfig;
 import net.minecraft.client.model.ModelPart;
 import net.minecraft.util.math.Direction;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -27,13 +30,35 @@ public final class PreparedModel {
     private final Map<BoneKind, List<ModelPart.Cuboid>> modelPivoted = new EnumMap<>(BoneKind.class);
     private final Map<BoneKind, float[]> modelPivots = new EnumMap<>(BoneKind.class);
     private final List<VanillaVariant> vanillaVariants = new ArrayList<>();
+    private final Map<String, PhysicsPart> physicsParts = new LinkedHashMap<>();
 
     public PreparedModel(NormalizedModel data) {
         this.data = data;
         for (NormalizedBone bone : data.bones) {
             modelPivots.put(bone.kind(), new float[]{bone.pivotX(), bone.pivotY(), bone.pivotZ()});
-            modelPivoted.put(bone.kind(), buildCuboids(bone, bone.pivotX(), bone.pivotY(), bone.pivotZ()));
+            modelPivoted.put(bone.kind(), buildCuboids(bone.cubes(), bone.pivotX(), bone.pivotY(), bone.pivotZ()));
         }
+        if (data.physicsBones != null) {
+            for (NormalizedPhysicsBone bone : data.physicsBones) {
+                physicsParts.put(bone.name().toLowerCase(java.util.Locale.ROOT),
+                        new PhysicsPart(bone.name(), bone.parentBone(), bone.parentPhysics(),
+                                bone.pivotX(), bone.pivotY(), bone.pivotZ(),
+                                buildCuboids(bone.cubes(), bone.pivotX(), bone.pivotY(), bone.pivotZ())));
+            }
+        }
+    }
+
+    public record PhysicsPart(String name, BoneKind parentBone, String parentPhysics,
+                              float pivotX, float pivotY, float pivotZ,
+                              List<ModelPart.Cuboid> cuboids) {
+    }
+
+    public List<PhysicsPart> physicsBones() {
+        return List.copyOf(physicsParts.values());
+    }
+
+    public PhysicsConfig physicsConfig() {
+        return data.physics == null ? new PhysicsConfig() : data.physics;
     }
 
     public NormalizedModel data() {
@@ -106,7 +131,7 @@ public final class PreparedModel {
                 if (pivot == null) {
                     pivot = new float[]{bone.pivotX(), bone.pivotY(), bone.pivotZ()};
                 }
-                built.put(bone.kind(), buildCuboids(bone, pivot[0], pivot[1], pivot[2]));
+                built.put(bone.kind(), buildCuboids(bone.cubes(), pivot[0], pivot[1], pivot[2]));
             }
             vanillaVariants.add(new VanillaVariant(copy(basePivots), built));
             if (vanillaVariants.size() > 4) {
@@ -139,9 +164,9 @@ public final class PreparedModel {
         return copy;
     }
 
-    private static List<ModelPart.Cuboid> buildCuboids(NormalizedBone bone, float px, float py, float pz) {
-        List<ModelPart.Cuboid> result = new ArrayList<>(bone.cubes().size());
-        for (NormalizedCube cube : bone.cubes()) {
+    private static List<ModelPart.Cuboid> buildCuboids(List<NormalizedCube> cubes, float px, float py, float pz) {
+        List<ModelPart.Cuboid> result = new ArrayList<>(cubes.size());
+        for (NormalizedCube cube : cubes) {
             float minX = cube.minX() - px;
             float minY = cube.minY() - py;
             float minZ = cube.minZ() - pz;

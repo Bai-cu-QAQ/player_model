@@ -1,13 +1,18 @@
 package dev.playermodel.runtime;
 
 import dev.playermodel.model.BoneKind;
+import dev.playermodel.model.PhysicsConfig;
 import net.minecraft.client.model.Dilation;
 import net.minecraft.client.model.ModelPart;
 import net.minecraft.client.model.TexturedModelData;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.entity.model.PlayerEntityModel;
+import org.joml.Quaternionf;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -22,11 +27,21 @@ public final class CustomModel {
     private final Map<BoneKind, float[]> basePivots = new EnumMap<>(BoneKind.class);
     private final boolean modelPivots;
     private final float rigScale;
+    private final List<PhysicsBoneRuntime> physicsBones = new ArrayList<>();
+    private final Map<ModelPart, ModelPart> parents = new IdentityHashMap<>();
+    private final ModelPart rootPart;
+
+    public record PhysicsBoneRuntime(String name, ModelPart part, ModelPart parent,
+                                     BoneKind parentBone, String parentPhysics,
+                                     float pivotX, float pivotY, float pivotZ,
+                                     PhysicsConfig.Settings settings) {
+    }
 
     public CustomModel(PreparedModel prepared) {
         TexturedModelData data = TexturedModelData.of(PlayerEntityModel.getTexturedModelData(
                 Dilation.NONE, prepared.slim()), 64, 64);
         ModelPart root = data.createModel();
+        this.rootPart = root;
         this.model = new PlayerEntityModel<>(root, prepared.slim());
         this.rigScale = prepared.rigScale();
         ModelPart[] array = ModelParts.of(model);
@@ -58,6 +73,116 @@ public final class CustomModel {
             part.visible = true;
             part.hidden = false;
         }
+        attachPhysics(prepared, array);
+        buildParentMap(rootPart);
+    }
+
+    private void buildParentMap(ModelPart part) {
+        if (part.children == null) {
+            return;
+        }
+        for (ModelPart child : part.children.values()) {
+            parents.put(child, part);
+            buildParentMap(child);
+        }
+    }
+
+    /** Cumulative rotation of a part in model space, including all core/physics ancestors. */
+    public Quaternionf worldRotation(ModelPart part) {
+        List<ModelPart> chain = new ArrayList<>();
+        ModelPart current = part;
+        while (current != null && current != rootPart) {
+            chain.add(current);
+            current = parents.get(current);
+        }
+        Quaternionf result = new Quaternionf();
+        for (int i = chain.size() - 1; i >= 0; i--) {
+            ModelPart node = chain.get(i);
+            result.mul(new Quaternionf().rotationZYX(node.roll, node.yaw, node.pitch));
+        }
+        return result;
+    }
+
+    private void attachPhysics(PreparedModel prepared, ModelPart[] coreParts) {
+        List<PreparedModel.PhysicsPart> preparedPhysics = prepared.physicsBones();
+        if (preparedPhysics.isEmpty()) {
+            return;
+        }
+        Map<String, ModelPart> byName = new HashMap<>();
+        for (PreparedModel.PhysicsPart physics : preparedPhysics) {
+            ModelPart part = new ModelPart(physics.cuboids(), new HashMap<>());
+            part.visible = true;
+            part.hidden = false;
+            byName.put(physics.name().toLowerCase(java.util.Locale.ROOT), part);
+        }
+        Map<String, PreparedModel.PhysicsPart> preparedByName = new HashMap<>();
+        for (PreparedModel.PhysicsPart physics : preparedPhysics) {
+            preparedByName.put(physics.name().toLowerCase(java.util.Locale.ROOT), physics);
+        }
+        PhysicsConfig config = prepared.physicsConfig();
+        Map<String, PhysicsConfig.Settings> settingsByName = new HashMap<>();
+        for (PreparedModel.PhysicsPart physics : preparedPhysics) {
+            String key = physics.name().toLowerCase(java.util.Locale.ROOT);
+            ModelPart part = byName.get(key);
+            if (part == null) {
+                continue;
+            }
+            PhysicsConfig.Settings settings = config.resolved(physics.name());
+            if (physics.parentPhysics() != null && !config.hasBoneOverride(physics.name())) {
+                PhysicsConfig.Settings parentSettings =
+                        settingsByName.get(physics.parentPhysics().toLowerCase(java.util.Locale.ROOT));
+                if (parentSettings != null && "cloth".equalsIgnoreCase(parentSettings.mode)) {
+                    settings = parentSettings.copy();
+                }
+            }
+            settingsByName.put(key, settings);
+            ModelPart parent;
+            float parentX;
+            float parentY;
+            float parentZ;
+            if (physics.parentPhysics() != null) {
+                String parentKey = physics.parentPhysics().toLowerCase(java.util.Locale.ROOT);
+                parent = byName.get(parentKey);
+                PreparedModel.PhysicsPart parentPhysics = preparedByName.get(parentKey);
+                if (parent == null || parentPhysics == null) {
+                    continue;
+                }
+                parentX = parentPhysics.pivotX();
+                parentY = parentPhysics.pivotY();
+                parentZ = parentPhysics.pivotZ();
+            } else {
+                parent = coreParts[physics.parentBone().ordinal()];
+                float[] pivot = prepared.pivot(physics.parentBone());
+                if (pivot == null) {
+                    float[] base = basePivots.get(physics.parentBone());
+                    pivot = base == null ? new float[]{0, 0, 0} : base;
+                }
+                parentX = pivot[0];
+                parentY = pivot[1];
+                parentZ = pivot[2];
+            }
+            part.setPivot(physics.pivotX() - parentX, physics.pivotY() - parentY,
+                    physics.pivotZ() - parentZ);
+            Map<String, ModelPart> children = parent.children;
+            if (children == null) {
+                children = new HashMap<>();
+                parent.children = children;
+            }
+            try {
+                children.put("pm_physics$" + key, part);
+            } catch (UnsupportedOperationException e) {
+                Map<String, ModelPart> copy = new HashMap<>(children);
+                copy.put("pm_physics$" + key, part);
+                parent.children = copy;
+            }
+            physicsBones.add(new PhysicsBoneRuntime(physics.name(), part, parent,
+                    physics.parentBone(), physics.parentPhysics(),
+                    physics.pivotX(), physics.pivotY(), physics.pivotZ(), settings));
+        }
+    }
+
+    public List<PhysicsBoneRuntime> physicsBones() {
+        return List.copyOf(physicsBones);
     }
 
     public void copyPose(PlayerEntityModel<?> live, PreparedModel prepared) {

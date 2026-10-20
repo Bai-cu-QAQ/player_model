@@ -12,7 +12,9 @@ import dev.playermodel.model.RawElement;
 import dev.playermodel.model.RawFace;
 import dev.playermodel.model.RawGroup;
 import dev.playermodel.model.RawModel;
+import dev.playermodel.model.RawPhysicsBone;
 import dev.playermodel.model.RawTexture;
+import dev.playermodel.model.PhysicsBoneName;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -43,6 +45,8 @@ public final class BbmodelParser {
     private final Set<String> referenced = new HashSet<>();
     private final List<RawGroup> rootGroups = new ArrayList<>();
     private final Map<BoneKind, RawBone> bones = new EnumMap<>(BoneKind.class);
+    private final List<RawPhysicsBone> physicsBones = new ArrayList<>();
+    private final Set<String> physicsNames = new HashSet<>();
 
     private BbmodelParser(Path sourceFile, JsonObject root) {
         this.sourceFile = sourceFile;
@@ -146,9 +150,10 @@ public final class BbmodelParser {
         model.warnings.addAll(warnings);
         model.anchors.addAll(anchors);
 
-        assignBones(rootGroup, null);
+        assignBones(rootGroup, null, null);
         validateRequiredBones();
         model.bones.addAll(bones.values());
+        model.physicsBones.addAll(physicsBones);
         RawBone slimArm = model.bone(BoneKind.RIGHT_ARM);
         if (slimArm != null) {
             for (RawElement element : slimArm.elements) {
@@ -442,8 +447,41 @@ public final class BbmodelParser {
         }
     }
 
-    private void assignBones(RawGroup group, BoneKind current) throws ImportException {
+    private void assignBones(RawGroup group, BoneKind current, RawPhysicsBone currentPhysics) throws ImportException {
         if (group.anchor) {
+            return;
+        }
+        String rawName = group.name == null ? "" : group.name.trim();
+        if (PhysicsBoneName.hasSuffix(rawName)) {
+            String base = PhysicsBoneName.baseName(rawName);
+            if (base == null) {
+                throw new ImportException("物理骨骼名不能只有 _physics: " + safeName(group));
+            }
+            if (current == null) {
+                throw new ImportException("物理骨骼 '" + safeName(group) + "' 必须放在 head/body/right_arm 等原版骨骼下面");
+            }
+            String key = PhysicsBoneName.key(rawName);
+            if (!physicsNames.add(key)) {
+                throw new ImportException("物理骨骼重名: " + rawName);
+            }
+            RawPhysicsBone physics = new RawPhysicsBone(rawName, current,
+                    currentPhysics == null ? null : currentPhysics.name, group.origin.clone());
+            physicsBones.add(physics);
+            physics.elements.addAll(group.elements);
+            for (RawGroup child : group.children) {
+                assignBones(child, current, physics);
+            }
+            return;
+        }
+        if (currentPhysics != null) {
+            if (BoneKind.byName(group.name) != null) {
+                throw new ImportException("物理骨骼 '" + currentPhysics.name
+                        + "' 下不能直接放原版核心骨骼 '" + group.name + "'");
+            }
+            currentPhysics.elements.addAll(group.elements);
+            for (RawGroup child : group.children) {
+                assignBones(child, current, currentPhysics);
+            }
             return;
         }
         BoneKind next = current;
@@ -478,7 +516,7 @@ public final class BbmodelParser {
         }
 
         for (RawGroup child : group.children) {
-            assignBones(child, next);
+            assignBones(child, next, null);
         }
     }
 

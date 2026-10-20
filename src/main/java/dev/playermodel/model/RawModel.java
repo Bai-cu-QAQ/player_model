@@ -11,6 +11,7 @@ public final class RawModel {
     public RawTexture texture;
     public final java.util.List<RawTexture> textures = new java.util.ArrayList<>();
     public final List<RawBone> bones = new java.util.ArrayList<>();
+    public final List<RawPhysicsBone> physicsBones = new java.util.ArrayList<>();
     public final List<String> warnings = new java.util.ArrayList<>();
     public final List<Anchor> anchors = new java.util.ArrayList<>();
     public int selectedTextureIndex;

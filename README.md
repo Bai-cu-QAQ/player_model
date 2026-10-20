@@ -84,6 +84,56 @@ config/playermodel/models/
 
 Y/Z 位置对腿甲/靴子生效，X 不套用中心锚点，避免左右靴被推向一边；头盔/胸甲支持完整 X/Y/Z 偏移。
 
+### 3.2 物理骨骼 `_physics`
+
+只接受严格后缀 `_physics`：
+
+```text
+hair_physics
+skirt_physics
+Hair_Physics
+```
+
+`hairphysics`、`hair.physics`、`hair-physics` 都不会被识别。物理分组必须放在原版骨骼或另一个物理骨骼下面：
+
+```text
+head
+  hair_physics
+    hair_mid_physics
+body
+  skirt_physics
+      skirt_tip_physics
+```
+
+物理骨骼不会并入 14 核心骨骼，方块会保持独立。支持两种模式：
+
+- `pendulum`：单骨骼弹簧/重力/惯性；
+- `cloth`：由连续 `_physics` 骨骼组成的链式布料。
+
+配置写在模型 `meta.json`：
+
+```json
+"physics": {
+  "defaultSettings": {
+    "mode": "pendulum",
+    "stiffness": 90,
+    "damping": 14,
+    "gravity": 0.6,
+    "inertia": 0.8,
+    "maxAngle": 55,
+    "wind": 0.0
+  },
+  "bones": {
+    "skirt_physics": {
+      "mode": "cloth",
+      "maxAngle": 75
+    }
+  }
+}
+```
+
+`cloth` 需要至少两个连续的 `_physics` 骨骼；单骨骼使用 `cloth` 时会按 `pendulum` 处理。物理只做视觉，碰撞第一阶段不做，不隐藏原版披风。
+
 ## 4. 渲染与 feature 对齐
 
 - 自定义模型是独立的 `PlayerEntityModel`，基体使用它渲染；

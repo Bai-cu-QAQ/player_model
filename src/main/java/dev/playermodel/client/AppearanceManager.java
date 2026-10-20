@@ -32,6 +32,7 @@ public final class AppearanceManager {
     private final ModelRegistry registry;
     private final Map<UUID, Appearance> remote = new HashMap<>();
     private final Map<String, CustomModel> customModels = new HashMap<>();
+    private final PhysicsManager physics = new PhysicsManager();
     private final java.util.Set<UUID> debugLogged = new java.util.HashSet<>();
     private boolean serverSyncAvailable;
 
@@ -141,6 +142,7 @@ public final class AppearanceManager {
             EmfAnimationBridge.animate(live);
             CustomModel custom = customModelFor(prepared);
             custom.copyPose(playerModel, prepared);
+            physics.update(player, custom, System.nanoTime());
             custom.model().render(matrices, vertices, light, overlay, color);
             return true;
         } catch (Throwable t) {

@@ -9,6 +9,8 @@ import dev.playermodel.model.ModelBundle;
 import dev.playermodel.model.NormalizedBone;
 import dev.playermodel.model.NormalizedCube;
 import dev.playermodel.model.NormalizedModel;
+import dev.playermodel.model.PhysicsBoneName;
+import dev.playermodel.model.PhysicsConfig;
 import dev.playermodel.model.RawBone;
 import dev.playermodel.model.RawModel;
 import dev.playermodel.runtime.PreparedModel;
@@ -101,6 +103,46 @@ class ModelPipelineTest {
                 assertTrue(vertex.v() >= 0.0F && vertex.v() <= 1.0F);
             }
         }
+    }
+
+    @Test
+    void parsesAndCompilesPhysicsBones() throws Exception {
+        Path physics = Path.of("src/test/resources/player_physics.bbmodel");
+        RawModel raw = BbmodelParser.parse(physics, "physics");
+        assertEquals(1, raw.physicsBones.size());
+        assertEquals("hair_physics", raw.physicsBones.get(0).name);
+        assertEquals(BoneKind.HEAD, raw.physicsBones.get(0).parentBone);
+        assertEquals(1, raw.bone(BoneKind.HEAD).elements.size(), "physics cube must not merge into head");
+        NormalizedModel model = ModelCompiler.compile(raw, "model", "model");
+        assertEquals(1, model.physicsBones.size());
+        assertEquals(1, model.physicsBones.get(0).cubes().size());
+        ModelBundle bundle = ModelBundle.create(model, raw.texture.png());
+        NormalizedModel decoded = ModelBundle.fromBytes(bundle.bytes).model;
+        assertEquals(1, decoded.physicsBones.size());
+        assertEquals(1, decoded.physicsBones.get(0).cubes().size());
+        PreparedModel prepared = new PreparedModel(model);
+        assertEquals(1, prepared.physicsBones().size());
+        assertNotNull(prepared.physicsBones().get(0).cuboids());
+    }
+
+    @Test
+    void strictPhysicsSuffixAndOverrides() {
+        assertTrue(PhysicsBoneName.hasSuffix("hair_physics"));
+        assertEquals("hair", PhysicsBoneName.baseName("Hair_Physics"));
+        assertTrue(!PhysicsBoneName.hasSuffix("hairphysics"));
+        assertTrue(!PhysicsBoneName.hasSuffix("hair.physics"));
+        assertEquals(null, PhysicsBoneName.baseName("_physics"));
+        PhysicsConfig config = new PhysicsConfig();
+        config.defaultSettings.mode = "pendulum";
+        config.defaultSettings.stiffness = 90.0F;
+        PhysicsConfig.Settings override = new PhysicsConfig.Settings();
+        override.mode = "cloth";
+        override.maxAngle = 80.0F;
+        config.bones.put("skirt_physics", override);
+        PhysicsConfig.Settings cloth = config.resolved("skirt_physics");
+        assertEquals("cloth", cloth.mode);
+        assertEquals(80.0F, cloth.maxAngle(55.0F), 0.001F);
+        assertEquals(90.0F, cloth.stiffness(10.0F), 0.001F);
     }
 
     @Test

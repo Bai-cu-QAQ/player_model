@@ -8,6 +8,7 @@ import dev.playermodel.importing.BbmodelParser;
 import dev.playermodel.importing.PngUtils;
 import dev.playermodel.model.ModelBundle;
 import dev.playermodel.model.NormalizedModel;
+import dev.playermodel.model.PhysicsConfig;
 import dev.playermodel.model.RawModel;
 import dev.playermodel.model.RawTexture;
 import dev.playermodel.runtime.PreparedModel;
@@ -126,6 +127,9 @@ public final class ModelRegistry {
             String pivotMode = meta.pivotMode == null || meta.pivotMode.isBlank() ? "model" : meta.pivotMode;
             NormalizedModel model = ModelCompiler.compile(raw, textureMode, pivotMode);
             model.customAnchors = meta.customAnchors;
+            if (meta.physics != null) {
+                model.physics = meta.physics;
+            }
             model.doubleLayer = meta.doubleLayer;
             model.slim = meta.slim || model.slim;
             if (meta.anchors != null && !meta.anchors.isEmpty()) {
@@ -325,6 +329,7 @@ public final class ModelRegistry {
         public String textureMode = "model";
         public String pivotMode = "model";
         public boolean customAnchors;
+        public PhysicsConfig physics;
         public boolean doubleLayer = true;
         public boolean slim;
         public java.util.Map<String, AnchorMeta> anchors = new java.util.LinkedHashMap<>();

@@ -16,6 +16,8 @@ public final class NormalizedModel {
     public transient byte[] texturePng;
     public List<Anchor> anchors = List.of();
     public List<NormalizedBone> bones = List.of();
+    public List<NormalizedPhysicsBone> physicsBones = List.of();
+    public PhysicsConfig physics = new PhysicsConfig();
     public List<String> warnings = List.of();
 
     public NormalizedBone bone(BoneKind kind) {
