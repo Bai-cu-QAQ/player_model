@@ -7,7 +7,9 @@ import net.minecraft.client.model.ModelPart;
 import net.minecraft.client.model.TexturedModelData;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.entity.model.PlayerEntityModel;
+import org.joml.Matrix4f;
 import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -183,6 +185,138 @@ public final class CustomModel {
 
     public List<PhysicsBoneRuntime> physicsBones() {
         return List.copyOf(physicsBones);
+    }
+
+    /** Checks a physics part against the core body volumes, ignoring its ancestor bones. */
+    public boolean collides(PhysicsBoneRuntime physics) {
+        List<Aabb> boxes = new ArrayList<>();
+        for (BoneKind kind : new BoneKind[]{BoneKind.HEAD, BoneKind.BODY, BoneKind.RIGHT_ARM,
+                BoneKind.LEFT_ARM, BoneKind.RIGHT_LEG, BoneKind.LEFT_LEG}) {
+            ModelPart core = parts.get(kind);
+            if (core == null || isAncestor(core, physics.part())) {
+                continue;
+            }
+            Aabb box = partAabb(core);
+            if (box != null) {
+                boxes.add(box);
+            }
+        }
+        Aabb self = partAabb(physics.part());
+        if (self == null || boxes.isEmpty()) {
+            return false;
+        }
+        for (Aabb box : boxes) {
+            if (self.intersects(box, -0.02F)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Returns the largest fraction of a target rotation that does not intersect a core part.
+     * Rest (0) is assumed collision-free; callers blend toward the returned target.
+     */
+    public float collisionScale(PhysicsBoneRuntime physics, float pitch, float yaw, float roll) {
+        ModelPart part = physics.part();
+        float oldPitch = part.pitch;
+        float oldYaw = part.yaw;
+        float oldRoll = part.roll;
+        // If the authored rest pose already overlaps a core bone, collision cannot help.
+        part.pitch = 0.0F;
+        part.yaw = 0.0F;
+        part.roll = 0.0F;
+        if (collides(physics)) {
+            part.pitch = oldPitch;
+            part.yaw = oldYaw;
+            part.roll = oldRoll;
+            return 1.0F;
+        }
+        float scale = 1.0F;
+        for (int i = 0; i < 6; i++) {
+            part.pitch = (float) Math.toRadians(pitch * scale);
+            part.yaw = (float) Math.toRadians(yaw * scale);
+            part.roll = (float) Math.toRadians(roll * scale);
+            if (!collides(physics)) {
+                break;
+            }
+            scale *= 0.5F;
+        }
+        part.pitch = oldPitch;
+        part.yaw = oldYaw;
+        part.roll = oldRoll;
+        return scale;
+    }
+
+    private boolean isAncestor(ModelPart candidate, ModelPart part) {
+        ModelPart current = parents.get(part);
+        while (current != null) {
+            if (current == candidate) {
+                return true;
+            }
+            current = parents.get(current);
+        }
+        return false;
+    }
+
+    private Aabb partAabb(ModelPart part) {
+        if (part.cuboids == null || part.cuboids.isEmpty()) {
+            return null;
+        }
+        Matrix4f matrix = partMatrix(part);
+        Aabb result = new Aabb();
+        for (ModelPart.Cuboid cuboid : part.cuboids) {
+            for (ModelPart.Quad quad : cuboid.sides) {
+                for (ModelPart.Vertex vertex : quad.vertices) {
+                    Vector3f point = matrix.transformPosition(new Vector3f(vertex.pos));
+                    result.include(point.x, point.y, point.z);
+                }
+            }
+        }
+        return result.valid ? result : null;
+    }
+
+    private Matrix4f partMatrix(ModelPart part) {
+        List<ModelPart> chain = new ArrayList<>();
+        ModelPart current = part;
+        while (current != null && current != rootPart) {
+            chain.add(current);
+            current = parents.get(current);
+        }
+        Matrix4f matrix = new Matrix4f();
+        for (int i = chain.size() - 1; i >= 0; i--) {
+            ModelPart node = chain.get(i);
+            matrix.translate(node.pivotX, node.pivotY, node.pivotZ);
+            matrix.rotate(new Quaternionf().rotationZYX(node.roll, node.yaw, node.pitch));
+            matrix.scale(node.xScale, node.yScale, node.zScale);
+        }
+        return matrix;
+    }
+
+    private static final class Aabb {
+        float minX = Float.POSITIVE_INFINITY;
+        float minY = Float.POSITIVE_INFINITY;
+        float minZ = Float.POSITIVE_INFINITY;
+        float maxX = Float.NEGATIVE_INFINITY;
+        float maxY = Float.NEGATIVE_INFINITY;
+        float maxZ = Float.NEGATIVE_INFINITY;
+        boolean valid;
+
+        void include(float x, float y, float z) {
+            valid = true;
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            minZ = Math.min(minZ, z);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+            maxZ = Math.max(maxZ, z);
+        }
+
+        boolean intersects(Aabb other, float margin) {
+            return maxX + margin > other.minX && minX - margin < other.maxX
+                    && maxY + margin > other.minY && minY - margin < other.maxY
+                    && maxZ + margin > other.minZ && minZ - margin < other.maxZ;
+        }
     }
 
     public void copyPose(PlayerEntityModel<?> live, PreparedModel prepared) {

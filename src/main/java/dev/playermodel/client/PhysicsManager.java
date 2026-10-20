@@ -95,7 +95,7 @@ public final class PhysicsManager {
             // Twenty half-steps equal ten normal render steps; the smaller integration step removes
             // the jitter that the 10x response previously caused in the stiff spring.
             for (int step = 0; step < 20; step++) {
-                boneState.simulate(bone, parent, localAccel, speed, dt * 0.5F);
+                boneState.simulate(bone, parent, localAccel, speed, dt * 0.5F, model, step == 0);
             }
         }
     }
@@ -152,7 +152,7 @@ public final class PhysicsManager {
         boolean initialized;
 
         void simulate(CustomModel.PhysicsBoneRuntime bone, Quaternionf parent, Vector3f accel,
-                      Vector3f speed, float dt) {
+                      Vector3f speed, float dt, CustomModel model, boolean applyCollision) {
             if (!initialized || lastParent == null) {
                 lastParent = new Quaternionf(parent);
                 initialized = true;
@@ -201,6 +201,12 @@ public final class PhysicsManager {
             float targetRoll = clamp(speedLocal.x * gain
                     - clamp(omega.z, -90.0F, 90.0F) * 0.6F
                     - gravity * gravityLocal.x / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
+            if (applyCollision) {
+                float collisionScale = model.collisionScale(bone, targetPitch, targetYaw, targetRoll);
+                targetPitch *= collisionScale;
+                targetYaw *= collisionScale;
+                targetRoll *= collisionScale;
+            }
             float blend = 1.0F - (float) Math.exp(-response * dt);
             pitch += (targetPitch - pitch) * blend;
             yaw += (targetYaw - yaw) * blend;
