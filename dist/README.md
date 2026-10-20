@@ -121,16 +121,28 @@ body
     "gravity": 0.6,
     "inertia": 0.8,
     "maxAngle": 55,
-    "wind": 0.0
+    "wind": 0.0,
+    "disablePitch": false,
+    "disableYaw": false,
+    "disableRoll": false
   },
   "bones": {
     "skirt_physics": {
       "mode": "cloth",
-      "maxAngle": 75
+      "maxAngle": 75,
+      "disableRoll": true
     }
   }
 }
 ```
+
+`disablePitch` / `disableYaw` / `disableRoll` 可按骨骼禁用对应轴的物理效果：
+
+- `disablePitch`：禁用 X 轴（前后/上下拖尾）；
+- `disableYaw`：禁用 Y 轴（左右转向）；
+- `disableRoll`：禁用 Z 轴（侧向摆动）。
+
+未写时默认 `false`。
 
 `cloth` 需要至少两个连续的 `_physics` 骨骼；单骨骼使用 `cloth` 时会按 `pendulum` 处理。物理只做视觉，碰撞第一阶段不做，不隐藏原版披风。
 

@@ -164,11 +164,16 @@ class ModelPipelineTest {
         PhysicsConfig.Settings override = new PhysicsConfig.Settings();
         override.mode = "cloth";
         override.maxAngle = 80.0F;
+        override.disablePitch = true;
+        override.disableRoll = false;
         config.bones.put("skirt_physics", override);
         PhysicsConfig.Settings cloth = config.resolved("skirt_physics");
         assertEquals("cloth", cloth.mode);
         assertEquals(80.0F, cloth.maxAngle(55.0F), 0.001F);
         assertEquals(90.0F, cloth.stiffness(10.0F), 0.001F);
+        assertTrue(cloth.disablePitch(false));
+        assertTrue(!cloth.disableRoll(false));
+        assertTrue(!cloth.disableYaw(false));
     }
 
     @Test

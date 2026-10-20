@@ -43,6 +43,9 @@ public final class PhysicsConfig {
         public Float wind;
         public Float drag;
         public Integer iterations;
+        public Boolean disablePitch;
+        public Boolean disableYaw;
+        public Boolean disableRoll;
 
         public Settings copy() {
             Settings s = new Settings();
@@ -55,6 +58,9 @@ public final class PhysicsConfig {
             s.wind = wind;
             s.drag = drag;
             s.iterations = iterations;
+            s.disablePitch = disablePitch;
+            s.disableYaw = disableYaw;
+            s.disableRoll = disableRoll;
             return s;
         }
 
@@ -89,6 +95,15 @@ public final class PhysicsConfig {
             if (o.iterations != null) {
                 iterations = o.iterations;
             }
+            if (o.disablePitch != null) {
+                disablePitch = o.disablePitch;
+            }
+            if (o.disableYaw != null) {
+                disableYaw = o.disableYaw;
+            }
+            if (o.disableRoll != null) {
+                disableRoll = o.disableRoll;
+            }
         }
 
         public float stiffness(float fallback) {
@@ -121,6 +136,18 @@ public final class PhysicsConfig {
 
         public int iterations(int fallback) {
             return iterations == null ? fallback : iterations;
+        }
+
+        public boolean disablePitch(boolean fallback) {
+            return disablePitch == null ? fallback : disablePitch;
+        }
+
+        public boolean disableYaw(boolean fallback) {
+            return disableYaw == null ? fallback : disableYaw;
+        }
+
+        public boolean disableRoll(boolean fallback) {
+            return disableRoll == null ? fallback : disableRoll;
         }
     }
 }
