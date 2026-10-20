@@ -134,6 +134,22 @@ body
 
 `cloth` 需要至少两个连续的 `_physics` 骨骼；单骨骼使用 `cloth` 时会按 `pendulum` 处理。物理只做视觉，碰撞第一阶段不做，不隐藏原版披风。
 
+### 3.3 演示模型
+
+`dist/demo_physics/` 里有一个小体型演示模型：
+
+- `hair_physics` → `hair_tip_physics`：两段头发物理链；
+- `skirt_physics` → `skirt_tip_physics`：两段裙摆物理链；
+- 两段都使用 `cloth` 模式。
+
+使用：
+
+1. 把整个 `demo_physics` 文件夹复制到 `config/playermodel/models/`；
+2. `/pmodel reload`；
+3. `/pmodel use demo_physics`。
+
+`dist/demo_physics.zip` 是同一个文件夹的压缩包。
+
 ## 4. 渲染与 feature 对齐
 
 - 自定义模型是独立的 `PlayerEntityModel`，基体使用它渲染；

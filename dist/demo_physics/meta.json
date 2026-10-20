@@ -1,0 +1,36 @@
+{
+  "displayName": "物理演示：头发 + 裙摆",
+  "textureMode": "model",
+  "pivotMode": "model",
+  "textureWidth": 64,
+  "textureHeight": 64,
+  "customAnchors": false,
+  "physics": {
+    "defaultSettings": {
+      "mode": "pendulum",
+      "stiffness": 80,
+      "damping": 12,
+      "gravity": 0.6,
+      "inertia": 1.0,
+      "maxAngle": 60
+    },
+    "bones": {
+      "hair_physics": {
+        "mode": "cloth",
+        "stiffness": 35,
+        "damping": 9,
+        "gravity": 0.7,
+        "inertia": 1.2,
+        "maxAngle": 75
+      },
+      "skirt_physics": {
+        "mode": "cloth",
+        "stiffness": 30,
+        "damping": 9,
+        "gravity": 0.4,
+        "inertia": 1.1,
+        "maxAngle": 65
+      }
+    }
+  }
+}

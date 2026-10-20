@@ -126,6 +126,19 @@ class ModelPipelineTest {
     }
 
     @Test
+    void demoPhysicsModelHasTwoChains() throws Exception {
+        Path demo = Path.of("src/test/resources/demo_physics.bbmodel");
+        RawModel raw = BbmodelParser.parse(demo, "demo_physics");
+        assertEquals(4, raw.physicsBones.size());
+        NormalizedModel model = ModelCompiler.compile(raw, "model", "model");
+        assertEquals(4, model.physicsBones.size());
+        long hair = model.physicsBones.stream().filter(b -> b.name().startsWith("hair_")).count();
+        long skirt = model.physicsBones.stream().filter(b -> b.name().startsWith("skirt_")).count();
+        assertEquals(2, hair);
+        assertEquals(2, skirt);
+    }
+
+    @Test
     void strictPhysicsSuffixAndOverrides() {
         assertTrue(PhysicsBoneName.hasSuffix("hair_physics"));
         assertEquals("hair", PhysicsBoneName.baseName("Hair_Physics"));
