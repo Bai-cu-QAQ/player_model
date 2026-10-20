@@ -91,7 +91,12 @@ public final class PreparedModel {
 
     public Quaternionf staticRotation(BoneKind kind) {
         Quaternionf q = staticRotations.get(kind);
-        return q == null ? new Quaternionf() : new Quaternionf(q);
+        if (q == null || (Math.abs(q.w - 1.0F) < 1.0E-5F
+                && Math.abs(q.x) < 1.0E-5F && Math.abs(q.y) < 1.0E-5F
+                && Math.abs(q.z) < 1.0E-5F)) {
+            return null;
+        }
+        return new Quaternionf(q);
     }
 
     public boolean customAnchors() {
