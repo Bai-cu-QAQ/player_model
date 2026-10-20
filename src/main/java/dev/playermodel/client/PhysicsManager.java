@@ -61,6 +61,10 @@ public final class PhysicsManager {
             Vector3f target = new Vector3f((float) (sampled.x * 0.1), (float) (sampled.y * 0.1),
                     (float) (sampled.z * 0.1));
             state.smoothedSpeed.lerp(target, 0.35F);
+            float speedLength = state.smoothedSpeed.length();
+            if (speedLength > 1.25F) {
+                state.smoothedSpeed.normalize(1.25F);
+            }
             state.samplePos = pos;
             state.sampleNanos = nowNanos;
         }
@@ -186,13 +190,13 @@ public final class PhysicsManager {
                 response *= 0.75F;
             }
             float targetPitch = clamp(speedLocal.z * gain
-                    - speedLocal.y * (1200.0F / Math.max(5.0F, stiffness))
-                    - omega.x * 0.6F
+                    + speedLocal.y * (1200.0F / Math.max(5.0F, stiffness))
+                    - clamp(omega.x, -90.0F, 90.0F) * 0.6F
                     + gravity * gravityLocal.z / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
-            float targetYaw = clamp(-omega.y * 0.4F + wind, -maxAngle, maxAngle);
+            float targetYaw = clamp(-clamp(omega.y, -90.0F, 90.0F) * 0.4F + wind, -maxAngle, maxAngle);
             float targetRoll = clamp(speedLocal.x * gain
                     + speedLocal.y * (400.0F / Math.max(5.0F, stiffness))
-                    - omega.z * 0.6F
+                    - clamp(omega.z, -90.0F, 90.0F) * 0.6F
                     - gravity * gravityLocal.x / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
             float blend = 1.0F - (float) Math.exp(-response * dt);
             pitch += (targetPitch - pitch) * blend;
