@@ -148,6 +148,7 @@ public final class PhysicsManager {
         float vPitch;
         float vYaw;
         float vRoll;
+        float basePivotY;
         Quaternionf lastParent;
         boolean initialized;
 
@@ -155,6 +156,7 @@ public final class PhysicsManager {
                       Vector3f speed, float dt) {
             if (!initialized || lastParent == null) {
                 lastParent = new Quaternionf(parent);
+                basePivotY = bone.part().pivotY;
                 initialized = true;
             }
             PhysicsConfig.Settings settings = bone.settings();
@@ -182,7 +184,7 @@ public final class PhysicsManager {
             new Quaternionf(parent).invert().transform(accelLocal);
             Vector3f speedLocal = new Vector3f(speed);
             new Quaternionf(parent).invert().transform(speedLocal);
-
+            boolean falling = speedLocal.y < -0.05F;
             float gain = 3000.0F / Math.max(5.0F, stiffness);
             float response = 8.0F + damping * 2.0F;
             if (cloth) {
@@ -192,20 +194,19 @@ public final class PhysicsManager {
             // Vertical motion has no horizontal component: rising keeps the cloth hanging down,
             // falling lifts it upward. Horizontal speed is only an additional trail force.
             float rise = speedLocal.y;
-            boolean falling = rise < -0.05F;
             float lift = falling ? Math.min(maxAngle, -rise * (maxAngle / 1.25F)) : 0.0F;
             float horizontalPitch = falling ? 0.0F
                     : speedLocal.z * gain - clamp(omega.x, -90.0F, 90.0F) * 0.6F;
             float gravityPitch = falling ? 0.0F
                     : gravity * gravityLocal.z / Math.max(5.0F, stiffness);
-            float targetPitch = clamp(horizontalPitch + gravityPitch + lift, -maxAngle, maxAngle);
-            float targetYaw = falling ? 0.0F
-                    : clamp(-clamp(omega.y, -90.0F, 90.0F) * 0.4F + wind, -maxAngle, maxAngle);
+            float targetPitch = clamp(falling ? 0.0F : horizontalPitch + gravityPitch, -maxAngle, maxAngle);
+            float targetYaw = clamp(falling ? 0.0F
+                    : -clamp(omega.y, -90.0F, 90.0F) * 0.4F + wind, -maxAngle, maxAngle);
             float horizontalRoll = falling ? 0.0F
                     : speedLocal.x * gain - clamp(omega.z, -90.0F, 90.0F) * 0.6F;
             float gravityRoll = falling ? 0.0F
                     : gravity * gravityLocal.x / Math.max(5.0F, stiffness);
-            float targetRoll = clamp(horizontalRoll - gravityRoll, -maxAngle, maxAngle);
+            float targetRoll = clamp(falling ? 0.0F : horizontalRoll - gravityRoll, -maxAngle, maxAngle);
             float blend = 1.0F - (float) Math.exp(-response * dt);
             pitch += (targetPitch - pitch) * blend;
             yaw += (targetYaw - yaw) * blend;
@@ -214,6 +215,11 @@ public final class PhysicsManager {
             vYaw = 0.0F;
             vRoll = 0.0F;
 
+            if (falling) {
+                bone.part().pivotY = basePivotY - Math.min(1.2F, -speedLocal.y * 0.35F);
+            } else {
+                bone.part().pivotY = basePivotY;
+            }
             bone.part().pitch = (float) Math.toRadians(pitch);
             bone.part().yaw = (float) Math.toRadians(yaw);
             bone.part().roll = (float) Math.toRadians(roll);
