@@ -187,53 +187,57 @@ public final class CustomModel {
         return List.copyOf(physicsBones);
     }
 
-    /** Checks a physics part against the core body volumes, ignoring its ancestor bones. */
+    /** Checks physics vertices that enter a core part they were outside of at rest. */
     public boolean collides(PhysicsBoneRuntime physics) {
         List<Aabb> boxes = new ArrayList<>();
         for (BoneKind kind : new BoneKind[]{BoneKind.HEAD, BoneKind.BODY, BoneKind.RIGHT_ARM,
                 BoneKind.LEFT_ARM, BoneKind.RIGHT_LEG, BoneKind.LEFT_LEG}) {
             ModelPart core = parts.get(kind);
-            if (core == null || isAncestor(core, physics.part())) {
-                continue;
-            }
-            Aabb box = partAabb(core);
+            Aabb box = core == null ? null : partAabb(core);
             if (box != null) {
                 boxes.add(box);
             }
         }
-        Aabb self = partAabb(physics.part());
-        if (self == null || boxes.isEmpty()) {
+        if (boxes.isEmpty()) {
             return false;
         }
-        for (Aabb box : boxes) {
-            if (self.intersects(box, -0.02F)) {
-                return true;
+        ModelPart part = physics.part();
+        List<Vector3f> current = partPoints(part);
+        if (current.isEmpty()) {
+            return false;
+        }
+        float oldPitch = part.pitch;
+        float oldYaw = part.yaw;
+        float oldRoll = part.roll;
+        part.pitch = 0.0F;
+        part.yaw = 0.0F;
+        part.roll = 0.0F;
+        List<Vector3f> rest = partPoints(part);
+        part.pitch = oldPitch;
+        part.yaw = oldYaw;
+        part.roll = oldRoll;
+        int count = Math.min(current.size(), rest.size());
+        for (int i = 0; i < count; i++) {
+            for (Aabb box : boxes) {
+                if (box.contains(current.get(i)) && !box.contains(rest.get(i))) {
+                    return true;
+                }
             }
         }
         return false;
     }
 
     /**
-     * Returns the largest fraction of a target rotation that does not intersect a core part.
-     * Rest (0) is assumed collision-free; callers blend toward the returned target.
+     * Returns the largest fraction of a target rotation that does not push a physics vertex into
+     * a core part that it was outside of at rest.
      */
     public float collisionScale(PhysicsBoneRuntime physics, float pitch, float yaw, float roll) {
         ModelPart part = physics.part();
         float oldPitch = part.pitch;
         float oldYaw = part.yaw;
         float oldRoll = part.roll;
-        // If the authored rest pose already overlaps a core bone, collision cannot help.
-        part.pitch = 0.0F;
-        part.yaw = 0.0F;
-        part.roll = 0.0F;
-        if (collides(physics)) {
-            part.pitch = oldPitch;
-            part.yaw = oldYaw;
-            part.roll = oldRoll;
-            return 1.0F;
-        }
         float scale = 1.0F;
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0; i < 8; i++) {
             part.pitch = (float) Math.toRadians(pitch * scale);
             part.yaw = (float) Math.toRadians(yaw * scale);
             part.roll = (float) Math.toRadians(roll * scale);
@@ -246,6 +250,22 @@ public final class CustomModel {
         part.yaw = oldYaw;
         part.roll = oldRoll;
         return scale;
+    }
+
+    private List<Vector3f> partPoints(ModelPart part) {
+        if (part.cuboids == null || part.cuboids.isEmpty()) {
+            return List.of();
+        }
+        Matrix4f matrix = partMatrix(part);
+        List<Vector3f> result = new ArrayList<>();
+        for (ModelPart.Cuboid cuboid : part.cuboids) {
+            for (ModelPart.Quad quad : cuboid.sides) {
+                for (ModelPart.Vertex vertex : quad.vertices) {
+                    result.add(matrix.transformPosition(new Vector3f(vertex.pos)));
+                }
+            }
+        }
+        return result;
     }
 
     private boolean isAncestor(ModelPart candidate, ModelPart part) {
@@ -310,6 +330,12 @@ public final class CustomModel {
             maxX = Math.max(maxX, x);
             maxY = Math.max(maxY, y);
             maxZ = Math.max(maxZ, z);
+        }
+
+        boolean contains(Vector3f point) {
+            return point.x >= minX && point.x <= maxX
+                    && point.y >= minY && point.y <= maxY
+                    && point.z >= minZ && point.z <= maxZ;
         }
 
         boolean intersects(Aabb other, float margin) {
