@@ -196,14 +196,16 @@ public final class PhysicsManager {
             float lift = falling ? Math.min(maxAngle, -rise * (maxAngle / 1.25F)) : 0.0F;
             float horizontalPitch = falling ? 0.0F
                     : speedLocal.z * gain - clamp(omega.x, -90.0F, 90.0F) * 0.6F;
-            float targetPitch = clamp(horizontalPitch
-                    + gravity * gravityLocal.z / Math.max(5.0F, stiffness)
-                    + lift, -maxAngle, maxAngle);
-            float targetYaw = clamp(-clamp(omega.y, -90.0F, 90.0F) * 0.4F + wind, -maxAngle, maxAngle);
+            float gravityPitch = falling ? 0.0F
+                    : gravity * gravityLocal.z / Math.max(5.0F, stiffness);
+            float targetPitch = clamp(horizontalPitch + gravityPitch + lift, -maxAngle, maxAngle);
+            float targetYaw = falling ? 0.0F
+                    : clamp(-clamp(omega.y, -90.0F, 90.0F) * 0.4F + wind, -maxAngle, maxAngle);
             float horizontalRoll = falling ? 0.0F
                     : speedLocal.x * gain - clamp(omega.z, -90.0F, 90.0F) * 0.6F;
-            float targetRoll = clamp(horizontalRoll
-                    - gravity * gravityLocal.x / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
+            float gravityRoll = falling ? 0.0F
+                    : gravity * gravityLocal.x / Math.max(5.0F, stiffness);
+            float targetRoll = clamp(horizontalRoll - gravityRoll, -maxAngle, maxAngle);
             float blend = 1.0F - (float) Math.exp(-response * dt);
             pitch += (targetPitch - pitch) * blend;
             yaw += (targetYaw - yaw) * blend;
