@@ -180,7 +180,8 @@ body
 - 只支持方块，不支持 mesh。
 - 支持 box UV / per-face UV、inflate、mirror_uv、面 UV 旋转。
 - 支持 cube 静态旋转（X→Y→Z，绕 cube origin）。
-- 不支持骨骼旋转/缩放。
+- 支持骨骼静态旋转：导入后与动画/物理旋转组合，不会被动画覆盖。
+- 骨骼缩放仍不支持；请在 Blockbench 中应用缩放后再导入。
 - 核心 6 骨骼必需：head、body、左右手臂、左右腿。
 - 额外分组会合并到最近的 14 骨骼之一。
 
