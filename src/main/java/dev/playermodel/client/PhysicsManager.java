@@ -203,6 +203,16 @@ public final class PhysicsManager {
             float targetRoll = clamp(speedLocal.x * gain
                     - clamp(omega.z, -90.0F, 90.0F) * 0.6F
                     - gravity * gravityLocal.x / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
+            // 按骨骼关闭指定轴：只把该轴目标归零，其他轴和碰撞仍保留。
+            if (settings.disablePitch(false)) {
+                targetPitch = 0.0F;
+            }
+            if (settings.disableYaw(false)) {
+                targetYaw = 0.0F;
+            }
+            if (settings.disableRoll(false)) {
+                targetRoll = 0.0F;
+            }
             if (applyCollision) {
                 float measured = model.collisionScale(bone, targetPitch, targetYaw, targetRoll);
                 collisionScale += (measured - collisionScale) * 0.25F;

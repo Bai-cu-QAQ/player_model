@@ -43,8 +43,11 @@ public final class PhysicsConfig {
         public Float wind;
         public Float drag;
         public Integer iterations;
+        /** 禁用 X 轴（pitch）物理：前后/上下拖尾。仅对当前骨骼生效。 */
         public Boolean disablePitch;
+        /** 禁用 Y 轴（yaw）物理：左右转向。仅对当前骨骼生效。 */
         public Boolean disableYaw;
+        /** 禁用 Z 轴（roll）物理：侧向摆动。仅对当前骨骼生效。 */
         public Boolean disableRoll;
 
         public Settings copy() {
