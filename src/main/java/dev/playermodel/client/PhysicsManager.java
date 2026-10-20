@@ -36,6 +36,8 @@ public final class PhysicsManager {
             state.captureParents(model);
             state.lastVelocity = Vec3d.ZERO;
             state.lastPos = pos;
+            state.samplePos = pos;
+            state.sampleNanos = nowNanos;
             return;
         }
         float dt = (nowNanos - last) / 1_000_000_000.0F;
@@ -45,18 +47,30 @@ public final class PhysicsManager {
         dt = Math.min(dt, MAX_DT);
 
         Vec3d previousPos = state.lastPos == null ? pos : state.lastPos;
-        Vec3d velocity = pos.subtract(previousPos).multiply(1.0 / dt);
+        Vec3d rawVelocity = pos.subtract(previousPos).multiply(1.0 / dt);
         state.lastPos = pos;
-        Vec3d delta = velocity.subtract(state.lastVelocity);
-        state.lastVelocity = velocity;
+
+        // Sample over 100 ms. Per-frame position delta is zero on most render frames because the
+        // integrated server updates position at 20 Hz; a short window keeps a steady walking force.
+        if (state.sampleNanos == 0L) {
+            state.sampleNanos = nowNanos;
+            state.samplePos = pos;
+        } else if (nowNanos - state.sampleNanos >= 100_000_000L) {
+            double seconds = (nowNanos - state.sampleNanos) / 1_000_000_000.0;
+            Vec3d sampled = pos.subtract(state.samplePos).multiply(1.0 / seconds);
+            state.smoothedSpeed = new Vector3f((float) (sampled.x * 0.1), 0.0F,
+                    (float) (sampled.z * 0.1));
+            state.samplePos = pos;
+            state.sampleNanos = nowNanos;
+        }
+        Vec3d delta = rawVelocity.subtract(state.lastVelocity);
+        state.lastVelocity = rawVelocity;
         Vector3f accel = new Vector3f((float) (delta.x * 0.5 / dt),
                 (float) (delta.y * 0.5 / dt), (float) (delta.z * 0.5 / dt));
         if (accel.lengthSquared() > 900.0F) {
             accel.normalize(30.0F);
         }
-        // 0.05 turns blocks/second into a reasonable spring offset while walking.
-        Vector3f speed = new Vector3f((float) (velocity.x * 0.05), 0.0F,
-                (float) (velocity.z * 0.05));
+        Vector3f speed = new Vector3f(state.smoothedSpeed);
 
         for (CustomModel.PhysicsBoneRuntime bone : model.physicsBones()) {
             BoneState boneState = state.bones.computeIfAbsent(bone.name().toLowerCase(java.util.Locale.ROOT),
@@ -79,6 +93,9 @@ public final class PhysicsManager {
         long lastNanos;
         Vec3d lastVelocity = Vec3d.ZERO;
         Vec3d lastPos;
+        Vec3d samplePos;
+        long sampleNanos;
+        Vector3f smoothedSpeed = new Vector3f();
         final Map<String, BoneState> bones = new HashMap<>();
 
         void reset(CustomModel newModel) {
@@ -86,6 +103,9 @@ public final class PhysicsManager {
             this.lastNanos = 0L;
             this.lastVelocity = Vec3d.ZERO;
             this.lastPos = null;
+            this.samplePos = null;
+            this.sampleNanos = 0L;
+            this.smoothedSpeed = new Vector3f();
             this.bones.clear();
         }
 
@@ -117,11 +137,11 @@ public final class PhysicsManager {
             }
             PhysicsConfig.Settings settings = bone.settings();
             boolean cloth = "cloth".equalsIgnoreCase(settings.mode);
-            float stiffness = settings.stiffness(90.0F);
-            float damping = settings.damping(14.0F);
-            float gravity = settings.gravity(0.6F);
+            float stiffness = settings.stiffness(35.0F);
+            float damping = settings.damping(10.0F);
+            float gravity = settings.gravity(0.8F) * 20.0F;
             float inertia = settings.inertia(0.8F);
-            float maxAngle = settings.maxAngle(55.0F);
+            float maxAngle = settings.maxAngle(70.0F);
             float wind = settings.wind(0.0F);
             if (cloth) {
                 // Cloth chains use a softer, more damped spring at every segment. Each child also
@@ -133,6 +153,7 @@ public final class PhysicsManager {
             maxAngle = Math.min(150.0F, maxAngle);
 
             Vector3f omega = parentAngularVelocity(parent, lastParent, dt);
+            omega.mul(57.29578F);
             Vector3f gravityLocal = new Vector3f(0.0F, -1.0F, 0.0F);
             new Quaternionf(parent).invert().transform(gravityLocal);
             Vector3f accelLocal = new Vector3f(accel);
@@ -144,7 +165,7 @@ public final class PhysicsManager {
                     + gravity * gravityLocal.z
                     - inertia * omega.x
                     - 2.5F * accelLocal.z
-                    + 60.0F * speedLocal.z;
+                    + 1200.0F * speedLocal.z;
             float aYaw = -stiffness * yaw - damping * vYaw
                     - inertia * omega.y
                     + wind
@@ -154,7 +175,7 @@ public final class PhysicsManager {
                     - gravity * gravityLocal.x
                     - inertia * omega.z
                     - 2.5F * accelLocal.x
-                    + 60.0F * speedLocal.x;
+                    + 1200.0F * speedLocal.x;
 
             vPitch = clamp(vPitch + aPitch * dt, -18.0F, 18.0F);
             vYaw = clamp(vYaw + aYaw * dt, -18.0F, 18.0F);
