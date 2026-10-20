@@ -50,7 +50,7 @@ public final class PhysicsManager {
         Vec3d rawVelocity = pos.subtract(previousPos).multiply(1.0 / dt);
         state.lastPos = pos;
 
-        // Sample over 100 ms. Per-frame position delta is zero on most render frames because the
+        // Sample over 50 ms. Per-frame position delta is zero on most render frames because the
         // integrated server updates position at 20 Hz; a short window keeps a steady walking force.
         if (state.sampleNanos == 0L) {
             state.sampleNanos = nowNanos;
@@ -58,7 +58,7 @@ public final class PhysicsManager {
         } else if (nowNanos - state.sampleNanos >= 50_000_000L) {
             double seconds = (nowNanos - state.sampleNanos) / 1_000_000_000.0;
             Vec3d sampled = pos.subtract(state.samplePos).multiply(1.0 / seconds);
-            state.smoothedSpeed = new Vector3f((float) (sampled.x * 0.1), 0.0F,
+            state.smoothedSpeed = new Vector3f((float) (sampled.x * 0.1), (float) (sampled.y * 0.1),
                     (float) (sampled.z * 0.1));
             state.samplePos = pos;
             state.sampleNanos = nowNanos;
@@ -76,7 +76,11 @@ public final class PhysicsManager {
             BoneState boneState = state.bones.computeIfAbsent(bone.name().toLowerCase(java.util.Locale.ROOT),
                     key -> new BoneState());
             Quaternionf parent = model.worldRotation(bone.parent());
-            boneState.simulate(bone, parent, accel, speed, dt);
+            // Ten substeps give the secondary motion a much snappier response without changing the
+            // equilibrium angle; each substep advances one normal render frame.
+            for (int step = 0; step < 10; step++) {
+                boneState.simulate(bone, parent, accel, speed, dt);
+            }
         }
     }
 
@@ -165,17 +169,19 @@ public final class PhysicsManager {
                     + gravity * gravityLocal.z
                     - inertia * omega.x
                     - 2.5F * accelLocal.z
-                    + 3000.0F * speedLocal.z;
+                    - 3000.0F * speedLocal.z
+                    - 1200.0F * speedLocal.y
+                    - 4.0F * accelLocal.y;
             float aYaw = -stiffness * yaw - damping * vYaw
                     - inertia * omega.y
                     + wind
-                    + 1.5F * accelLocal.x
-                    + 3.0F * speedLocal.x;
+                    + 1.5F * accelLocal.x;
             float aRoll = -stiffness * roll - damping * vRoll
                     - gravity * gravityLocal.x
                     - inertia * omega.z
                     - 2.5F * accelLocal.x
-                    + 3000.0F * speedLocal.x;
+                    + 3000.0F * speedLocal.x
+                    + 400.0F * speedLocal.y;
 
             vPitch = clamp(vPitch + aPitch * dt, -18.0F, 18.0F);
             vYaw = clamp(vYaw + aYaw * dt, -18.0F, 18.0F);
