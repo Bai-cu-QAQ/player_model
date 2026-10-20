@@ -185,7 +185,7 @@ public final class PhysicsManager {
                 gain *= 0.8F;
                 response *= 0.75F;
             }
-            float targetPitch = clamp(-speedLocal.z * gain
+            float targetPitch = clamp(speedLocal.z * gain
                     - speedLocal.y * (1200.0F / Math.max(5.0F, stiffness))
                     - omega.x * 0.6F
                     + gravity * gravityLocal.z / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
