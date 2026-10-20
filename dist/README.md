@@ -148,7 +148,7 @@ body
 2. `/pmodel reload`；
 3. `/pmodel use demo_physics`。
 
-`dist/demo_physics.zip` 是同一个文件夹的压缩包。
+`dist/demo_physics_latest.zip` 是同一个文件夹的最新压缩包。
 
 ## 4. 渲染与 feature 对齐
 

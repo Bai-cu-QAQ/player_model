@@ -55,7 +55,7 @@ public final class PhysicsManager {
         if (state.sampleNanos == 0L) {
             state.sampleNanos = nowNanos;
             state.samplePos = pos;
-        } else if (nowNanos - state.sampleNanos >= 100_000_000L) {
+        } else if (nowNanos - state.sampleNanos >= 50_000_000L) {
             double seconds = (nowNanos - state.sampleNanos) / 1_000_000_000.0;
             Vec3d sampled = pos.subtract(state.samplePos).multiply(1.0 / seconds);
             state.smoothedSpeed = new Vector3f((float) (sampled.x * 0.1), 0.0F,
@@ -137,8 +137,8 @@ public final class PhysicsManager {
             }
             PhysicsConfig.Settings settings = bone.settings();
             boolean cloth = "cloth".equalsIgnoreCase(settings.mode);
-            float stiffness = settings.stiffness(35.0F);
-            float damping = settings.damping(10.0F);
+            float stiffness = settings.stiffness(75.0F);
+            float damping = settings.damping(9.0F);
             float gravity = settings.gravity(0.8F) * 20.0F;
             float inertia = settings.inertia(0.8F);
             float maxAngle = settings.maxAngle(70.0F);
@@ -146,8 +146,8 @@ public final class PhysicsManager {
             if (cloth) {
                 // Cloth chains use a softer, more damped spring at every segment. Each child also
                 // inherits its parent's simulated rotation through ModelPart hierarchy.
-                stiffness *= 0.42F;
-                damping *= 0.78F;
+                stiffness *= 0.65F;
+                damping *= 0.9F;
                 maxAngle *= 1.25F;
             }
             maxAngle = Math.min(150.0F, maxAngle);
@@ -165,7 +165,7 @@ public final class PhysicsManager {
                     + gravity * gravityLocal.z
                     - inertia * omega.x
                     - 2.5F * accelLocal.z
-                    + 1200.0F * speedLocal.z;
+                    + 3000.0F * speedLocal.z;
             float aYaw = -stiffness * yaw - damping * vYaw
                     - inertia * omega.y
                     + wind
@@ -175,7 +175,7 @@ public final class PhysicsManager {
                     - gravity * gravityLocal.x
                     - inertia * omega.z
                     - 2.5F * accelLocal.x
-                    + 1200.0F * speedLocal.x;
+                    + 3000.0F * speedLocal.x;
 
             vPitch = clamp(vPitch + aPitch * dt, -18.0F, 18.0F);
             vYaw = clamp(vYaw + aYaw * dt, -18.0F, 18.0F);

@@ -116,7 +116,7 @@ meta = {
     "physics": {
         "defaultSettings": {
             "mode": "pendulum",
-            "stiffness": 80,
+            "stiffness": 90,
             "damping": 12,
             "gravity": 0.6,
             "inertia": 1.0,
@@ -125,16 +125,16 @@ meta = {
         "bones": {
             "hair_physics": {
                 "mode": "cloth",
-                "stiffness": 35,
-                "damping": 9,
+                "stiffness": 75,
+                "damping": 11,
                 "gravity": 0.7,
                 "inertia": 1.2,
                 "maxAngle": 75
             },
             "skirt_physics": {
                 "mode": "cloth",
-                "stiffness": 30,
-                "damping": 9,
+                "stiffness": 60,
+                "damping": 11,
                 "gravity": 0.4,
                 "inertia": 1.1,
                 "maxAngle": 65

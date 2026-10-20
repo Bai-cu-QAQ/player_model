@@ -1548,7 +1548,7 @@
   },
   {
    "name": "hair_root",
-   "uuid": "8acbdd1a-0a5a-4b4f-b765-249bf7e6d318",
+   "uuid": "9b7e0df4-39fe-4d89-9320-f942d9b1c721",
    "type": "cube",
    "from": [
     -3.2,
@@ -1644,7 +1644,7 @@
   },
   {
    "name": "hair_tip",
-   "uuid": "b6f37e4d-2200-4aa7-947a-2df757f24273",
+   "uuid": "4d1d92f8-b4d5-40ac-a67a-ce6ee331b0b3",
    "type": "cube",
    "from": [
     -2.8,
@@ -1740,7 +1740,7 @@
   },
   {
    "name": "skirt_root",
-   "uuid": "790f235c-ee90-49f4-9541-6789717f50ef",
+   "uuid": "46231b91-3c33-4bdc-8ba2-ccdbab8c87d8",
    "type": "cube",
    "from": [
     -3.8,
@@ -1836,7 +1836,7 @@
   },
   {
    "name": "skirt_tip",
-   "uuid": "1525a813-dc46-424a-b71d-c01e76314496",
+   "uuid": "5ba6fb05-7c38-4b84-bc15-ce5d45c462da",
    "type": "cube",
    "from": [
     -4.2,
@@ -1957,7 +1957,7 @@
     "6b7cf3fc-8e61-4f8e-9ffc-dc16d3e49a34",
     "3efeb69e-c75a-4386-ba29-1dcb741c0956",
     {
-     "uuid": "afdc73d0-9e7a-4084-acd2-2f89e424561b",
+     "uuid": "94abc3aa-b684-45cd-a3af-5247b72a7596",
      "name": "hair_physics",
      "origin": [
       0,
@@ -1977,9 +1977,9 @@
      "autouv": 0,
      "export": true,
      "children": [
-      "8acbdd1a-0a5a-4b4f-b765-249bf7e6d318",
+      "9b7e0df4-39fe-4d89-9320-f942d9b1c721",
       {
-       "uuid": "38e9944e-0ff4-41be-81b1-11c39c406a1f",
+       "uuid": "9449ebe4-2490-4083-8501-7e3cb9d7ca34",
        "name": "hair_tip_physics",
        "origin": [
         0,
@@ -1999,7 +1999,7 @@
        "autouv": 0,
        "export": true,
        "children": [
-        "b6f37e4d-2200-4aa7-947a-2df757f24273"
+        "4d1d92f8-b4d5-40ac-a67a-ce6ee331b0b3"
        ]
       }
      ]
@@ -2030,7 +2030,7 @@
     "fab16ab7-5cab-4544-89db-f3aa2c06be6e",
     "fb4c2f77-0ccd-48d9-a43c-5488d6b64470",
     {
-     "uuid": "ac325b09-164a-4da2-b9f5-2841097a0ecc",
+     "uuid": "864cd2c1-00a9-4997-8e14-4884876d6884",
      "name": "skirt_physics",
      "origin": [
       0,
@@ -2050,9 +2050,9 @@
      "autouv": 0,
      "export": true,
      "children": [
-      "790f235c-ee90-49f4-9541-6789717f50ef",
+      "46231b91-3c33-4bdc-8ba2-ccdbab8c87d8",
       {
-       "uuid": "8bd8c956-f24a-48d2-9ebe-10c637b60e4a",
+       "uuid": "f26368da-5068-4e28-b6f5-ad21e5f05d53",
        "name": "skirt_tip_physics",
        "origin": [
         0,
@@ -2072,7 +2072,7 @@
        "autouv": 0,
        "export": true,
        "children": [
-        "1525a813-dc46-424a-b71d-c01e76314496"
+        "5ba6fb05-7c38-4b84-bc15-ce5d45c462da"
        ]
       }
      ]
