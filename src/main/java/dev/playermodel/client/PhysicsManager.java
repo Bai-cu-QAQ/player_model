@@ -29,13 +29,13 @@ public final class PhysicsManager {
         if (state.lastPos != null && pos.squaredDistanceTo(state.lastPos) > 16.0) {
             state.reset(model);
         }
-        state.lastPos = pos;
 
         long last = state.lastNanos;
         state.lastNanos = nowNanos;
         if (last == 0L) {
             state.captureParents(model);
-            state.lastVelocity = player.getVelocity();
+            state.lastVelocity = Vec3d.ZERO;
+            state.lastPos = pos;
             return;
         }
         float dt = (nowNanos - last) / 1_000_000_000.0F;
@@ -44,20 +44,25 @@ public final class PhysicsManager {
         }
         dt = Math.min(dt, MAX_DT);
 
-        Vec3d velocity = player.getVelocity();
+        Vec3d previousPos = state.lastPos == null ? pos : state.lastPos;
+        Vec3d velocity = pos.subtract(previousPos).multiply(1.0 / dt);
+        state.lastPos = pos;
         Vec3d delta = velocity.subtract(state.lastVelocity);
         state.lastVelocity = velocity;
-        Vector3f accel = new Vector3f((float) (delta.x * 20.0 / dt),
-                (float) (delta.y * 20.0 / dt), (float) (delta.z * 20.0 / dt));
+        Vector3f accel = new Vector3f((float) (delta.x * 0.5 / dt),
+                (float) (delta.y * 0.5 / dt), (float) (delta.z * 0.5 / dt));
         if (accel.lengthSquared() > 900.0F) {
             accel.normalize(30.0F);
         }
+        // 0.05 turns blocks/second into a reasonable spring offset while walking.
+        Vector3f speed = new Vector3f((float) (velocity.x * 0.05), 0.0F,
+                (float) (velocity.z * 0.05));
 
         for (CustomModel.PhysicsBoneRuntime bone : model.physicsBones()) {
             BoneState boneState = state.bones.computeIfAbsent(bone.name().toLowerCase(java.util.Locale.ROOT),
                     key -> new BoneState());
             Quaternionf parent = model.worldRotation(bone.parent());
-            boneState.simulate(bone, parent, accel, dt);
+            boneState.simulate(bone, parent, accel, speed, dt);
         }
     }
 
@@ -104,7 +109,8 @@ public final class PhysicsManager {
         Quaternionf lastParent;
         boolean initialized;
 
-        void simulate(CustomModel.PhysicsBoneRuntime bone, Quaternionf parent, Vector3f accel, float dt) {
+        void simulate(CustomModel.PhysicsBoneRuntime bone, Quaternionf parent, Vector3f accel,
+                      Vector3f speed, float dt) {
             if (!initialized || lastParent == null) {
                 lastParent = new Quaternionf(parent);
                 initialized = true;
@@ -131,19 +137,24 @@ public final class PhysicsManager {
             new Quaternionf(parent).invert().transform(gravityLocal);
             Vector3f accelLocal = new Vector3f(accel);
             new Quaternionf(parent).invert().transform(accelLocal);
+            Vector3f speedLocal = new Vector3f(speed);
+            new Quaternionf(parent).invert().transform(speedLocal);
 
             float aPitch = -stiffness * pitch - damping * vPitch
                     + gravity * gravityLocal.z
                     - inertia * omega.x
-                    - 2.5F * accelLocal.z;
+                    - 2.5F * accelLocal.z
+                    + 60.0F * speedLocal.z;
             float aYaw = -stiffness * yaw - damping * vYaw
                     - inertia * omega.y
                     + wind
-                    + 1.5F * accelLocal.x;
+                    + 1.5F * accelLocal.x
+                    + 3.0F * speedLocal.x;
             float aRoll = -stiffness * roll - damping * vRoll
                     - gravity * gravityLocal.x
                     - inertia * omega.z
-                    - 2.5F * accelLocal.x;
+                    - 2.5F * accelLocal.x
+                    + 60.0F * speedLocal.x;
 
             vPitch = clamp(vPitch + aPitch * dt, -18.0F, 18.0F);
             vYaw = clamp(vYaw + aYaw * dt, -18.0F, 18.0F);

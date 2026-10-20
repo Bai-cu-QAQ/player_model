@@ -74,23 +74,23 @@ texture = model["textures"][0]
 raw = base64.b64decode(texture["source"].split(",", 1)[1])
 image = Image.open(io.BytesIO(raw)).convert("RGBA")
 draw = ImageDraw.Draw(image)
-draw.rectangle([40, 0, 47, 7], fill=(92, 58, 42, 255))
-draw.rectangle([48, 0, 55, 7], fill=(38, 132, 128, 255))
+draw.rectangle([40, 0, 47, 7], fill=(190, 120, 70, 255))
+draw.rectangle([48, 0, 55, 7], fill=(55, 190, 115, 255))
 out = io.BytesIO()
 image.save(out, format="PNG")
 texture["source"] = "data:image/png;base64," + base64.b64encode(out.getvalue()).decode()
 texture["name"] = "demo_physics"
 
-hair_root_cube = cube("hair_root", [-3.0, 20.0, 1.2], [3.0, 23.1, 3.4], [40, 0, 48, 8])
-hair_tip_cube = cube("hair_tip", [-2.4, 16.5, 1.8], [2.4, 20.0, 3.8], [40, 0, 48, 8])
-skirt_root_cube = cube("skirt_root", [-3.0, 8.0, -2.6], [3.0, 12.0, 2.6], [48, 0, 56, 8])
-skirt_tip_cube = cube("skirt_tip", [-3.4, 4.0, -3.0], [3.4, 8.0, 3.0], [48, 0, 56, 8])
+hair_root_cube = cube("hair_root", [-3.2, 19.5, 2.6], [3.2, 23.1, 5.0], [40, 0, 48, 8])
+hair_tip_cube = cube("hair_tip", [-2.8, 15.5, 3.0], [2.8, 19.5, 5.2], [40, 0, 48, 8])
+skirt_root_cube = cube("skirt_root", [-3.8, 7.0, -3.4], [3.8, 12.0, 3.4], [48, 0, 56, 8])
+skirt_tip_cube = cube("skirt_tip", [-4.2, 3.0, -3.8], [4.2, 7.0, 3.8], [48, 0, 56, 8])
 model["elements"].extend([hair_root_cube, hair_tip_cube, skirt_root_cube, skirt_tip_cube])
 
-hair_tip = group("hair_tip_physics", [0, 20.0, 2.3], [hair_tip_cube["uuid"]])
-hair_root = group("hair_physics", [0, 23.1, 1.6],
+hair_tip = group("hair_tip_physics", [0, 19.5, 3.6], [hair_tip_cube["uuid"]])
+hair_root = group("hair_physics", [0, 23.1, 3.0],
                   [hair_root_cube["uuid"], hair_tip])
-skirt_tip = group("skirt_tip_physics", [0, 8.0, 0],
+skirt_tip = group("skirt_tip_physics", [0, 7.0, 0],
                   [skirt_tip_cube["uuid"]])
 skirt_root = group("skirt_physics", [0, 12.0, 0],
                    [skirt_root_cube["uuid"], skirt_tip])

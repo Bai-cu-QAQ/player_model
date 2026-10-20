@@ -1548,22 +1548,22 @@
   },
   {
    "name": "hair_root",
-   "uuid": "3c8bc4df-75e9-452b-bc24-d5804c8cfafd",
+   "uuid": "8acbdd1a-0a5a-4b4f-b765-249bf7e6d318",
    "type": "cube",
    "from": [
-    -3.0,
-    20.0,
-    1.2
+    -3.2,
+    19.5,
+    2.6
    ],
    "to": [
-    3.0,
+    3.2,
     23.1,
-    3.4
+    5.0
    ],
    "origin": [
-    -3.0,
-    20.0,
-    1.2
+    -3.2,
+    19.5,
+    2.6
    ],
    "rotation": [
     0,
@@ -1644,22 +1644,22 @@
   },
   {
    "name": "hair_tip",
-   "uuid": "34fd0e28-cbe4-495a-902a-e0695005f311",
+   "uuid": "b6f37e4d-2200-4aa7-947a-2df757f24273",
    "type": "cube",
    "from": [
-    -2.4,
-    16.5,
-    1.8
+    -2.8,
+    15.5,
+    3.0
    ],
    "to": [
-    2.4,
-    20.0,
-    3.8
+    2.8,
+    19.5,
+    5.2
    ],
    "origin": [
-    -2.4,
-    16.5,
-    1.8
+    -2.8,
+    15.5,
+    3.0
    ],
    "rotation": [
     0,
@@ -1740,22 +1740,22 @@
   },
   {
    "name": "skirt_root",
-   "uuid": "50a5517c-eb4a-416d-84eb-d16f3266d28d",
+   "uuid": "790f235c-ee90-49f4-9541-6789717f50ef",
    "type": "cube",
    "from": [
-    -3.0,
-    8.0,
-    -2.6
+    -3.8,
+    7.0,
+    -3.4
    ],
    "to": [
-    3.0,
+    3.8,
     12.0,
-    2.6
+    3.4
    ],
    "origin": [
-    -3.0,
-    8.0,
-    -2.6
+    -3.8,
+    7.0,
+    -3.4
    ],
    "rotation": [
     0,
@@ -1836,22 +1836,22 @@
   },
   {
    "name": "skirt_tip",
-   "uuid": "823af640-855a-4397-9ccf-fcfba6374f3f",
+   "uuid": "1525a813-dc46-424a-b71d-c01e76314496",
    "type": "cube",
    "from": [
-    -3.4,
-    4.0,
-    -3.0
+    -4.2,
+    3.0,
+    -3.8
    ],
    "to": [
-    3.4,
-    8.0,
-    3.0
+    4.2,
+    7.0,
+    3.8
    ],
    "origin": [
-    -3.4,
-    4.0,
-    -3.0
+    -4.2,
+    3.0,
+    -3.8
    ],
    "rotation": [
     0,
@@ -1957,12 +1957,12 @@
     "6b7cf3fc-8e61-4f8e-9ffc-dc16d3e49a34",
     "3efeb69e-c75a-4386-ba29-1dcb741c0956",
     {
-     "uuid": "10b805cb-7e7c-4952-b290-a7c855e05e56",
+     "uuid": "afdc73d0-9e7a-4084-acd2-2f89e424561b",
      "name": "hair_physics",
      "origin": [
       0,
       23.1,
-      1.6
+      3.0
      ],
      "rotation": [
       0,
@@ -1977,14 +1977,14 @@
      "autouv": 0,
      "export": true,
      "children": [
-      "3c8bc4df-75e9-452b-bc24-d5804c8cfafd",
+      "8acbdd1a-0a5a-4b4f-b765-249bf7e6d318",
       {
-       "uuid": "bb437adf-996b-4c3d-afef-a278859aa91d",
+       "uuid": "38e9944e-0ff4-41be-81b1-11c39c406a1f",
        "name": "hair_tip_physics",
        "origin": [
         0,
-        20.0,
-        2.3
+        19.5,
+        3.6
        ],
        "rotation": [
         0,
@@ -1999,7 +1999,7 @@
        "autouv": 0,
        "export": true,
        "children": [
-        "34fd0e28-cbe4-495a-902a-e0695005f311"
+        "b6f37e4d-2200-4aa7-947a-2df757f24273"
        ]
       }
      ]
@@ -2030,7 +2030,7 @@
     "fab16ab7-5cab-4544-89db-f3aa2c06be6e",
     "fb4c2f77-0ccd-48d9-a43c-5488d6b64470",
     {
-     "uuid": "be43bcce-a166-49e3-88a6-8dc80c119d44",
+     "uuid": "ac325b09-164a-4da2-b9f5-2841097a0ecc",
      "name": "skirt_physics",
      "origin": [
       0,
@@ -2050,13 +2050,13 @@
      "autouv": 0,
      "export": true,
      "children": [
-      "50a5517c-eb4a-416d-84eb-d16f3266d28d",
+      "790f235c-ee90-49f4-9541-6789717f50ef",
       {
-       "uuid": "3826b6df-5fc0-48ee-b60b-b2b65325957b",
+       "uuid": "8bd8c956-f24a-48d2-9ebe-10c637b60e4a",
        "name": "skirt_tip_physics",
        "origin": [
         0,
-        8.0,
+        7.0,
         0
        ],
        "rotation": [
@@ -2072,7 +2072,7 @@
        "autouv": 0,
        "export": true,
        "children": [
-        "823af640-855a-4397-9ccf-fcfba6374f3f"
+        "1525a813-dc46-424a-b71d-c01e76314496"
        ]
       }
      ]
@@ -2348,7 +2348,7 @@
   {
    "name": "demo_physics",
    "id": 0,
-   "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAABZ0lEQVR4nOXaoUsDYRzG8e8e3iD7A4zLZoOIXDAZlgyysKzFYJCFBTVosJhELC6I4JLBZDAMkaUFs3nJsDxsioYFYXebL/O8PR944YXfy8Pd+768dwdXeutcfvCPNQ4uUuu9ai21/ry2mFoX5oQ5YU6YE+aEOWGulPUeUN05yQx5uDqkqIS5MOnAzu3p2Nr7cMjc74DV2tF3+9kvOmEuTLr152XFp34KLJTLo3670Rr162fbc3EGlKaZgHGKPAFhv/WaOuBybzkzZOsxe8xv3W28kOsZsHs+wQVUligqYU6YE+aEOWFOmBPmhDlhTpgLsQHd7j3w1WZjpQ296+bM8oU5YS7EBiTJJv1KncJ+Dg8Gg/iUCr474C9WaZaEOWFOmBPmhDlhTpgT5oQ5YU6YE+aEOWEuxAb0hwnrkX/PPB2Tm3DTTKICYm8+b8KcMCfMCXPCnDAnzAlzwpwwJ8wJc8Kc8r6AvH0CkUpF71ypj+QAAAAASUVORK5CYII=",
+   "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAABaUlEQVR4nOXaIU8DMQDF8f9eKsg+xAwGg0EQxAnUBApBENNgEAiCGALEEBgUYoYJQsIUAgxiYkFMIZAEPYWYXnAQEBMku9toxnF7v+SSJm1eem3Tu0uv9NZtfvCPvXTuUuuPqsup9fcsptYLc8KcMCfMCXPCnDBXynoP2Ng9zQx5uDymqIS5MGnD7s3Z2Lr34ZC5XwFr2yff189y0QlzYdKlPy8zPvVTYKFcHpXbh61RuXa+Mxd7QGmaARinyAMQDlqvqQ2a+yuZIVud7Da/dVt9Jtc9YO9igg5UligqYU6YE+aEOWFOmBPmhDlhTpgLsQG93tfZXfr5XYzVNjxd1WeWL8wJcyE2IEk26VdqFPZzeDAYxKdU8F0BfzFLsyTMCXPCnDAnzAlzwpwwJ8wJc8KcMCfMCXMhNqA/TFiP/HvmsUFuwnU9iQqIvfm8CXPCnDAnzAlzwpwwJ8wJc8KcMCfMCXPKuwN5+wSwikXvfHH4DwAAAABJRU5ErkJggg==",
    "uv_width": 64,
    "uv_height": 64
   }
