@@ -200,14 +200,6 @@ public final class PhysicsManager {
             float targetRoll = clamp(speedLocal.x * gain
                     - clamp(omega.z, -90.0F, 90.0F) * 0.6F
                     - gravity * gravityLocal.x / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
-            // 按骨骼关闭指定轴：只把该轴目标归零，其他轴和碰撞仍保留。
-            // Cloth children inherit the parent segment rotation. Giving each child its own
-            // full speed/gravity target makes the chain fight itself and produces visible chatter.
-            if (cloth && bone.parentPhysics() != null) {
-                targetPitch = 0.0F;
-                targetYaw = 0.0F;
-                targetRoll = 0.0F;
-            }
             if (settings.disablePitch(false)) {
                 targetPitch = 0.0F;
             }
