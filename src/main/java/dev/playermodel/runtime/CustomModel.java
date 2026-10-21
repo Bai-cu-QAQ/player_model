@@ -195,17 +195,23 @@ public final class CustomModel {
     public record Contact(Vector3f normal, Vector3f point, float depth) {
     }
 
-    private List<Aabb> coreCollisionCache;
+    private List<CollisionGeometry.Box> coreCollisionCache;
 
-    /** Build core collision boxes once per rendered frame, before the per-bone physics update. */
+    /** Cache individual oriented body cuboids once per frame, before physics updates. */
     public void beginPhysicsFrame() {
-        List<Aabb> boxes = new ArrayList<>();
+        List<CollisionGeometry.Box> boxes = new ArrayList<>();
         for (BoneKind kind : new BoneKind[]{BoneKind.HEAD, BoneKind.BODY, BoneKind.RIGHT_ARM,
                 BoneKind.LEFT_ARM, BoneKind.RIGHT_LEG, BoneKind.LEFT_LEG}) {
             ModelPart core = parts.get(kind);
-            Aabb box = core == null ? null : partAabb(core);
-            if (box != null) {
-                boxes.add(box);
+            if (core == null || core.cuboids == null) {
+                continue;
+            }
+            Matrix4f matrix = partMatrix(core);
+            for (ModelPart.Cuboid cuboid : core.cuboids) {
+                CollisionGeometry.Box box = CollisionGeometry.Box.fromFaces(cuboidFaces(cuboid), matrix);
+                if (box != null) {
+                    boxes.add(box);
+                }
             }
         }
         coreCollisionCache = boxes;
@@ -213,26 +219,19 @@ public final class CustomModel {
 
     public List<Vector3f> restPoints(PhysicsBoneRuntime physics) {
         ModelPart part = physics.part();
-        float oldPitch = part.pitch;
-        float oldYaw = part.yaw;
-        float oldRoll = part.roll;
-        part.pitch = 0.0F;
-        part.yaw = 0.0F;
-        part.roll = 0.0F;
-        List<Vector3f> points = partPoints(part);
-        part.pitch = oldPitch;
-        part.yaw = oldYaw;
-        part.roll = oldRoll;
-        return points;
+        Matrix4f restMatrix = CollisionGeometry.restTransform(partMatrix(physics.parent()),
+                new Vector3f(part.pivotX, part.pivotY, part.pivotZ), physics.staticRotation(),
+                new Vector3f(part.xScale, part.yScale, part.zScale));
+        return partPoints(part, restMatrix);
     }
 
-    /** Contact points for a physics part against core body AABBs. */
+    /** Contact points for a physics part against individual oriented body cuboids. */
     public List<Contact> contacts(PhysicsBoneRuntime physics) {
         return contacts(physics, null);
     }
 
     public List<Contact> contacts(PhysicsBoneRuntime physics, List<Vector3f> rest) {
-        List<Aabb> boxes = coreCollisionCache;
+        List<CollisionGeometry.Box> boxes = coreCollisionCache;
         if (boxes == null || boxes.isEmpty()) {
             return List.of();
         }
@@ -246,17 +245,14 @@ public final class CustomModel {
         }
         List<Contact> contacts = new ArrayList<>();
         int count = Math.min(current.size(), rest.size());
-        for (Aabb box : boxes) {
+        for (CollisionGeometry.Box box : boxes) {
             Contact best = null;
             for (int i = 0; i < count; i++) {
-                float currentDepth = box.depth(current.get(i));
-                float restDepth = box.depth(rest.get(i));
-                if (currentDepth > 0.0F && currentDepth > Math.max(0.0F, restDepth) + 0.02F) {
-                    Vector3f normal = box.normal(current.get(i));
-                    float depth = currentDepth - Math.max(0.0F, restDepth);
-                    if (best == null || depth > best.depth()) {
-                        best = new Contact(normal, new Vector3f(current.get(i)), depth);
-                    }
+                CollisionGeometry.Penetration currentHit = box.penetration(current.get(i));
+                float restDepth = box.penetration(rest.get(i)).depth();
+                float depth = CollisionGeometry.excessDepth(currentHit.depth(), restDepth);
+                if (depth > 0.0F && (best == null || depth > best.depth())) {
+                    best = new Contact(currentHit.normal(), new Vector3f(current.get(i)), depth);
                 }
             }
             if (best != null) {
@@ -273,115 +269,36 @@ public final class CustomModel {
                 physics.part().pivotY, physics.part().pivotZ));
     }
 
-    /** Checks physics vertices that enter a core part they were outside of at rest. */
-    public boolean collides(PhysicsBoneRuntime physics) {
-        List<Aabb> boxes = new ArrayList<>();
-        for (BoneKind kind : new BoneKind[]{BoneKind.HEAD, BoneKind.BODY, BoneKind.RIGHT_ARM,
-                BoneKind.LEFT_ARM, BoneKind.RIGHT_LEG, BoneKind.LEFT_LEG}) {
-            ModelPart core = parts.get(kind);
-            Aabb box = core == null ? null : partAabb(core);
-            if (box != null) {
-                boxes.add(box);
-            }
-        }
-        if (boxes.isEmpty()) {
-            return false;
-        }
-        ModelPart part = physics.part();
-        List<Vector3f> current = partPoints(part);
-        if (current.isEmpty()) {
-            return false;
-        }
-        float oldPitch = part.pitch;
-        float oldYaw = part.yaw;
-        float oldRoll = part.roll;
-        part.pitch = 0.0F;
-        part.yaw = 0.0F;
-        part.roll = 0.0F;
-        List<Vector3f> rest = partPoints(part);
-        part.pitch = oldPitch;
-        part.yaw = oldYaw;
-        part.roll = oldRoll;
-        int count = Math.min(current.size(), rest.size());
-        for (int i = 0; i < count; i++) {
-            for (Aabb box : boxes) {
-                float currentDepth = box.depth(current.get(i));
-                float restDepth = box.depth(rest.get(i));
-                if (currentDepth > 0.0F && currentDepth > Math.max(0.0F, restDepth) + 0.02F) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Returns the largest fraction of a target rotation that does not push a physics vertex into
-     * a core part that it was outside of at rest.
-     */
-    public float collisionScale(PhysicsBoneRuntime physics, float pitch, float yaw, float roll) {
-        ModelPart part = physics.part();
-        float oldPitch = part.pitch;
-        float oldYaw = part.yaw;
-        float oldRoll = part.roll;
-        float scale = 1.0F;
-        for (int i = 0; i < 8; i++) {
-            part.pitch = (float) Math.toRadians(pitch * scale);
-            part.yaw = (float) Math.toRadians(yaw * scale);
-            part.roll = (float) Math.toRadians(roll * scale);
-            if (!collides(physics)) {
-                break;
-            }
-            scale *= 0.5F;
-        }
-        part.pitch = oldPitch;
-        part.yaw = oldYaw;
-        part.roll = oldRoll;
-        return scale;
-    }
-
     private List<Vector3f> partPoints(ModelPart part) {
+        return partPoints(part, partMatrix(part));
+    }
+
+    private List<Vector3f> partPoints(ModelPart part, Matrix4f matrix) {
         if (part.cuboids == null || part.cuboids.isEmpty()) {
             return List.of();
         }
-        Matrix4f matrix = partMatrix(part);
-        List<Vector3f> result = new ArrayList<>();
+        // Deduplicate in local space so current/rest samples always have identical ordering.
+        java.util.Set<Vector3f> samples = new java.util.LinkedHashSet<>();
         for (ModelPart.Cuboid cuboid : part.cuboids) {
-            for (ModelPart.Quad quad : cuboid.sides) {
-                for (ModelPart.Vertex vertex : quad.vertices) {
-                    result.add(matrix.transformPosition(new Vector3f(vertex.pos)));
-                }
-            }
+            samples.addAll(CollisionGeometry.surfaceSamples(cuboidFaces(cuboid)));
+        }
+        List<Vector3f> result = new ArrayList<>(samples.size());
+        for (Vector3f sample : samples) {
+            result.add(matrix.transformPosition(new Vector3f(sample)));
         }
         return result;
     }
 
-    private boolean isAncestor(ModelPart candidate, ModelPart part) {
-        ModelPart current = parents.get(part);
-        while (current != null) {
-            if (current == candidate) {
-                return true;
+    private static List<List<Vector3f>> cuboidFaces(ModelPart.Cuboid cuboid) {
+        List<List<Vector3f>> faces = new ArrayList<>();
+        for (ModelPart.Quad quad : cuboid.sides) {
+            List<Vector3f> vertices = new ArrayList<>(quad.vertices.length);
+            for (ModelPart.Vertex vertex : quad.vertices) {
+                vertices.add(new Vector3f(vertex.pos));
             }
-            current = parents.get(current);
+            faces.add(vertices);
         }
-        return false;
-    }
-
-    private Aabb partAabb(ModelPart part) {
-        if (part.cuboids == null || part.cuboids.isEmpty()) {
-            return null;
-        }
-        Matrix4f matrix = partMatrix(part);
-        Aabb result = new Aabb();
-        for (ModelPart.Cuboid cuboid : part.cuboids) {
-            for (ModelPart.Quad quad : cuboid.sides) {
-                for (ModelPart.Vertex vertex : quad.vertices) {
-                    Vector3f point = matrix.transformPosition(new Vector3f(vertex.pos));
-                    result.include(point.x, point.y, point.z);
-                }
-            }
-        }
-        return result.valid ? result : null;
+        return faces;
     }
 
     private Matrix4f partMatrix(ModelPart part) {
@@ -399,68 +316,6 @@ public final class CustomModel {
             matrix.scale(node.xScale, node.yScale, node.zScale);
         }
         return matrix;
-    }
-
-    private static final class Aabb {
-        float minX = Float.POSITIVE_INFINITY;
-        float minY = Float.POSITIVE_INFINITY;
-        float minZ = Float.POSITIVE_INFINITY;
-        float maxX = Float.NEGATIVE_INFINITY;
-        float maxY = Float.NEGATIVE_INFINITY;
-        float maxZ = Float.NEGATIVE_INFINITY;
-        boolean valid;
-
-        void include(float x, float y, float z) {
-            valid = true;
-            minX = Math.min(minX, x);
-            minY = Math.min(minY, y);
-            minZ = Math.min(minZ, z);
-            maxX = Math.max(maxX, x);
-            maxY = Math.max(maxY, y);
-            maxZ = Math.max(maxZ, z);
-        }
-
-        float depth(Vector3f point) {
-            if (point.x < minX || point.x > maxX || point.y < minY || point.y > maxY
-                    || point.z < minZ || point.z > maxZ) {
-                return -1.0F;
-            }
-            float dx = Math.min(point.x - minX, maxX - point.x);
-            float dy = Math.min(point.y - minY, maxY - point.y);
-            float dz = Math.min(point.z - minZ, maxZ - point.z);
-            return Math.min(dx, Math.min(dy, dz));
-        }
-
-        Vector3f normal(Vector3f point) {
-            float dxMin = point.x - minX;
-            float dxMax = maxX - point.x;
-            float dyMin = point.y - minY;
-            float dyMax = maxY - point.y;
-            float dzMin = point.z - minZ;
-            float dzMax = maxZ - point.z;
-            float best = Math.min(Math.min(dxMin, dxMax), Math.min(Math.min(dyMin, dyMax),
-                    Math.min(dzMin, dzMax)));
-            if (best == dxMin) {
-                return new Vector3f(-1.0F, 0.0F, 0.0F);
-            }
-            if (best == dxMax) {
-                return new Vector3f(1.0F, 0.0F, 0.0F);
-            }
-            if (best == dyMin) {
-                return new Vector3f(0.0F, -1.0F, 0.0F);
-            }
-            if (best == dyMax) {
-                return new Vector3f(0.0F, 1.0F, 0.0F);
-            }
-            return best == dzMin ? new Vector3f(0.0F, 0.0F, -1.0F)
-                    : new Vector3f(0.0F, 0.0F, 1.0F);
-        }
-
-        boolean intersects(Aabb other, float margin) {
-            return maxX + margin > other.minX && minX - margin < other.maxX
-                    && maxY + margin > other.minY && minY - margin < other.maxY
-                    && maxZ + margin > other.minZ && minZ - margin < other.maxZ;
-        }
     }
 
     public void copyPose(PlayerEntityModel<?> live, PreparedModel prepared) {
