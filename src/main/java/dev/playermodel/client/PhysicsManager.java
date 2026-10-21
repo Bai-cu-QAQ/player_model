@@ -106,6 +106,9 @@ public final class PhysicsManager {
             if ("cloth".equalsIgnoreCase(bone.settings().mode)) {
                 boneState.simulateCloth(model, bone, parent, clothChildren.get(bone.name().toLowerCase(java.util.Locale.ROOT)),
                         localAccel, speed, dt);
+                if (bone.parentPhysics() == null) {
+                    boneState.resolveContacts(model, bone, parent, dt);
+                }
             } else {
                 boneState.simulate(bone, parent, localAccel, speed, dt, parentPhysics);
                 boneState.resolveContacts(model, bone, parent, dt);
@@ -291,9 +294,8 @@ public final class PhysicsManager {
             }
             direction.normalize();
             Vector3f target = new Vector3f(pivot).fma(length, direction);
-            for (CustomModel.Contact contact : model.contacts(bone)) {
-                target.fma(Math.min(0.15F, contact.depth()) * 0.5F, contact.normal());
-            }
+            // Collision is resolved after the chain pose; making the endpoint target jump
+            // sideways here feeds through every child and can lay the whole garment flat.
             Vector3f old = new Vector3f(clothTarget);
             clothTarget.lerp(target, 0.55F);
             if (dt > 1.0E-5F) {
