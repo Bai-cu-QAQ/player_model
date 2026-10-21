@@ -268,6 +268,10 @@ public final class PhysicsManager {
                 target.add(correction);
             }
             contact.advance(target, Math.min(dt, 0.05F), contacts.isEmpty() ? 14.0F : 35.0F);
+            float limit = (float) Math.toRadians(bone.settings().maxAngle(70.0F));
+            if (contact.position.length() > limit) {
+                contact.position.normalize(limit);
+            }
             applyAngles(bone);
         }
         private static Vector3f parentAngularVelocity(Quaternionf current, Quaternionf last, float dt) {
