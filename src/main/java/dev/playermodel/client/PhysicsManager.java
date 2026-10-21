@@ -96,7 +96,9 @@ public final class PhysicsManager {
             Quaternionf parent = model.worldRotation(bone.parent());
             // One closed-form step with 10x time gives the same target smoothing as the previous
             // twenty half-steps without running the per-bone simulation twenty times.
-            boneState.simulate(bone, parent, localAccel, speed, dt * 10.0F, model, true);
+            for (int step = 0; step < 4; step++) {
+                boneState.simulate(bone, parent, localAccel, speed, dt * 2.5F, model, step == 0);
+            }
         }
     }
 
@@ -249,7 +251,7 @@ public final class PhysicsManager {
                                      Quaternionf parent, float dt, float maxAngle) {
             float collisionDt = Math.min(dt, 0.05F);
             List<Vector3f> restPoints = model.restPoints(bone);
-            for (int iteration = 0; iteration < 3; iteration++) {
+            for (int iteration = 0; iteration < 2; iteration++) {
                 List<CustomModel.Contact> contacts = model.contacts(bone, restPoints);
                 if (contacts.isEmpty()) {
                     return;
@@ -260,14 +262,14 @@ public final class PhysicsManager {
                     Vector3f lever = new Vector3f(contact.point()).sub(pivot);
                     Vector3f torque = lever.cross(contact.normal());
                     inverseParent.transform(torque);
-                    float impulse = Math.min(0.25F, contact.depth()) * 3000.0F;
+                    float impulse = Math.min(0.25F, contact.depth()) * 1800.0F;
                     vPitch += torque.x * impulse;
                     vYaw += torque.y * impulse;
                     vRoll += torque.z * impulse;
                 }
-                vPitch = clamp(vPitch, -180.0F, 180.0F);
-                vYaw = clamp(vYaw, -180.0F, 180.0F);
-                vRoll = clamp(vRoll, -180.0F, 180.0F);
+                vPitch = clamp(vPitch, -120.0F, 120.0F);
+                vYaw = clamp(vYaw, -120.0F, 120.0F);
+                vRoll = clamp(vRoll, -120.0F, 120.0F);
                 pitch = clamp(pitch + vPitch * collisionDt, -maxAngle, maxAngle);
                 yaw = clamp(yaw + vYaw * collisionDt, -maxAngle, maxAngle);
                 roll = clamp(roll + vRoll * collisionDt, -maxAngle, maxAngle);
