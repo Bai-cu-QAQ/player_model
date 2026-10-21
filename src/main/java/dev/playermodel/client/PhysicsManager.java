@@ -267,7 +267,7 @@ public final class PhysicsManager {
                 if (length > 0.12F) correction.mul(0.12F / length);
                 target.add(correction);
             }
-            contact.advance(target, Math.min(dt, 0.05F), contacts.isEmpty() ? 14.0F : 35.0F);
+            contact.advance(target, Math.min(dt, 0.05F), contacts.isEmpty() ? 10.0F : 22.0F);
             float limit = (float) Math.toRadians(bone.settings().maxAngle(70.0F));
             if (contact.position.length() > limit) {
                 contact.position.normalize(limit);

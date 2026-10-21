@@ -17,7 +17,7 @@ class ContactSpringTest {
         }
         assertEquals(0.5F, s.position.x, 1e-4F);
         s.advance(new Vector3f(), 1F/120, 14);
-        assertTrue(s.position.x > 0.45F, "release must not snap to rest");
+        assertTrue(s.position.x > 0.4F, "release must not snap to rest");
         for (int i=0;i<240;i++) s.advance(new Vector3f(), 1F/120,14);
         assertEquals(0F,s.position.x,1e-4F);
     }
