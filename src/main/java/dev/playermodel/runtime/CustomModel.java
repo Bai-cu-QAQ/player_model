@@ -7,7 +7,7 @@ import net.minecraft.client.model.ModelPart;
 import net.minecraft.client.model.TexturedModelData;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.entity.model.PlayerEntityModel;
-
+import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
@@ -190,6 +190,131 @@ public final class CustomModel {
 
     public List<PhysicsBoneRuntime> physicsBones() {
         return List.copyOf(physicsBones);
+    }
+
+    public record Contact(Vector3f normal, Vector3f point, float depth) {
+    }
+
+    private List<CollisionGeometry.Box> coreCollisionCache;
+
+    /** Cache individual oriented body cuboids once per frame, before physics updates. */
+    public void beginPhysicsFrame() {
+        List<CollisionGeometry.Box> boxes = new ArrayList<>();
+        for (BoneKind kind : new BoneKind[]{BoneKind.HEAD, BoneKind.BODY}) {
+            ModelPart core = parts.get(kind);
+            if (core == null || core.cuboids == null) {
+                continue;
+            }
+            Matrix4f matrix = partMatrix(core);
+            for (ModelPart.Cuboid cuboid : core.cuboids) {
+                CollisionGeometry.Box box = CollisionGeometry.Box.fromFaces(cuboidFaces(cuboid), matrix);
+                if (box != null) {
+                    boxes.add(box);
+                }
+            }
+        }
+        coreCollisionCache = boxes;
+    }
+
+    public List<Vector3f> restPoints(PhysicsBoneRuntime physics) {
+        ModelPart part = physics.part();
+        Matrix4f restMatrix = CollisionGeometry.restTransform(partMatrix(physics.parent()),
+                new Vector3f(part.pivotX, part.pivotY, part.pivotZ), physics.staticRotation(),
+                new Vector3f(part.xScale, part.yScale, part.zScale));
+        return partPoints(part, restMatrix);
+    }
+
+    /** Contact points for a physics part against individual oriented body cuboids. */
+    public List<Contact> contacts(PhysicsBoneRuntime physics) {
+        return contacts(physics, null);
+    }
+
+    public List<Contact> contacts(PhysicsBoneRuntime physics, List<Vector3f> rest) {
+        List<CollisionGeometry.Box> boxes = coreCollisionCache;
+        if (boxes == null || boxes.isEmpty()) {
+            return List.of();
+        }
+        ModelPart part = physics.part();
+        List<Vector3f> current = partPoints(part);
+        if (current.isEmpty()) {
+            return List.of();
+        }
+        if (rest == null) {
+            rest = restPoints(physics);
+        }
+        List<Contact> contacts = new ArrayList<>();
+        int count = Math.min(current.size(), rest.size());
+        for (CollisionGeometry.Box box : boxes) {
+            Contact best = null;
+            for (int i = 0; i < count; i++) {
+                CollisionGeometry.Penetration currentHit = box.penetration(current.get(i));
+                float restDepth = box.penetration(rest.get(i)).depth();
+                float depth = CollisionGeometry.excessDepth(currentHit.depth(), restDepth);
+                if (depth > 0.0F && (best == null || depth > best.depth())) {
+                    best = new Contact(currentHit.normal(), new Vector3f(current.get(i)), depth);
+                }
+            }
+            if (best != null) {
+                contacts.add(best);
+            }
+        }
+        return contacts;
+    }
+
+    /** World/model-space pivot of a physics part. */
+    public Vector3f physicsPivot(PhysicsBoneRuntime physics) {
+        Matrix4f parent = partMatrix(physics.parent());
+        return parent.transformPosition(new Vector3f(physics.part().pivotX,
+                physics.part().pivotY, physics.part().pivotZ));
+    }
+
+    private List<Vector3f> partPoints(ModelPart part) {
+        return partPoints(part, partMatrix(part));
+    }
+
+    private List<Vector3f> partPoints(ModelPart part, Matrix4f matrix) {
+        if (part.cuboids == null || part.cuboids.isEmpty()) {
+            return List.of();
+        }
+        // Deduplicate in local space so current/rest samples always have identical ordering.
+        java.util.Set<Vector3f> samples = new java.util.LinkedHashSet<>();
+        for (ModelPart.Cuboid cuboid : part.cuboids) {
+            samples.addAll(CollisionGeometry.surfaceSamples(cuboidFaces(cuboid)));
+        }
+        List<Vector3f> result = new ArrayList<>(samples.size());
+        for (Vector3f sample : samples) {
+            result.add(matrix.transformPosition(new Vector3f(sample)));
+        }
+        return result;
+    }
+
+    private static List<List<Vector3f>> cuboidFaces(ModelPart.Cuboid cuboid) {
+        List<List<Vector3f>> faces = new ArrayList<>();
+        for (ModelPart.Quad quad : cuboid.sides) {
+            List<Vector3f> vertices = new ArrayList<>(quad.vertices.length);
+            for (ModelPart.Vertex vertex : quad.vertices) {
+                vertices.add(new Vector3f(vertex.pos));
+            }
+            faces.add(vertices);
+        }
+        return faces;
+    }
+
+    private Matrix4f partMatrix(ModelPart part) {
+        List<ModelPart> chain = new ArrayList<>();
+        ModelPart current = part;
+        while (current != null && current != rootPart) {
+            chain.add(current);
+            current = parents.get(current);
+        }
+        Matrix4f matrix = new Matrix4f();
+        for (int i = chain.size() - 1; i >= 0; i--) {
+            ModelPart node = chain.get(i);
+            matrix.translate(node.pivotX, node.pivotY, node.pivotZ);
+            matrix.rotate(new Quaternionf().rotationZYX(node.roll, node.yaw, node.pitch));
+            matrix.scale(node.xScale, node.yScale, node.zScale);
+        }
+        return matrix;
     }
 
     public void copyPose(PlayerEntityModel<?> live, PreparedModel prepared) {
