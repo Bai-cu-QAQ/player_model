@@ -96,7 +96,7 @@ public final class PhysicsManager {
             // Twenty half-steps equal ten normal render steps; the smaller integration step removes
             // the jitter that the 10x response previously caused in the stiff spring.
             for (int step = 0; step < 20; step++) {
-                boneState.simulate(bone, parent, localAccel, speed, dt * 0.5F, model, true);
+                boneState.simulate(bone, parent, localAccel, speed, dt * 0.5F, model, step == 0);
             }
         }
     }
@@ -248,7 +248,7 @@ public final class PhysicsManager {
          */
         private void resolveContacts(CustomModel model, CustomModel.PhysicsBoneRuntime bone,
                                      Quaternionf parent, float dt, float maxAngle) {
-            for (int iteration = 0; iteration < 4; iteration++) {
+            for (int iteration = 0; iteration < 3; iteration++) {
                 List<CustomModel.Contact> contacts = model.contacts(bone);
                 if (contacts.isEmpty()) {
                     return;
@@ -259,14 +259,14 @@ public final class PhysicsManager {
                     Vector3f lever = new Vector3f(contact.point()).sub(pivot);
                     Vector3f torque = lever.cross(contact.normal());
                     inverseParent.transform(torque);
-                    float impulse = Math.min(0.25F, contact.depth()) * 12000.0F;
+                    float impulse = Math.min(0.25F, contact.depth()) * 3000.0F;
                     vPitch += torque.x * impulse;
                     vYaw += torque.y * impulse;
                     vRoll += torque.z * impulse;
                 }
-                vPitch = clamp(vPitch, -720.0F, 720.0F);
-                vYaw = clamp(vYaw, -720.0F, 720.0F);
-                vRoll = clamp(vRoll, -720.0F, 720.0F);
+                vPitch = clamp(vPitch, -180.0F, 180.0F);
+                vYaw = clamp(vYaw, -180.0F, 180.0F);
+                vRoll = clamp(vRoll, -180.0F, 180.0F);
                 pitch = clamp(pitch + vPitch * dt, -maxAngle, maxAngle);
                 yaw = clamp(yaw + vYaw * dt, -maxAngle, maxAngle);
                 roll = clamp(roll + vRoll * dt, -maxAngle, maxAngle);
