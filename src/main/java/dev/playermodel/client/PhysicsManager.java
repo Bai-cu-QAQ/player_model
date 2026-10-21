@@ -95,7 +95,9 @@ public final class PhysicsManager {
             BoneState boneState = state.bones.computeIfAbsent(bone.name().toLowerCase(java.util.Locale.ROOT),
                     key -> new BoneState());
             Quaternionf parent = model.worldRotation(bone.parent());
-            boneState.simulate(bone, parent, localAccel, speed, dt);
+            BoneState parentPhysics = bone.parentPhysics() == null ? null
+                    : state.bones.get(bone.parentPhysics().toLowerCase(java.util.Locale.ROOT));
+            boneState.simulate(bone, parent, localAccel, speed, dt, parentPhysics);
             boneState.resolveContacts(model, bone, parent, dt);
         }
     }
@@ -151,7 +153,7 @@ public final class PhysicsManager {
         boolean initialized;
 
         void simulate(CustomModel.PhysicsBoneRuntime bone, Quaternionf parent, Vector3f accel,
-                      Vector3f speed, float dt) {
+                      Vector3f speed, float dt, BoneState parentPhysics) {
             if (!initialized || lastParent == null) {
                 lastParent = new Quaternionf(parent);
                 initialized = true;
@@ -201,12 +203,13 @@ public final class PhysicsManager {
                     - clamp(omega.z, -90.0F, 90.0F) * 0.6F
                     - gravity * gravityLocal.x / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
             // 按骨骼关闭指定轴：只把该轴目标归零，其他轴和碰撞仍保留。
-            // Cloth children inherit the parent segment rotation. Giving each child its own
-            // full speed/gravity target makes the chain fight itself and produces visible chatter.
-            if (cloth && bone.parentPhysics() != null) {
-                targetPitch = 0.0F;
-                targetYaw = 0.0F;
-                targetRoll = 0.0F;
+            // Cloth children lag behind the parent segment instead of running an independent
+            // speed/gravity solve. The local opposite offset gives visible chain motion while
+            // preventing the parent and child springs from fighting each other.
+            if (cloth && parentPhysics != null) {
+                targetPitch = parentPhysics.pitch * 0.45F;
+                targetYaw = parentPhysics.yaw * 0.45F;
+                targetRoll = parentPhysics.roll * 0.45F;
             }
             if (settings.disablePitch(false)) {
                 targetPitch = 0.0F;
@@ -247,6 +250,9 @@ public final class PhysicsManager {
          */
         private void resolveContacts(CustomModel model, CustomModel.PhysicsBoneRuntime bone,
                                      Quaternionf parent, float dt) {
+            if ("cloth".equalsIgnoreCase(bone.settings().mode) && bone.parentPhysics() != null) {
+                return;
+            }
             // A persistent offset survives the next motion update. The old solver discarded its
             // impulse every frame, causing a spring/contact tug-of-war and visible chatter.
             Vector3f target = new Vector3f(contact.position);
@@ -274,7 +280,7 @@ public final class PhysicsManager {
                 if (length > 0.12F) correction.mul(0.12F / length);
                 target.add(correction);
             }
-            contact.advance(target, Math.min(dt, 0.05F), contacts.isEmpty() ? 10.0F : 22.0F);
+            contact.advance(target, Math.min(dt, 0.05F), contacts.isEmpty() ? 5.0F : 12.0F);
             float limit = (float) Math.toRadians(bone.settings().maxAngle(70.0F));
             if (contact.position.length() > limit) {
                 contact.position.normalize(limit);
