@@ -96,9 +96,12 @@ public final class PhysicsManager {
             Quaternionf parent = model.worldRotation(bone.parent());
             // One closed-form step with 10x time gives the same target smoothing as the previous
             // twenty half-steps without running the per-bone simulation twenty times.
+            // Integrate the motion at a stable fixed response rate. Collision is solved once after
+            // the pose update so it cannot fight the same pose four times in one render frame.
             for (int step = 0; step < 4; step++) {
-                boneState.simulate(bone, parent, localAccel, speed, dt * 2.5F, model, step == 0);
+                boneState.simulate(bone, parent, localAccel, speed, dt * 2.5F, model, false);
             }
+            boneState.resolveContacts(model, bone, parent, dt, 70.0F);
         }
     }
 
