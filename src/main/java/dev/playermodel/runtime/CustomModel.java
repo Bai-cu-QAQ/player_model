@@ -192,6 +192,67 @@ public final class CustomModel {
         return List.copyOf(physicsBones);
     }
 
+    public record Contact(Vector3f normal, Vector3f point, float depth) {
+    }
+
+    /** Contact points for a physics part against core body AABBs. */
+    public List<Contact> contacts(PhysicsBoneRuntime physics) {
+        List<Aabb> boxes = new ArrayList<>();
+        for (BoneKind kind : new BoneKind[]{BoneKind.HEAD, BoneKind.BODY, BoneKind.RIGHT_ARM,
+                BoneKind.LEFT_ARM, BoneKind.RIGHT_LEG, BoneKind.LEFT_LEG}) {
+            ModelPart core = parts.get(kind);
+            Aabb box = core == null ? null : partAabb(core);
+            if (box != null) {
+                boxes.add(box);
+            }
+        }
+        if (boxes.isEmpty()) {
+            return List.of();
+        }
+        ModelPart part = physics.part();
+        List<Vector3f> current = partPoints(part);
+        if (current.isEmpty()) {
+            return List.of();
+        }
+        float oldPitch = part.pitch;
+        float oldYaw = part.yaw;
+        float oldRoll = part.roll;
+        part.pitch = 0.0F;
+        part.yaw = 0.0F;
+        part.roll = 0.0F;
+        List<Vector3f> rest = partPoints(part);
+        part.pitch = oldPitch;
+        part.yaw = oldYaw;
+        part.roll = oldRoll;
+        List<Contact> contacts = new ArrayList<>();
+        int count = Math.min(current.size(), rest.size());
+        for (Aabb box : boxes) {
+            Contact best = null;
+            for (int i = 0; i < count; i++) {
+                float currentDepth = box.depth(current.get(i));
+                float restDepth = box.depth(rest.get(i));
+                if (currentDepth > 0.0F && currentDepth > Math.max(0.0F, restDepth) + 0.02F) {
+                    Vector3f normal = box.normal(current.get(i));
+                    float depth = currentDepth - Math.max(0.0F, restDepth);
+                    if (best == null || depth > best.depth()) {
+                        best = new Contact(normal, new Vector3f(current.get(i)), depth);
+                    }
+                }
+            }
+            if (best != null) {
+                contacts.add(best);
+            }
+        }
+        return contacts;
+    }
+
+    /** World/model-space pivot of a physics part. */
+    public Vector3f physicsPivot(PhysicsBoneRuntime physics) {
+        Matrix4f parent = partMatrix(physics.parent());
+        return parent.transformPosition(new Vector3f(physics.part().pivotX,
+                physics.part().pivotY, physics.part().pivotZ));
+    }
+
     /** Checks physics vertices that enter a core part they were outside of at rest. */
     public boolean collides(PhysicsBoneRuntime physics) {
         List<Aabb> boxes = new ArrayList<>();
@@ -348,6 +409,31 @@ public final class CustomModel {
             float dy = Math.min(point.y - minY, maxY - point.y);
             float dz = Math.min(point.z - minZ, maxZ - point.z);
             return Math.min(dx, Math.min(dy, dz));
+        }
+
+        Vector3f normal(Vector3f point) {
+            float dxMin = point.x - minX;
+            float dxMax = maxX - point.x;
+            float dyMin = point.y - minY;
+            float dyMax = maxY - point.y;
+            float dzMin = point.z - minZ;
+            float dzMax = maxZ - point.z;
+            float best = Math.min(Math.min(dxMin, dxMax), Math.min(Math.min(dyMin, dyMax),
+                    Math.min(dzMin, dzMax)));
+            if (best == dxMin) {
+                return new Vector3f(-1.0F, 0.0F, 0.0F);
+            }
+            if (best == dxMax) {
+                return new Vector3f(1.0F, 0.0F, 0.0F);
+            }
+            if (best == dyMin) {
+                return new Vector3f(0.0F, -1.0F, 0.0F);
+            }
+            if (best == dyMax) {
+                return new Vector3f(0.0F, 1.0F, 0.0F);
+            }
+            return best == dzMin ? new Vector3f(0.0F, 0.0F, -1.0F)
+                    : new Vector3f(0.0F, 0.0F, 1.0F);
         }
 
         boolean intersects(Aabb other, float margin) {

@@ -9,6 +9,7 @@ import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -148,7 +149,6 @@ public final class PhysicsManager {
         float vPitch;
         float vYaw;
         float vRoll;
-        float collisionScale = 1.0F;
         Quaternionf lastParent;
         boolean initialized;
 
@@ -156,7 +156,6 @@ public final class PhysicsManager {
                       Vector3f speed, float dt, CustomModel model, boolean applyCollision) {
             if (!initialized || lastParent == null) {
                 lastParent = new Quaternionf(parent);
-                collisionScale = 1.0F;
                 initialized = true;
             }
             PhysicsConfig.Settings settings = bone.settings();
@@ -213,13 +212,6 @@ public final class PhysicsManager {
             if (settings.disableRoll(false)) {
                 targetRoll = 0.0F;
             }
-            if (applyCollision) {
-                float measured = model.collisionScale(bone, targetPitch, targetYaw, targetRoll);
-                collisionScale += (measured - collisionScale) * 0.25F;
-                targetPitch *= collisionScale;
-                targetYaw *= collisionScale;
-                targetRoll *= collisionScale;
-            }
             float blend = 1.0F - (float) Math.exp(-response * dt);
             pitch += (targetPitch - pitch) * blend;
             yaw += (targetYaw - yaw) * blend;
@@ -227,7 +219,14 @@ public final class PhysicsManager {
             vPitch = 0.0F;
             vYaw = 0.0F;
             vRoll = 0.0F;
+            applyAngles(bone);
+            if (applyCollision) {
+                resolveContacts(model, bone, parent, dt, maxAngle);
+            }
+            lastParent.set(parent);
+        }
 
+        private void applyAngles(CustomModel.PhysicsBoneRuntime bone) {
             if (bone.staticRotation() == null) {
                 bone.part().pitch = (float) Math.toRadians(pitch);
                 bone.part().yaw = (float) Math.toRadians(yaw);
@@ -241,7 +240,38 @@ public final class PhysicsManager {
                 bone.part().yaw = euler.y;
                 bone.part().roll = euler.z;
             }
-            lastParent.set(parent);
+        }
+
+        /**
+         * Impulse-based collision: contacts create torque around the bone pivot, integrated as an
+         * angular velocity. No target angle is forced or scaled down.
+         */
+        private void resolveContacts(CustomModel model, CustomModel.PhysicsBoneRuntime bone,
+                                     Quaternionf parent, float dt, float maxAngle) {
+            for (int iteration = 0; iteration < 4; iteration++) {
+                List<CustomModel.Contact> contacts = model.contacts(bone);
+                if (contacts.isEmpty()) {
+                    return;
+                }
+                Vector3f pivot = model.physicsPivot(bone);
+                Quaternionf inverseParent = new Quaternionf(parent).invert();
+                for (CustomModel.Contact contact : contacts) {
+                    Vector3f lever = new Vector3f(contact.point()).sub(pivot);
+                    Vector3f torque = lever.cross(contact.normal());
+                    inverseParent.transform(torque);
+                    float impulse = Math.min(0.25F, contact.depth()) * 4200.0F;
+                    vPitch += torque.x * impulse;
+                    vYaw += torque.y * impulse;
+                    vRoll += torque.z * impulse;
+                }
+                pitch = clamp(pitch + vPitch * dt, -maxAngle, maxAngle);
+                yaw = clamp(yaw + vYaw * dt, -maxAngle, maxAngle);
+                roll = clamp(roll + vRoll * dt, -maxAngle, maxAngle);
+                applyAngles(bone);
+                vPitch *= 0.35F;
+                vYaw *= 0.35F;
+                vRoll *= 0.35F;
+            }
         }
 
         private static Vector3f parentAngularVelocity(Quaternionf current, Quaternionf last, float dt) {
