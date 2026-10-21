@@ -96,7 +96,7 @@ public final class PhysicsManager {
             // Twenty half-steps equal ten normal render steps; the smaller integration step removes
             // the jitter that the 10x response previously caused in the stiff spring.
             for (int step = 0; step < 20; step++) {
-                boneState.simulate(bone, parent, localAccel, speed, dt * 0.5F, model, step == 0);
+                boneState.simulate(bone, parent, localAccel, speed, dt * 0.5F, model, true);
             }
         }
     }
@@ -259,11 +259,14 @@ public final class PhysicsManager {
                     Vector3f lever = new Vector3f(contact.point()).sub(pivot);
                     Vector3f torque = lever.cross(contact.normal());
                     inverseParent.transform(torque);
-                    float impulse = Math.min(0.25F, contact.depth()) * 4200.0F;
+                    float impulse = Math.min(0.25F, contact.depth()) * 12000.0F;
                     vPitch += torque.x * impulse;
                     vYaw += torque.y * impulse;
                     vRoll += torque.z * impulse;
                 }
+                vPitch = clamp(vPitch, -720.0F, 720.0F);
+                vYaw = clamp(vYaw, -720.0F, 720.0F);
+                vRoll = clamp(vRoll, -720.0F, 720.0F);
                 pitch = clamp(pitch + vPitch * dt, -maxAngle, maxAngle);
                 yaw = clamp(yaw + vYaw * dt, -maxAngle, maxAngle);
                 roll = clamp(roll + vRoll * dt, -maxAngle, maxAngle);

@@ -226,11 +226,14 @@ public final class CustomModel {
         part.roll = oldRoll;
         List<Contact> contacts = new ArrayList<>();
         int count = Math.min(current.size(), rest.size());
-        for (Aabb box : boxes) {
+        boolean parentIsHead = physics.parentBone() == BoneKind.HEAD;
+        for (int boxIndex = 0; boxIndex < boxes.size(); boxIndex++) {
+            Aabb box = boxes.get(boxIndex);
+            boolean strictHead = parentIsHead && boxIndex == 0;
             Contact best = null;
             for (int i = 0; i < count; i++) {
                 float currentDepth = box.depth(current.get(i));
-                float restDepth = box.depth(rest.get(i));
+                float restDepth = strictHead ? 0.0F : box.depth(rest.get(i));
                 if (currentDepth > 0.0F && currentDepth > Math.max(0.0F, restDepth) + 0.02F) {
                     Vector3f normal = box.normal(current.get(i));
                     float depth = currentDepth - Math.max(0.0F, restDepth);
