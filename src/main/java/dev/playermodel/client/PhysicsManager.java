@@ -91,14 +91,25 @@ public final class PhysicsManager {
                 accel.y,
                 -accel.x * sin + accel.z * cos);
         model.beginPhysicsFrame();
+        Map<String, CustomModel.PhysicsBoneRuntime> clothChildren = new HashMap<>();
+        for (CustomModel.PhysicsBoneRuntime bone : model.physicsBones()) {
+            if (bone.parentPhysics() != null) {
+                clothChildren.put(bone.parentPhysics().toLowerCase(java.util.Locale.ROOT), bone);
+            }
+        }
         for (CustomModel.PhysicsBoneRuntime bone : model.physicsBones()) {
             BoneState boneState = state.bones.computeIfAbsent(bone.name().toLowerCase(java.util.Locale.ROOT),
                     key -> new BoneState());
             Quaternionf parent = model.worldRotation(bone.parent());
             BoneState parentPhysics = bone.parentPhysics() == null ? null
                     : state.bones.get(bone.parentPhysics().toLowerCase(java.util.Locale.ROOT));
-            boneState.simulate(bone, parent, localAccel, speed, dt, parentPhysics);
-            boneState.resolveContacts(model, bone, parent, dt);
+            if ("cloth".equalsIgnoreCase(bone.settings().mode)) {
+                boneState.simulateCloth(model, bone, parent, clothChildren.get(bone.name().toLowerCase(java.util.Locale.ROOT)),
+                        localAccel, speed, dt);
+            } else {
+                boneState.simulate(bone, parent, localAccel, speed, dt, parentPhysics);
+                boneState.resolveContacts(model, bone, parent, dt);
+            }
         }
     }
 
@@ -244,6 +255,61 @@ public final class PhysicsManager {
             }
         }
 
+        private final Vector3f clothTarget = new Vector3f();
+        private final Vector3f clothVelocity = new Vector3f();
+        private boolean clothInitialized;
+
+        /**
+         * Endpoint chain ported from the reference tail solver: each segment predicts an endpoint
+         * from its previous endpoint, velocity and gravity, then aims the bone at that point.
+         */
+        void simulateCloth(CustomModel model, CustomModel.PhysicsBoneRuntime bone, Quaternionf parent,
+                           CustomModel.PhysicsBoneRuntime child, Vector3f accel, Vector3f speed,
+                           float dt) {
+            Vector3f pivot = model.physicsPivot(bone);
+            Vector3f nextPivot = child == null ? null : model.physicsPivot(child);
+            Vector3f rest = nextPivot == null ? new Vector3f(0.0F, -1.0F, 0.0F)
+                    : new Vector3f(nextPivot).sub(pivot);
+            float length = rest.length();
+            if (length < 1.0E-4F) {
+                length = 1.0F;
+                rest.set(0.0F, -1.0F, 0.0F);
+            } else {
+                rest.div(length);
+            }
+            if (!clothInitialized) {
+                clothTarget.set(pivot).fma(length, rest);
+                clothVelocity.zero();
+                clothInitialized = true;
+            }
+            Vector3f proposed = new Vector3f(clothTarget).fma(dt, clothVelocity);
+            proposed.y -= 9.8F * dt * dt;
+            proposed.fma(dt * 0.2F, speed);
+            Vector3f direction = new Vector3f(proposed).sub(pivot);
+            if (direction.lengthSquared() < 1.0E-6F) {
+                direction.set(rest);
+            }
+            direction.normalize();
+            Vector3f target = new Vector3f(pivot).fma(length, direction);
+            for (CustomModel.Contact contact : model.contacts(bone)) {
+                target.fma(Math.min(0.15F, contact.depth()) * 0.5F, contact.normal());
+            }
+            Vector3f old = new Vector3f(clothTarget);
+            clothTarget.lerp(target, 0.55F);
+            if (dt > 1.0E-5F) {
+                clothVelocity.set(clothTarget).sub(old).div(dt).mul(0.65F);
+            }
+            Vector3f localDirection = new Vector3f(clothTarget).sub(pivot).normalize();
+            new Quaternionf(parent).invert().transform(localDirection);
+            Vector3f localRest = new Vector3f(rest);
+            new Quaternionf(parent).invert().transform(localRest);
+            Quaternionf aim = new Quaternionf().rotationTo(localRest.normalize(), localDirection.normalize());
+            Vector3f euler = aim.getEulerAnglesZYX(new Vector3f());
+            pitch = (float) Math.toDegrees(euler.x);
+            yaw = (float) Math.toDegrees(euler.y);
+            roll = (float) Math.toDegrees(euler.z);
+            applyAngles(bone);
+        }
         /**
          * Compliant angular contact with persistent state and damped release. Contact normals
          * determine the response; no rest-angle snap or per-frame impulse reset is used.
