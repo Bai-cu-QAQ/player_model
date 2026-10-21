@@ -2,7 +2,6 @@ package dev.playermodel.client;
 
 import dev.playermodel.model.PhysicsConfig;
 import dev.playermodel.runtime.CustomModel;
-import dev.playermodel.runtime.ContactSpring;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
@@ -10,7 +9,6 @@ import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -90,13 +88,11 @@ public final class PhysicsManager {
                 accel.x * cos + accel.z * sin,
                 accel.y,
                 -accel.x * sin + accel.z * cos);
-        model.beginPhysicsFrame();
         for (CustomModel.PhysicsBoneRuntime bone : model.physicsBones()) {
             BoneState boneState = state.bones.computeIfAbsent(bone.name().toLowerCase(java.util.Locale.ROOT),
                     key -> new BoneState());
             Quaternionf parent = model.worldRotation(bone.parent());
             boneState.simulate(bone, parent, localAccel, speed, dt);
-            boneState.resolveContacts(model, bone, parent, dt);
         }
     }
 
@@ -145,8 +141,6 @@ public final class PhysicsManager {
         float pitch;
         float yaw;
         float roll;
-        final ContactSpring contact = new ContactSpring();
-        float contactHold;
         Quaternionf lastParent;
         boolean initialized;
 
@@ -200,7 +194,6 @@ public final class PhysicsManager {
             float targetRoll = clamp(speedLocal.x * gain
                     - clamp(omega.z, -90.0F, 90.0F) * 0.6F
                     - gravity * gravityLocal.x / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
-            // 按骨骼关闭指定轴：只把该轴目标归零，其他轴和碰撞仍保留。
             if (settings.disablePitch(false)) {
                 targetPitch = 0.0F;
             }
@@ -220,12 +213,12 @@ public final class PhysicsManager {
 
         private void applyAngles(CustomModel.PhysicsBoneRuntime bone) {
             if (bone.staticRotation() == null) {
-                bone.part().pitch = (float) Math.toRadians(pitch) + contact.position.x;
-                bone.part().yaw = (float) Math.toRadians(yaw) + contact.position.y;
-                bone.part().roll = (float) Math.toRadians(roll) + contact.position.z;
+                bone.part().pitch = (float) Math.toRadians(pitch);
+                bone.part().yaw = (float) Math.toRadians(yaw);
+                bone.part().roll = (float) Math.toRadians(roll);
             } else {
-                Quaternionf offset = new Quaternionf().rotationZYX((float) Math.toRadians(roll) + contact.position.z,
-                        (float) Math.toRadians(yaw) + contact.position.y, (float) Math.toRadians(pitch) + contact.position.x);
+                Quaternionf offset = new Quaternionf().rotationZYX((float) Math.toRadians(roll),
+                        (float) Math.toRadians(yaw), (float) Math.toRadians(pitch));
                 Quaternionf composed = new Quaternionf(bone.staticRotation()).mul(offset);
                 Vector3f euler = composed.getEulerAnglesZYX(new Vector3f());
                 bone.part().pitch = euler.x;
@@ -235,45 +228,8 @@ public final class PhysicsManager {
         }
 
         /**
-         * Compliant angular contact with persistent state and damped release. Contact normals
          * determine the response; no rest-angle snap or per-frame impulse reset is used.
          */
-        private void resolveContacts(CustomModel model, CustomModel.PhysicsBoneRuntime bone,
-                                     Quaternionf parent, float dt) {
-            // A persistent offset survives the next motion update. The old solver discarded its
-            // impulse every frame, causing a spring/contact tug-of-war and visible chatter.
-            Vector3f target = new Vector3f(contact.position);
-            List<Vector3f> rest = model.restPoints(bone);
-            List<CustomModel.Contact> contacts = model.contacts(bone, rest);
-            if (contacts.isEmpty()) {
-                contactHold = Math.max(0.0F, contactHold - dt);
-                if (contactHold == 0.0F) target.zero();
-            } else {
-                contactHold = 0.08F;
-                Vector3f correction = new Vector3f();
-                Vector3f pivot = model.physicsPivot(bone);
-                Quaternionf frame = new Quaternionf(parent);
-                if (bone.staticRotation() != null) frame.mul(bone.staticRotation());
-                frame.invert();
-                for (CustomModel.Contact c : contacts) {
-                    Vector3f lever = new Vector3f(c.point()).sub(pivot);
-                    Vector3f delta = ContactSpring.correction(lever, c.normal(), c.depth());
-                    frame.transform(delta);
-                    correction.add(delta);
-                }
-                // Smooth bounded correction, not an assigned collision angle or a rest-pose snap.
-                correction.div(Math.max(1, contacts.size()));
-                float length = correction.length();
-                if (length > 0.12F) correction.mul(0.12F / length);
-                target.add(correction);
-            }
-            contact.advance(target, Math.min(dt, 0.05F), contacts.isEmpty() ? 10.0F : 22.0F);
-            float limit = (float) Math.toRadians(bone.settings().maxAngle(70.0F));
-            if (contact.position.length() > limit) {
-                contact.position.normalize(limit);
-            }
-            applyAngles(bone);
-        }
         private static Vector3f parentAngularVelocity(Quaternionf current, Quaternionf last, float dt) {
             Quaternionf delta = new Quaternionf(current).mul(new Quaternionf(last).invert());
             float w = clamp(delta.w, -1.0F, 1.0F);
