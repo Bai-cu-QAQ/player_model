@@ -200,8 +200,7 @@ public final class CustomModel {
     /** Cache individual oriented body cuboids once per frame, before physics updates. */
     public void beginPhysicsFrame() {
         List<CollisionGeometry.Box> boxes = new ArrayList<>();
-        for (BoneKind kind : new BoneKind[]{BoneKind.HEAD, BoneKind.BODY, BoneKind.RIGHT_ARM,
-                BoneKind.LEFT_ARM, BoneKind.RIGHT_LEG, BoneKind.LEFT_LEG}) {
+        for (BoneKind kind : new BoneKind[]{BoneKind.HEAD, BoneKind.BODY}) {
             ModelPart core = parts.get(kind);
             if (core == null || core.cuboids == null) {
                 continue;
