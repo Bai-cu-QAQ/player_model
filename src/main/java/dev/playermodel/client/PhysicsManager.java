@@ -89,15 +89,14 @@ public final class PhysicsManager {
                 accel.x * cos + accel.z * sin,
                 accel.y,
                 -accel.x * sin + accel.z * cos);
+        model.beginPhysicsFrame();
         for (CustomModel.PhysicsBoneRuntime bone : model.physicsBones()) {
             BoneState boneState = state.bones.computeIfAbsent(bone.name().toLowerCase(java.util.Locale.ROOT),
                     key -> new BoneState());
             Quaternionf parent = model.worldRotation(bone.parent());
-            // Twenty half-steps equal ten normal render steps; the smaller integration step removes
-            // the jitter that the 10x response previously caused in the stiff spring.
-            for (int step = 0; step < 20; step++) {
-                boneState.simulate(bone, parent, localAccel, speed, dt * 0.5F, model, step == 0);
-            }
+            // One closed-form step with 10x time gives the same target smoothing as the previous
+            // twenty half-steps without running the per-bone simulation twenty times.
+            boneState.simulate(bone, parent, localAccel, speed, dt * 10.0F, model, true);
         }
     }
 
@@ -248,8 +247,10 @@ public final class PhysicsManager {
          */
         private void resolveContacts(CustomModel model, CustomModel.PhysicsBoneRuntime bone,
                                      Quaternionf parent, float dt, float maxAngle) {
+            float collisionDt = Math.min(dt, 0.05F);
+            List<Vector3f> restPoints = model.restPoints(bone);
             for (int iteration = 0; iteration < 3; iteration++) {
-                List<CustomModel.Contact> contacts = model.contacts(bone);
+                List<CustomModel.Contact> contacts = model.contacts(bone, restPoints);
                 if (contacts.isEmpty()) {
                     return;
                 }
@@ -267,9 +268,9 @@ public final class PhysicsManager {
                 vPitch = clamp(vPitch, -180.0F, 180.0F);
                 vYaw = clamp(vYaw, -180.0F, 180.0F);
                 vRoll = clamp(vRoll, -180.0F, 180.0F);
-                pitch = clamp(pitch + vPitch * dt, -maxAngle, maxAngle);
-                yaw = clamp(yaw + vYaw * dt, -maxAngle, maxAngle);
-                roll = clamp(roll + vRoll * dt, -maxAngle, maxAngle);
+                pitch = clamp(pitch + vPitch * collisionDt, -maxAngle, maxAngle);
+                yaw = clamp(yaw + vYaw * collisionDt, -maxAngle, maxAngle);
+                roll = clamp(roll + vRoll * collisionDt, -maxAngle, maxAngle);
                 applyAngles(bone);
                 vPitch *= 0.35F;
                 vYaw *= 0.35F;

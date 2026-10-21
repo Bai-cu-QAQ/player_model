@@ -195,8 +195,10 @@ public final class CustomModel {
     public record Contact(Vector3f normal, Vector3f point, float depth) {
     }
 
-    /** Contact points for a physics part against core body AABBs. */
-    public List<Contact> contacts(PhysicsBoneRuntime physics) {
+    private List<Aabb> coreCollisionCache;
+
+    /** Build core collision boxes once per rendered frame, before the per-bone physics update. */
+    public void beginPhysicsFrame() {
         List<Aabb> boxes = new ArrayList<>();
         for (BoneKind kind : new BoneKind[]{BoneKind.HEAD, BoneKind.BODY, BoneKind.RIGHT_ARM,
                 BoneKind.LEFT_ARM, BoneKind.RIGHT_LEG, BoneKind.LEFT_LEG}) {
@@ -206,7 +208,32 @@ public final class CustomModel {
                 boxes.add(box);
             }
         }
-        if (boxes.isEmpty()) {
+        coreCollisionCache = boxes;
+    }
+
+    public List<Vector3f> restPoints(PhysicsBoneRuntime physics) {
+        ModelPart part = physics.part();
+        float oldPitch = part.pitch;
+        float oldYaw = part.yaw;
+        float oldRoll = part.roll;
+        part.pitch = 0.0F;
+        part.yaw = 0.0F;
+        part.roll = 0.0F;
+        List<Vector3f> points = partPoints(part);
+        part.pitch = oldPitch;
+        part.yaw = oldYaw;
+        part.roll = oldRoll;
+        return points;
+    }
+
+    /** Contact points for a physics part against core body AABBs. */
+    public List<Contact> contacts(PhysicsBoneRuntime physics) {
+        return contacts(physics, null);
+    }
+
+    public List<Contact> contacts(PhysicsBoneRuntime physics, List<Vector3f> rest) {
+        List<Aabb> boxes = coreCollisionCache;
+        if (boxes == null || boxes.isEmpty()) {
             return List.of();
         }
         ModelPart part = physics.part();
@@ -214,16 +241,9 @@ public final class CustomModel {
         if (current.isEmpty()) {
             return List.of();
         }
-        float oldPitch = part.pitch;
-        float oldYaw = part.yaw;
-        float oldRoll = part.roll;
-        part.pitch = 0.0F;
-        part.yaw = 0.0F;
-        part.roll = 0.0F;
-        List<Vector3f> rest = partPoints(part);
-        part.pitch = oldPitch;
-        part.yaw = oldYaw;
-        part.roll = oldRoll;
+        if (rest == null) {
+            rest = restPoints(physics);
+        }
         List<Contact> contacts = new ArrayList<>();
         int count = Math.min(current.size(), rest.size());
         for (Aabb box : boxes) {
