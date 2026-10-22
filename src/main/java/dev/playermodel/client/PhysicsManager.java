@@ -94,7 +94,7 @@ public final class PhysicsManager {
             Quaternionf parent = model.worldRotation(bone.parent());
             // Twenty half-steps equal ten normal render steps; the smaller integration step removes
             // the jitter that the 10x response previously caused in the stiff spring.
-            for (int step = 0; step < 20; step++) {
+            for (int step = 0; step < 8; step++) {
                 boneState.simulate(bone, parent, localAccel, speed, dt * 0.5F);
             }
         }
@@ -201,13 +201,20 @@ public final class PhysicsManager {
             float targetRoll = clamp(speedLocal.x * gain
                     - clamp(omega.z, -90.0F, 90.0F) * 0.6F
                     - gravity * gravityLocal.x / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
-            float blend = 1.0F - (float) Math.exp(-response * dt);
-            pitch += (targetPitch - pitch) * blend;
-            yaw += (targetYaw - yaw) * blend;
-            roll += (targetRoll - roll) * blend;
-            vPitch = 0.0F;
-            vYaw = 0.0F;
-            vRoll = 0.0F;
+            // Critically damped follow instead of snapping directly to the target. The
+            // previous 20 half-steps effectively reached the target almost instantly.
+            float springOmega = 6.0F + damping * 0.75F;
+            if (cloth) {
+                springOmega *= 0.72F;
+            }
+            float k = springOmega * springOmega;
+            float c = 2.0F * springOmega * (cloth ? 0.72F : 0.82F);
+            vPitch += (k * (targetPitch - pitch) - c * vPitch) * dt;
+            vYaw += (k * (targetYaw - yaw) - c * vYaw) * dt;
+            vRoll += (k * (targetRoll - roll) - c * vRoll) * dt;
+            pitch += vPitch * dt;
+            yaw += vYaw * dt;
+            roll += vRoll * dt;
 
             bone.part().pitch = (float) Math.toRadians(pitch);
             bone.part().yaw = (float) Math.toRadians(yaw);
