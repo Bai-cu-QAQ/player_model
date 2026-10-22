@@ -192,7 +192,11 @@ public final class CustomModel {
         return List.copyOf(physicsBones);
     }
 
-    public record Contact(Vector3f normal, Vector3f point, float depth) {
+    public record Contact(Vector3f normal, Vector3f point, float depth,
+                          Vector3f center, float inverseInertia) {
+    }
+
+    public record CubeBody(Vector3f center, float mass, float inverseInertia) {
     }
 
     private List<CollisionGeometry.Box> coreCollisionCache;
@@ -271,25 +275,31 @@ public final class CustomModel {
                 }
             }
             if (best != null) {
-                contacts.add(new Contact(best.normal(), best.point(), bestDepth));
+                float volume = Math.max(0.001F, currentBox.volume());
+                float mass = Math.max(0.001F, volume);
+                float inertia = Math.max(0.01F, mass * (currentBox.sizeSquared() + 0.05F) / 6.0F);
+                contacts.add(new Contact(best.normal(), best.point(), bestDepth,
+                        currentBox.center(), 1.0F / inertia));
             }
         }
         return contacts;
     }
-    public List<Vector3f> physicsCubeCenters(PhysicsBoneRuntime physics) {
+    public List<CubeBody> physicsCubeBodies(PhysicsBoneRuntime physics) {
         ModelPart part = physics.part();
         if (part.cuboids == null || part.cuboids.isEmpty()) {
             return List.of();
         }
         Matrix4f matrix = partMatrix(part);
-        List<Vector3f> centers = new ArrayList<>();
+        List<CubeBody> bodies = new ArrayList<>();
         for (ModelPart.Cuboid cuboid : part.cuboids) {
             CollisionGeometry.Box box = CollisionGeometry.Box.fromFaces(cuboidFaces(cuboid), matrix);
             if (box != null) {
-                centers.add(box.center());
+                float mass = Math.max(0.001F, box.volume());
+                float inertia = Math.max(0.01F, mass * (box.sizeSquared() + 0.05F) / 6.0F);
+                bodies.add(new CubeBody(box.center(), mass, 1.0F / inertia));
             }
         }
-        return centers;
+        return bodies;
     }
     /** World/model-space pivot of a physics part. */
     public Vector3f physicsPivot(PhysicsBoneRuntime physics) {

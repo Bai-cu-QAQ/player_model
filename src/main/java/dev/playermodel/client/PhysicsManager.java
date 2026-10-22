@@ -336,14 +336,16 @@ public final class PhysicsManager {
         private void applyCubeForces(CustomModel model, CustomModel.PhysicsBoneRuntime bone,
                                      Quaternionf parent, Vector3f accel) {
             Vector3f pivot = model.physicsPivot(bone);
-            Vector3f force = new Vector3f(0.0F, -20.0F, 0.0F).sub(accel);
+            // Gravity is represented by the spring target; cube torque here carries only
+            // parent acceleration so a symmetric rest skirt does not acquire a static tilt.
+            Vector3f force = new Vector3f(accel).negate();
             Quaternionf inverseParent = new Quaternionf(parent).invert();
-            for (Vector3f center : model.physicsCubeCenters(bone)) {
-                Vector3f torque = new Vector3f(center).sub(pivot).cross(force);
+            for (CustomModel.CubeBody body : model.physicsCubeBodies(bone)) {
+                Vector3f torque = new Vector3f(body.center()).sub(pivot).cross(force);
                 inverseParent.transform(torque);
-                vPitch += torque.x * 12.0F;
-                vYaw += torque.y * 12.0F;
-                vRoll += torque.z * 12.0F;
+                vPitch += torque.x * body.inverseInertia() * 24.0F;
+                vYaw += torque.y * body.inverseInertia() * 24.0F;
+                vRoll += torque.z * body.inverseInertia() * 24.0F;
             }
             vPitch = clamp(vPitch, -720.0F, 720.0F);
             vYaw = clamp(vYaw, -720.0F, 720.0F);

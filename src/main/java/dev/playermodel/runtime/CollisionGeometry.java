@@ -241,6 +241,14 @@ final class CollisionGeometry {
             return new Vector3f(center);
         }
 
+        float volume() {
+            return 8.0F * half[0] * half[1] * half[2];
+        }
+
+        float sizeSquared() {
+            return half[0] * half[0] + half[1] * half[1] + half[2] * half[2];
+        }
+
         private float radius(Vector3f axis) {
             return half[0] * Math.abs(axis.dot(axes[0]))
                     + half[1] * Math.abs(axis.dot(axes[1]))
