@@ -276,6 +276,21 @@ public final class CustomModel {
         }
         return contacts;
     }
+    public List<Vector3f> physicsCubeCenters(PhysicsBoneRuntime physics) {
+        ModelPart part = physics.part();
+        if (part.cuboids == null || part.cuboids.isEmpty()) {
+            return List.of();
+        }
+        Matrix4f matrix = partMatrix(part);
+        List<Vector3f> centers = new ArrayList<>();
+        for (ModelPart.Cuboid cuboid : part.cuboids) {
+            CollisionGeometry.Box box = CollisionGeometry.Box.fromFaces(cuboidFaces(cuboid), matrix);
+            if (box != null) {
+                centers.add(box.center());
+            }
+        }
+        return centers;
+    }
     /** World/model-space pivot of a physics part. */
     public Vector3f physicsPivot(PhysicsBoneRuntime physics) {
         Matrix4f parent = partMatrix(physics.parent());

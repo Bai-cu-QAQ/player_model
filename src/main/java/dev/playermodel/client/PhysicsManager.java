@@ -2,7 +2,6 @@ package dev.playermodel.client;
 
 import dev.playermodel.model.PhysicsConfig;
 import dev.playermodel.runtime.CustomModel;
-import dev.playermodel.runtime.ContactSpring;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
@@ -120,7 +119,7 @@ public final class PhysicsManager {
             BoneState parentState = bone.parentPhysics() == null ? null
                     : state.bones.get(bone.parentPhysics().toLowerCase(java.util.Locale.ROOT));
             boneState.capturePrevious();
-            boneState.simulate(bone, parent, accel, speed, dt, parentState);
+            boneState.simulate(model, bone, parent, accel, speed, dt, parentState);
             boneState.resolveContacts(model, bone, parent, dt);
         }
     }
@@ -171,18 +170,19 @@ public final class PhysicsManager {
         float pitch;
         float yaw;
         float roll;
+        float vPitch;
+        float vYaw;
+        float vRoll;
         float prevPitch;
         float prevYaw;
         float prevRoll;
         final Quaternionf previousRender = new Quaternionf();
         final Quaternionf currentRender = new Quaternionf();
         boolean renderInitialized;
-        final ContactSpring contact = new ContactSpring();
-        float contactHold;
         Quaternionf lastParent;
         boolean initialized;
 
-        void simulate(CustomModel.PhysicsBoneRuntime bone, Quaternionf parent, Vector3f accel,
+        void simulate(CustomModel model, CustomModel.PhysicsBoneRuntime bone, Quaternionf parent, Vector3f accel,
                       Vector3f speed, float dt, BoneState parentState) {
             if (!initialized || lastParent == null) {
                 lastParent = new Quaternionf(parent);
@@ -265,9 +265,9 @@ public final class PhysicsManager {
 
         private void updateRender(CustomModel.PhysicsBoneRuntime bone) {
             Quaternionf offset = new Quaternionf().rotationZYX(
-                    (float) Math.toRadians(roll) + contact.position.z,
-                    (float) Math.toRadians(yaw) + contact.position.y,
-                    (float) Math.toRadians(pitch) + contact.position.x);
+                    (float) Math.toRadians(roll),
+                    (float) Math.toRadians(yaw),
+                    (float) Math.toRadians(pitch));
             if (bone.staticRotation() != null) {
                 offset = new Quaternionf(bone.staticRotation()).mul(offset);
             }
@@ -290,12 +290,12 @@ public final class PhysicsManager {
         }
         private void applyAngles(CustomModel.PhysicsBoneRuntime bone) {
             if (bone.staticRotation() == null) {
-                bone.part().pitch = (float) Math.toRadians(pitch) + contact.position.x;
-                bone.part().yaw = (float) Math.toRadians(yaw) + contact.position.y;
-                bone.part().roll = (float) Math.toRadians(roll) + contact.position.z;
+                bone.part().pitch = (float) Math.toRadians(pitch);
+                bone.part().yaw = (float) Math.toRadians(yaw);
+                bone.part().roll = (float) Math.toRadians(roll);
             } else {
-                Quaternionf offset = new Quaternionf().rotationZYX((float) Math.toRadians(roll) + contact.position.z,
-                        (float) Math.toRadians(yaw) + contact.position.y, (float) Math.toRadians(pitch) + contact.position.x);
+                Quaternionf offset = new Quaternionf().rotationZYX((float) Math.toRadians(roll),
+                        (float) Math.toRadians(yaw), (float) Math.toRadians(pitch));
                 Quaternionf composed = new Quaternionf(bone.staticRotation()).mul(offset);
                 Vector3f euler = composed.getEulerAnglesZYX(new Vector3f());
                 bone.part().pitch = euler.x;
@@ -313,39 +313,41 @@ public final class PhysicsManager {
             if ("cloth".equalsIgnoreCase(bone.settings().mode) && bone.parentPhysics() != null) {
                 return;
             }
-            // A persistent offset survives the next motion update. The old solver discarded its
-            // impulse every frame, causing a spring/contact tug-of-war and visible chatter.
-            Vector3f target = new Vector3f(contact.position);
-            List<Vector3f> rest = model.restPoints(bone);
-            List<CustomModel.Contact> contacts = model.contacts(bone, rest);
-            if (contacts.isEmpty()) {
-                contactHold = Math.max(0.0F, contactHold - dt);
-                if (contactHold == 0.0F) target.zero();
-            } else {
-                contactHold = 0.08F;
-                Vector3f correction = new Vector3f();
-                Vector3f pivot = model.physicsPivot(bone);
-                Quaternionf frame = new Quaternionf(parent);
-                if (bone.staticRotation() != null) frame.mul(bone.staticRotation());
-                frame.invert();
-                for (CustomModel.Contact c : contacts) {
-                    Vector3f lever = new Vector3f(c.point()).sub(pivot);
-                    Vector3f delta = ContactSpring.correction(lever, c.normal(), c.depth());
-                    frame.transform(delta);
-                    correction.add(delta);
-                }
-                // Smooth bounded correction, not an assigned collision angle or a rest-pose snap.
-                correction.div(Math.max(1, contacts.size()));
-                float length = correction.length();
-                if (length > 0.12F) correction.mul(0.12F / length);
-                target.add(correction);
+            Vector3f pivot = model.physicsPivot(bone);
+            Quaternionf inverseParent = new Quaternionf(parent).invert();
+            for (CustomModel.Contact c : model.contacts(bone)) {
+                Vector3f lever = new Vector3f(c.point()).sub(pivot);
+                Vector3f torque = lever.cross(c.normal());
+                inverseParent.transform(torque);
+                float impulse = Math.min(0.25F, c.depth()) * 1200.0F;
+                vPitch += torque.x * impulse;
+                vYaw += torque.y * impulse;
+                vRoll += torque.z * impulse;
             }
-            contact.advance(target, Math.min(dt, 0.05F), contacts.isEmpty() ? 5.0F : 10.0F);
-            float limit = (float) Math.toRadians(bone.settings().maxAngle(70.0F));
-            if (contact.position.length() > limit) {
-                contact.position.normalize(limit);
-            }
+            vPitch = clamp(vPitch, -720.0F, 720.0F);
+            vYaw = clamp(vYaw, -720.0F, 720.0F);
+            vRoll = clamp(vRoll, -720.0F, 720.0F);
+            pitch = clamp(pitch + vPitch * dt, -bone.settings().maxAngle(70.0F), bone.settings().maxAngle(70.0F));
+            yaw = clamp(yaw + vYaw * dt, -bone.settings().maxAngle(70.0F), bone.settings().maxAngle(70.0F));
+            roll = clamp(roll + vRoll * dt, -bone.settings().maxAngle(70.0F), bone.settings().maxAngle(70.0F));
             applyAngles(bone);
+        }
+
+        private void applyCubeForces(CustomModel model, CustomModel.PhysicsBoneRuntime bone,
+                                     Quaternionf parent, Vector3f accel) {
+            Vector3f pivot = model.physicsPivot(bone);
+            Vector3f force = new Vector3f(0.0F, -20.0F, 0.0F).sub(accel);
+            Quaternionf inverseParent = new Quaternionf(parent).invert();
+            for (Vector3f center : model.physicsCubeCenters(bone)) {
+                Vector3f torque = new Vector3f(center).sub(pivot).cross(force);
+                inverseParent.transform(torque);
+                vPitch += torque.x * 12.0F;
+                vYaw += torque.y * 12.0F;
+                vRoll += torque.z * 12.0F;
+            }
+            vPitch = clamp(vPitch, -720.0F, 720.0F);
+            vYaw = clamp(vYaw, -720.0F, 720.0F);
+            vRoll = clamp(vRoll, -720.0F, 720.0F);
         }
         private static Vector3f parentAngularVelocity(Quaternionf current, Quaternionf last, float dt) {
             Quaternionf delta = new Quaternionf(current).mul(new Quaternionf(last).invert());

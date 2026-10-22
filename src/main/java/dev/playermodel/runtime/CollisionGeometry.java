@@ -237,6 +237,10 @@ final class CollisionGeometry {
             return new Hit(normal, null, overlap);
         }
 
+        Vector3f center() {
+            return new Vector3f(center);
+        }
+
         private float radius(Vector3f axis) {
             return half[0] * Math.abs(axis.dot(axes[0]))
                     + half[1] * Math.abs(axis.dot(axes[1]))
