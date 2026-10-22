@@ -20,6 +20,8 @@ import java.util.UUID;
  */
 public final class PhysicsManager {
     private static final float MAX_DT = 0.05F;
+    private static final float FIXED_STEP = 1.0F / 120.0F;
+    private static final int MAX_STEPS = 8;
     private final Map<UUID, PlayerState> players = new HashMap<>();
 
     public void update(AbstractClientPlayerEntity player, CustomModel model, long nowNanos) {
@@ -91,17 +93,37 @@ public final class PhysicsManager {
                 accel.y,
                 -accel.x * sin + accel.z * cos);
         model.beginPhysicsFrame();
+        state.accumulator += dt;
+        int steps = 0;
+        while (state.accumulator >= FIXED_STEP && steps < MAX_STEPS) {
+            stepPhysics(model, state, localAccel, speed, FIXED_STEP);
+            state.accumulator -= FIXED_STEP;
+            steps++;
+        }
+        if (steps == MAX_STEPS) {
+            state.accumulator = Math.min(state.accumulator, FIXED_STEP);
+        }
+        float alpha = MathHelper.clamp(state.accumulator / FIXED_STEP, 0.0F, 1.0F);
+        for (CustomModel.PhysicsBoneRuntime bone : model.physicsBones()) {
+            BoneState boneState = state.bones.get(bone.name().toLowerCase(java.util.Locale.ROOT));
+            if (boneState != null) {
+                boneState.applyRender(bone, alpha);
+            }
+        }
+    }
+    private void stepPhysics(CustomModel model, PlayerState state, Vector3f accel,
+                              Vector3f speed, float dt) {
         for (CustomModel.PhysicsBoneRuntime bone : model.physicsBones()) {
             BoneState boneState = state.bones.computeIfAbsent(bone.name().toLowerCase(java.util.Locale.ROOT),
                     key -> new BoneState());
             Quaternionf parent = model.worldRotation(bone.parent());
             BoneState parentState = bone.parentPhysics() == null ? null
                     : state.bones.get(bone.parentPhysics().toLowerCase(java.util.Locale.ROOT));
-            boneState.simulate(bone, parent, localAccel, speed, dt, parentState);
+            boneState.capturePrevious();
+            boneState.simulate(bone, parent, accel, speed, dt, parentState);
             boneState.resolveContacts(model, bone, parent, dt);
         }
     }
-
     public void reset(UUID uuid) {
         players.remove(uuid);
     }
@@ -118,6 +140,7 @@ public final class PhysicsManager {
         Vec3d samplePos;
         long sampleNanos;
         long lastLogNanos;
+        float accumulator;
         Vector3f smoothedSpeed = new Vector3f();
         final Map<String, BoneState> bones = new HashMap<>();
 
@@ -129,6 +152,7 @@ public final class PhysicsManager {
             this.samplePos = null;
             this.sampleNanos = 0L;
             this.lastLogNanos = 0L;
+            this.accumulator = 0.0F;
             this.smoothedSpeed = new Vector3f();
             this.bones.clear();
         }
@@ -150,6 +174,9 @@ public final class PhysicsManager {
         float prevPitch;
         float prevYaw;
         float prevRoll;
+        final Quaternionf previousRender = new Quaternionf();
+        final Quaternionf currentRender = new Quaternionf();
+        boolean renderInitialized;
         final ContactSpring contact = new ContactSpring();
         float contactHold;
         Quaternionf lastParent;
@@ -232,6 +259,35 @@ public final class PhysicsManager {
             lastParent.set(parent);
         }
 
+        void capturePrevious() {
+            previousRender.set(currentRender);
+        }
+
+        private void updateRender(CustomModel.PhysicsBoneRuntime bone) {
+            Quaternionf offset = new Quaternionf().rotationZYX(
+                    (float) Math.toRadians(roll) + contact.position.z,
+                    (float) Math.toRadians(yaw) + contact.position.y,
+                    (float) Math.toRadians(pitch) + contact.position.x);
+            if (bone.staticRotation() != null) {
+                offset = new Quaternionf(bone.staticRotation()).mul(offset);
+            }
+            currentRender.set(offset);
+            if (!renderInitialized) {
+                previousRender.set(offset);
+                renderInitialized = true;
+            }
+        }
+
+        void applyRender(CustomModel.PhysicsBoneRuntime bone, float alpha) {
+            if (!renderInitialized) {
+                return;
+            }
+            Quaternionf interpolated = new Quaternionf(previousRender).slerp(currentRender, alpha);
+            Vector3f euler = interpolated.getEulerAnglesZYX(new Vector3f());
+            bone.part().pitch = euler.x;
+            bone.part().yaw = euler.y;
+            bone.part().roll = euler.z;
+        }
         private void applyAngles(CustomModel.PhysicsBoneRuntime bone) {
             if (bone.staticRotation() == null) {
                 bone.part().pitch = (float) Math.toRadians(pitch) + contact.position.x;
