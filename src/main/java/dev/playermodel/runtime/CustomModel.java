@@ -235,32 +235,47 @@ public final class CustomModel {
             return List.of();
         }
         ModelPart part = physics.part();
-        List<Vector3f> current = partPoints(part);
-        if (current.isEmpty()) {
+        if (part.cuboids == null || part.cuboids.isEmpty()) {
             return List.of();
         }
-        if (rest == null) {
-            rest = restPoints(physics);
+        Matrix4f currentMatrix = partMatrix(part);
+        Matrix4f restMatrix = CollisionGeometry.restTransform(partMatrix(physics.parent()),
+                new Vector3f(part.pivotX, part.pivotY, part.pivotZ), physics.staticRotation(),
+                new Vector3f(part.xScale, part.yScale, part.zScale));
+        List<CollisionGeometry.Box> current = new ArrayList<>();
+        List<CollisionGeometry.Box> restBoxes = new ArrayList<>();
+        for (ModelPart.Cuboid cuboid : part.cuboids) {
+            current.add(CollisionGeometry.Box.fromFaces(cuboidFaces(cuboid), currentMatrix));
+            restBoxes.add(CollisionGeometry.Box.fromFaces(cuboidFaces(cuboid), restMatrix));
         }
         List<Contact> contacts = new ArrayList<>();
-        int count = Math.min(current.size(), rest.size());
-        for (CollisionGeometry.Box box : boxes) {
-            Contact best = null;
-            for (int i = 0; i < count; i++) {
-                CollisionGeometry.Penetration currentHit = box.penetration(current.get(i));
-                float restDepth = box.penetration(rest.get(i)).depth();
-                float depth = CollisionGeometry.excessDepth(currentHit.depth(), restDepth);
-                if (depth > 0.0F && (best == null || depth > best.depth())) {
-                    best = new Contact(currentHit.normal(), new Vector3f(current.get(i)), depth);
+        for (int i = 0; i < current.size(); i++) {
+            CollisionGeometry.Box currentBox = current.get(i);
+            CollisionGeometry.Box restBox = restBoxes.get(i);
+            if (currentBox == null) {
+                continue;
+            }
+            CollisionGeometry.Hit best = null;
+            float bestDepth = 0.0F;
+            for (CollisionGeometry.Box core : boxes) {
+                CollisionGeometry.Hit hit = currentBox.intersect(core);
+                if (hit == null) {
+                    continue;
+                }
+                CollisionGeometry.Hit restHit = restBox == null ? null : restBox.intersect(core);
+                float restDepth = restHit == null ? 0.0F : restHit.depth();
+                float depth = CollisionGeometry.excessDepth(hit.depth(), restDepth);
+                if (depth > bestDepth) {
+                    bestDepth = depth;
+                    best = hit;
                 }
             }
             if (best != null) {
-                contacts.add(best);
+                contacts.add(new Contact(best.normal(), best.point(), bestDepth));
             }
         }
         return contacts;
     }
-
     /** World/model-space pivot of a physics part. */
     public Vector3f physicsPivot(PhysicsBoneRuntime physics) {
         Matrix4f parent = partMatrix(physics.parent());

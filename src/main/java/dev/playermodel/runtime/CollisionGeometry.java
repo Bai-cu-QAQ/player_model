@@ -48,22 +48,28 @@ final class CollisionGeometry {
     record Penetration(Vector3f normal, float depth) {
     }
 
+    record Hit(Vector3f normal, Vector3f point, float depth) {
+    }
+
     /**
      * A cuboid in its own oriented coordinates. Quad edges retain imported element rotation;
      * the inverse transform also retains core/ancestor rotation and nonuniform scale.
      */
     static final class Box {
+        private static final float EPS = 1.0E-5F;
         private final Matrix4f localFromWorld;
         private final Vector3f min;
         private final Vector3f max;
         private final Vector3f[] normals;
         private final float[] normalLengths;
+        private final Vector3f center;
+        private final Vector3f[] axes;
+        private final float[] half;
 
         private Box(Matrix4f worldFromLocal, Vector3f min, Vector3f max) {
             this.localFromWorld = new Matrix4f(worldFromLocal).invert();
             this.min = min;
             this.max = max;
-            // Rows of the inverse are inverse-transpose transformed local face normals.
             normals = new Vector3f[]{
                     new Vector3f(localFromWorld.m00(), localFromWorld.m10(), localFromWorld.m20()),
                     new Vector3f(localFromWorld.m01(), localFromWorld.m11(), localFromWorld.m21()),
@@ -71,7 +77,29 @@ final class CollisionGeometry {
             normalLengths = new float[3];
             for (int axis = 0; axis < 3; axis++) {
                 normalLengths[axis] = normals[axis].length();
-                normals[axis].div(normalLengths[axis]);
+                if (normalLengths[axis] > EPS) {
+                    normals[axis].div(normalLengths[axis]);
+                } else {
+                    normals[axis].set(0.0F);
+                }
+            }
+            center = worldFromLocal.transformPosition(new Vector3f(
+                    (min.x + max.x) * 0.5F, (min.y + max.y) * 0.5F, (min.z + max.z) * 0.5F));
+            axes = new Vector3f[]{
+                    new Vector3f(worldFromLocal.m00(), worldFromLocal.m10(), worldFromLocal.m20()),
+                    new Vector3f(worldFromLocal.m01(), worldFromLocal.m11(), worldFromLocal.m21()),
+                    new Vector3f(worldFromLocal.m02(), worldFromLocal.m12(), worldFromLocal.m22())};
+            half = new float[3];
+            for (int axis = 0; axis < 3; axis++) {
+                half[axis] = (max.get(axis) - min.get(axis)) * 0.5F;
+                float length = axes[axis].length();
+                if (length > EPS) {
+                    axes[axis].div(length);
+                    half[axis] *= length;
+                } else {
+                    axes[axis].set(0.0F);
+                    half[axis] = 0.0F;
+                }
             }
         }
 
@@ -108,9 +136,12 @@ final class CollisionGeometry {
                     max.max(local);
                 }
             }
+            if (max.x - min.x <= 1.0E-6F && max.y - min.y <= 1.0E-6F
+                    && max.z - min.z <= 1.0E-6F) {
+                return null;
+            }
             Matrix4f worldFromLocal = new Matrix4f(worldFromPart).mul(partFromLocal);
-            if (max.x - min.x <= 1.0E-6F || max.y - min.y <= 1.0E-6F
-                    || max.z - min.z <= 1.0E-6F || !Float.isFinite(worldFromLocal.determinant())
+            if (!Float.isFinite(worldFromLocal.determinant())
                     || Math.abs(worldFromLocal.determinant()) < 1.0E-12F) {
                 return null;
             }
@@ -126,6 +157,7 @@ final class CollisionGeometry {
             float best = Float.POSITIVE_INFINITY;
             Vector3f normal = new Vector3f();
             for (int axis = 0; axis < 3; axis++) {
+                if (normalLengths[axis] <= EPS) continue;
                 float lower = (point.get(axis) - min.get(axis)) / normalLengths[axis];
                 float upper = (max.get(axis) - point.get(axis)) / normalLengths[axis];
                 if (lower < best) {
@@ -139,5 +171,75 @@ final class CollisionGeometry {
             }
             return new Penetration(normal, best);
         }
-    }
-}
+
+        /** 15-axis SAT. Returns null when separated; normal points from other toward this box. */
+        Hit intersect(Box other) {
+            // Two coplanar flat cubes have no shared volume; do not turn their plane overlap
+            // into a collision on one of the remaining axes.
+            for (int i = 0; i < 3; i++) {
+                if (half[i] > EPS) continue;
+                for (int j = 0; j < 3; j++) {
+                    if (other.half[j] <= EPS
+                            && Math.abs(axes[i].dot(other.axes[j])) > 0.999F) {
+                        return null;
+                    }
+                }
+            }
+            Vector3f delta = new Vector3f(center).sub(other.center);
+            float bestDepth = Float.POSITIVE_INFINITY;
+            Vector3f bestAxis = null;
+            for (int i = 0; i < 3; i++) {
+                Hit hit = testAxis(axes[i], delta, other, bestDepth, bestAxis);
+                if (hit == null) return null;
+                if (hit.depth() < bestDepth) {
+                    bestDepth = hit.depth();
+                    bestAxis = hit.normal();
+                }
+            }
+            for (int i = 0; i < 3; i++) {
+                Hit hit = testAxis(other.axes[i], delta, other, bestDepth, bestAxis);
+                if (hit == null) return null;
+                if (hit.depth() < bestDepth) {
+                    bestDepth = hit.depth();
+                    bestAxis = hit.normal();
+                }
+            }
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 3; j++) {
+                    Vector3f axis = new Vector3f(axes[i]).cross(other.axes[j]);
+                    if (axis.lengthSquared() <= 1.0E-12F) continue;
+                    axis.normalize();
+                    Hit hit = testAxis(axis, delta, other, bestDepth, bestAxis);
+                    if (hit == null) return null;
+                    if (hit.depth() < bestDepth) {
+                        bestDepth = hit.depth();
+                        bestAxis = hit.normal();
+                    }
+                }
+            }
+            if (bestAxis == null) return null;
+            Vector3f point = new Vector3f(center).fma(-radius(bestAxis), bestAxis);
+            return new Hit(bestAxis, point, bestDepth);
+        }
+
+        private Hit testAxis(Vector3f axis, Vector3f delta, Box other,
+                             float bestDepth, Vector3f bestAxis) {
+            float radiusA = radius(axis);
+            float radiusB = other.radius(axis);
+            if (radiusA <= EPS && radiusB <= EPS) {
+                return new Hit(new Vector3f(), null, Float.POSITIVE_INFINITY); // both flat on this axis
+            }
+            float distance = Math.abs(delta.dot(axis));
+            float overlap = radiusA + radiusB - distance;
+            if (overlap <= 0.0F) return null;
+            Vector3f normal = new Vector3f(axis);
+            if (delta.dot(axis) < 0.0F) normal.negate();
+            return new Hit(normal, null, overlap);
+        }
+
+        private float radius(Vector3f axis) {
+            return half[0] * Math.abs(axis.dot(axes[0]))
+                    + half[1] * Math.abs(axis.dot(axes[1]))
+                    + half[2] * Math.abs(axis.dot(axes[2]));
+        }
+    }}
