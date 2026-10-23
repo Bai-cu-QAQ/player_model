@@ -215,6 +215,11 @@ public final class PhysicsManager {
             pitch += vPitch * dt;
             yaw += vYaw * dt;
             roll += vRoll * dt;
+            // Independent angular air drag, applied after the spring step.
+            float air = (float) Math.exp(-settings.airDrag(2.0F) * dt);
+            vPitch *= air;
+            vYaw *= air;
+            vRoll *= air;
 
             Quaternionf offset = new Quaternionf().rotationZYX((float) Math.toRadians(roll),
                     (float) Math.toRadians(yaw), (float) Math.toRadians(pitch));
