@@ -273,11 +273,11 @@ public final class PhysicsManager {
                         ? new Quaternionf() : new Quaternionf(bone.staticRotation());
                 Quaternionf localOffset = staticFrame.invert().mul(rootOffset).mul(staticFrame);
                 Vector3f childEuler = localOffset.getEulerAnglesZYX(new Vector3f());
-                desiredPitch = (float) Math.toDegrees(childEuler.x);
+                desiredPitch = clamp((float) Math.toDegrees(childEuler.x), -maxAngle, maxAngle);
                 // Mirrored hair branches must not inherit a shared yaw, or one branch swings
                 // inward through the head. Pitch/roll carry the trailing motion here.
                 desiredYaw = 0.0F;
-                desiredRoll = (float) Math.toDegrees(childEuler.z);
+                desiredRoll = clamp((float) Math.toDegrees(childEuler.z), -maxAngle, maxAngle);
             }
             float targetBlend = 1.0F - (float) Math.exp(-settings.targetResponse(1.0F) * dt);
             targetPitch += (desiredPitch - targetPitch) * targetBlend;
