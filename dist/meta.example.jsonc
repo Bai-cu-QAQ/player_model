@@ -107,6 +107,9 @@
       // 父骨骼纯动画（无移动速度）时的角速度影响倍率。
       "animationForce": 1.0,
 
+      // 目标角度低通响应速度；越小越不容易快速反向归位。
+      "targetResponse": 4.0,
+
       // 按轴禁用主动物理。
       "disablePitch": false,
       "disableYaw": false,

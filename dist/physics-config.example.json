@@ -21,6 +21,8 @@
       "clothSpeedScale": 0.8,
       "liftScale": 1.25,
       "airDrag": 2.0,
+      "animationForce": 1.0,
+      "targetResponse": 4.0,
       "pitchOmegaScale": 0.6,
       "yawOmegaScale": 0.4,
       "rollOmegaScale": 0.6,

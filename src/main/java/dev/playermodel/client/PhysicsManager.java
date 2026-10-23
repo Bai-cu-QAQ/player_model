@@ -149,6 +149,9 @@ public final class PhysicsManager {
         float vPitch;
         float vYaw;
         float vRoll;
+        float targetPitch;
+        float targetYaw;
+        float targetRoll;
         Quaternionf lastParent;
         boolean initialized;
 
@@ -195,13 +198,19 @@ public final class PhysicsManager {
             float animationForce = settings.animationForce(1.0F);
             float externalPitch = accelLocal.z * inertiaScale * 0.35F;
             float externalRoll = -accelLocal.x * inertiaScale * 0.35F;
-            float targetPitch = clamp(speedLocal.z * gain + externalPitch
+            float desiredPitch = clamp(speedLocal.z * gain + externalPitch
                     - clamp(omega.x, -90.0F, 90.0F) * settings.pitchOmegaScale(0.6F) * inertiaScale * animationForce
                     + gravity * gravityLocal.z / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
-            float targetYaw = clamp(-clamp(omega.y, -90.0F, 90.0F) * settings.yawOmegaScale(0.4F) * inertiaScale * animationForce + wind, -maxAngle, maxAngle);
-            float targetRoll = clamp(speedLocal.x * gain + externalRoll
+            float desiredYaw = clamp(-clamp(omega.y, -90.0F, 90.0F) * settings.yawOmegaScale(0.4F) * inertiaScale * animationForce + wind, -maxAngle, maxAngle);
+            float desiredRoll = clamp(speedLocal.x * gain + externalRoll
                     - clamp(omega.z, -90.0F, 90.0F) * settings.rollOmegaScale(0.6F) * inertiaScale * animationForce
                     - gravity * gravityLocal.x / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
+            // Low-pass the desired angle before the spring. A quick direction change then carries
+            // the old target for a few steps instead of snapping to the new direction.
+            float targetBlend = 1.0F - (float) Math.exp(-settings.targetResponse(4.0F) * dt);
+            targetPitch += (desiredPitch - targetPitch) * targetBlend;
+            targetYaw += (desiredYaw - targetYaw) * targetBlend;
+            targetRoll += (desiredRoll - targetRoll) * targetBlend;
             // Critically damped follow instead of snapping directly to the target. The
             // previous 20 half-steps effectively reached the target almost instantly.
             float springOmega = settings.springBase(6.0F)
