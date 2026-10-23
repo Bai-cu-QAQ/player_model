@@ -34,7 +34,26 @@ public final class PhysicsConfig {
     }
 
     public static final class Settings {
-        public String mode = "pendulum";
+        /** Null inherits the model default; the runtime falls back to pendulum. */
+        public String mode;
+        /** Movement-driven force multiplier (default 1). */
+        public Float motionStrength;
+        /** Acceleration-driven force multiplier (default 0.12). */
+        public Float accelerationStrength;
+        /** Restoring spring response per second (default 8). */
+        public Float restResponse;
+        /** Swing damping ratio (default 0.9). */
+        public Float swingDamping;
+        /** Cloth restoring-response multiplier (default 0.8). */
+        public Float clothResponseScale;
+        /** Angular air resistance per second (default 1.5). */
+        public Float airResistance;
+        /** Maximum angular speed in degrees per second (default 360). */
+        public Float maxAngularSpeed;
+        /** Force low-pass response per second (default 10). */
+        public Float forceSmoothing;
+        /** Parent rotation inertia multiplier (default 0.7). */
+        public Float angularInertia;
         public Float stiffness;
         public Float damping;
         public Float gravity;
@@ -83,6 +102,15 @@ public final class PhysicsConfig {
         public Settings copy() {
             Settings s = new Settings();
             s.mode = mode;
+            s.motionStrength = motionStrength;
+            s.accelerationStrength = accelerationStrength;
+            s.restResponse = restResponse;
+            s.swingDamping = swingDamping;
+            s.clothResponseScale = clothResponseScale;
+            s.airResistance = airResistance;
+            s.maxAngularSpeed = maxAngularSpeed;
+            s.forceSmoothing = forceSmoothing;
+            s.angularInertia = angularInertia;
             s.stiffness = stiffness;
             s.damping = damping;
             s.gravity = gravity;
@@ -119,6 +147,15 @@ public final class PhysicsConfig {
             if (o.mode != null) {
                 mode = o.mode;
             }
+            if (o.motionStrength != null) motionStrength = o.motionStrength;
+            if (o.accelerationStrength != null) accelerationStrength = o.accelerationStrength;
+            if (o.restResponse != null) restResponse = o.restResponse;
+            if (o.swingDamping != null) swingDamping = o.swingDamping;
+            if (o.clothResponseScale != null) clothResponseScale = o.clothResponseScale;
+            if (o.airResistance != null) airResistance = o.airResistance;
+            if (o.maxAngularSpeed != null) maxAngularSpeed = o.maxAngularSpeed;
+            if (o.forceSmoothing != null) forceSmoothing = o.forceSmoothing;
+            if (o.angularInertia != null) angularInertia = o.angularInertia;
             if (o.stiffness != null) {
                 stiffness = o.stiffness;
             }
@@ -161,6 +198,48 @@ public final class PhysicsConfig {
             if (o.clothStiffnessScale != null) clothStiffnessScale = o.clothStiffnessScale;
             if (o.clothDampingScale != null) clothDampingScale = o.clothDampingScale;
             if (o.clothMaxAngleScale != null) clothMaxAngleScale = o.clothMaxAngleScale;
+        }
+
+        public float motionStrength(float fallback) {
+            return bounded(motionStrength, fallback, 1.0F, 0.0F, 10.0F);
+        }
+
+        public float accelerationStrength(float fallback) {
+            return bounded(accelerationStrength, fallback, 0.12F, 0.0F, 10.0F);
+        }
+
+        public float restResponse(float fallback) {
+            return bounded(restResponse, fallback, 8.0F, 0.1F, 40.0F);
+        }
+
+        public float swingDamping(float fallback) {
+            return bounded(swingDamping, fallback, 0.9F, 0.1F, 4.0F);
+        }
+
+        public float clothResponseScale(float fallback) {
+            return bounded(clothResponseScale, fallback, 0.8F, 0.1F, 2.0F);
+        }
+
+        public float airResistance(float fallback) {
+            return bounded(airResistance, fallback, 1.5F, 0.0F, 30.0F);
+        }
+
+        public float maxAngularSpeed(float fallback) {
+            return bounded(maxAngularSpeed, fallback, 360.0F, 1.0F, 1440.0F);
+        }
+
+        public float forceSmoothing(float fallback) {
+            return bounded(forceSmoothing, fallback, 10.0F, 0.1F, 60.0F);
+        }
+
+        public float angularInertia(float fallback) {
+            return bounded(angularInertia, fallback, 0.7F, 0.0F, 2.0F);
+        }
+
+        private static float bounded(Float value, float fallback, float defaultValue, float min, float max) {
+            float resolved = value != null && Float.isFinite(value) ? value : fallback;
+            if (!Float.isFinite(resolved)) resolved = defaultValue;
+            return Math.max(min, Math.min(max, resolved));
         }
 
         public float stiffness(float fallback) {

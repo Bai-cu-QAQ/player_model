@@ -116,12 +116,18 @@ body
 "physics": {
   "defaultSettings": {
     "mode": "pendulum",
-    "stiffness": 90,
-    "damping": 14,
-    "gravity": 0.6,
-    "inertia": 0.8,
-    "maxAngle": 55,
-    "wind": 0.0
+    "motionStrength": 1.0,
+    "accelerationStrength": 0.12,
+    "restResponse": 8.0,
+    "swingDamping": 0.9,
+    "airResistance": 1.5,
+    "forceSmoothing": 10.0,
+    "angularInertia": 0.7,
+    "maxAngularSpeed": 360,
+    "clothResponseScale": 0.8,
+    "gravity": 0.8,
+    "maxAngle": 70,
+    "substeps": 8
   },
   "bones": {
     "skirt_physics": {
@@ -132,7 +138,11 @@ body
 }
 ```
 
-`cloth` 需要至少两个连续的 `_physics` 骨骼；单骨骼使用 `cloth` 时会按 `pendulum` 处理。物理只做视觉，碰撞第一阶段不做，不隐藏原版披风。
+`cloth` 子段在统一模型坐标系中保留独立角速度和滞后，不复制父级 Euler 角，也不禁用 yaw/roll。最终姿态通过实际父级旋转的逆变换计算，防止静态旋转镜像的分支外张或重复叠加。物理只做视觉，本分支不添加碰撞，也不隐藏原版披风。
+
+物理按真实经过时间推进；`substeps` 只提高积分精度，不再让物理时间加速。积分自动限制为不大于 1/240 秒的小步。`restResponse` 越高跟随越快，`swingDamping` 越高越不容易回弹，`forceSmoothing` 越小输入变化越柔和。纯动画旋转也可触发物理；本地界面打开时忽略动画旋转输入，避免背包预览注入假旋转。
+
+完整注释模板为 `dist/meta.example.jsonc`，严格 JSON 示例为 `dist/physics-config.example.json`。`meta.json` 支持行注释和块注释。只需把模板中的 `physics` 合并到原有模型配置，不必覆盖贴图/锚点设置。旧 `springBase`、`dampingRatio`、`targetResponse`、`pitchOmegaScale` 等保留解析但不再驱动新解算；请迁移到新参数。`airDrag` 为 `airResistance` 未设置时的兼容回退。
 
 ### 3.3 演示模型
 

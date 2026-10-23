@@ -2,341 +2,172 @@ package dev.playermodel.client;
 
 import dev.playermodel.model.PhysicsConfig;
 import dev.playermodel.runtime.CustomModel;
+import dev.playermodel.util.AngularMotion;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
-import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
-/**
- * Client-side secondary motion for {@code _physics} bones. The parent core bones already contain
- * EMF/vanilla animation; this only adds a local spring/cloth offset on top of them.
- */
+/** Secondary motion integrated once in real time, independently of render poses and static axes. */
 public final class PhysicsManager {
-    private static final float MAX_DT = 0.05F;
     private final Map<UUID, PlayerState> players = new HashMap<>();
 
-    public void update(AbstractClientPlayerEntity player, CustomModel model, long nowNanos) {
+    public void update(AbstractClientPlayerEntity player, CustomModel model, long now) {
         PlayerState state = players.computeIfAbsent(player.getUuid(), key -> new PlayerState());
-        if (state.model != model) {
-            state.reset(model);
+        Vec3d position = player.getPos();
+        boolean screen = MinecraftClient.getInstance().currentScreen != null
+                && player == MinecraftClient.getInstance().player;
+        if (state.model != model || state.position == null
+                || position.squaredDistanceTo(state.position) > 16 || now - state.time > 500_000_000L) {
+            state.reset(model, position, now);
         }
-        Vec3d pos = player.getPos();
-        if (state.lastPos != null && pos.squaredDistanceTo(state.lastPos) > 16.0) {
-            state.reset(model);
-        }
+        float elapsed = (now - state.time) / 1_000_000_000F;
+        state.time = now;
+        if (elapsed <= 0) return;
+        float dt = Math.min(elapsed, .05F);
 
-        long last = state.lastNanos;
-        state.lastNanos = nowNanos;
-        if (last == 0L) {
-            state.captureParents(model);
-            state.lastVelocity = Vec3d.ZERO;
-            state.lastPos = pos;
-            state.samplePos = pos;
-            state.sampleNanos = nowNanos;
-            return;
+        // Estimate translation over a tick-sized window, not a second derivative of render deltas.
+        if (now - state.sampleTime >= 50_000_000L) {
+            float interval = (now - state.sampleTime) / 1_000_000_000F;
+            Vec3d v = position.subtract(state.samplePosition).multiply(1.0 / interval);
+            Vector3f next = new Vector3f((float) v.x, (float) -v.y, (float) -v.z);
+            state.acceleration.set(next).sub(state.sampleVelocity).div(interval);
+            cap(state.acceleration, 30);
+            state.sampleVelocity.set(next);
+            state.sampleTime = now;
+            state.samplePosition = position;
         }
-        float dt = (nowNanos - last) / 1_000_000_000.0F;
-        if (dt <= 0.0F) {
-            return;
-        }
-        dt = Math.min(dt, MAX_DT);
+        state.position = position;
+        state.velocity.lerp(state.sampleVelocity, blend(10, dt));
+        state.smoothAcceleration.lerp(state.acceleration, blend(8, dt));
+        // Minecraft model coordinates have +Y down; body yaw rotates the model outside ModelPart.
+        Quaternionf body = new Quaternionf().rotationY((float) Math.toRadians(player.getBodyYaw()));
+        Vector3f speed = new Quaternionf(body).invert().transform(new Vector3f(state.velocity));
+        Vector3f accel = new Quaternionf(body).invert().transform(new Vector3f(state.smoothAcceleration));
+        cap(speed, 12.5F);
 
-        float yawNow = player.getYaw();
-        float pitchNow = player.getPitch();
-        boolean screenOpen = MinecraftClient.getInstance().currentScreen != null;
-        if (screenOpen) {
-            // Opening a screen must not accumulate hidden camera movement and then kick the
-            // physics when it closes.
-            state.lastYaw = yawNow;
-            state.lastPitch = pitchNow;
-            state.yawVelocity = 0.0F;
-            state.pitchVelocity = 0.0F;
-        } else {
-            if (!Float.isNaN(state.lastYaw)) {
-                float deltaYaw = MathHelper.wrapDegrees(yawNow - state.lastYaw);
-                state.yawVelocity = MathHelper.lerp(0.35F, state.yawVelocity, deltaYaw / dt);
-            }
-            state.lastYaw = yawNow;
-            if (!Float.isNaN(state.lastPitch)) {
-                float deltaPitch = pitchNow - state.lastPitch;
-                state.pitchVelocity = MathHelper.lerp(0.35F, state.pitchVelocity, deltaPitch / dt);
-            }
-            state.lastPitch = pitchNow;
-        }
+        List<CustomModel.PhysicsBoneRuntime> ordered = new ArrayList<>();
+        Map<String, CustomModel.PhysicsBoneRuntime> byName = new HashMap<>();
+        for (var bone : model.physicsBones()) byName.put(key(bone.name()), bone);
+        Set<String> visited = new HashSet<>();
+        for (var bone : model.physicsBones()) order(bone, byName, visited, ordered);
 
-        Vec3d previousPos = state.lastPos == null ? pos : state.lastPos;
-        Vec3d rawVelocity = pos.subtract(previousPos).multiply(1.0 / dt);
-        state.lastPos = pos;
+        // Build animation-only frames BEFORE simulating any bone. A child must never differentiate
+        // its parent's secondary motion as a new animation force (positive feedback).
+        Map<String, Quaternionf> frames = new HashMap<>();
+        for (var bone : ordered) {
+            Quaternionf parent = bone.parentPhysics() == null ? model.worldRotation(bone.parent())
+                    : frames.get(key(bone.parentPhysics()));
+            if (parent == null) parent = model.worldRotation(bone.parent());
+            Quaternionf frame = new Quaternionf(parent);
+            if (bone.staticRotation() != null) frame.mul(bone.staticRotation());
+            frames.put(key(bone.name()), frame);
+        }
+        for (var bone : ordered) {
+            String id = key(bone.name());
+            BoneState b = state.bones.computeIfAbsent(id, unused -> new BoneState());
+            PhysicsConfig.Settings settings = bone.settings();
+            Quaternionf frame = frames.get(id);
+            Quaternionf animation = new Quaternionf(body).mul(frame);
+            Vector3f omega = b.lastFrame == null || screen || state.screen
+                    ? new Vector3f() : AngularMotion.angularVelocity(b.lastFrame, animation, elapsed);
+            b.lastFrame = new Quaternionf(animation);
+            // Move the world-frame angular vector back to the body/model frame.
+            new Quaternionf(body).invert().transform(omega);
+            cap(omega, 6);
 
-        // Sample over 50 ms. Per-frame position delta is zero on most render frames because the
-        // integrated server updates position at 20 Hz; a short window keeps a steady walking force.
-        if (state.sampleNanos == 0L) {
-            state.sampleNanos = nowNanos;
-            state.samplePos = pos;
-        } else if (nowNanos - state.sampleNanos >= 50_000_000L) {
-            double seconds = (nowNanos - state.sampleNanos) / 1_000_000_000.0;
-            Vec3d sampled = pos.subtract(state.samplePos).multiply(1.0 / seconds);
-            Vector3f target = new Vector3f((float) (sampled.x * 0.1), (float) (sampled.y * 0.1),
-                    (float) (sampled.z * 0.1));
-            state.smoothedSpeed.lerp(target, 0.35F);
-            float speedLength = state.smoothedSpeed.length();
-            if (speedLength > 1.25F) {
-                state.smoothedSpeed.normalize(1.25F);
+            boolean cloth = "cloth".equalsIgnoreCase(settings.mode);
+            float motionScale = settings.motionStrength(1) * legacy(settings.speedGainScale, 1);
+            if (cloth) motionScale *= legacy(settings.clothSpeedScale, .8F);
+            Vector3f desired = new Vector3f(-speed.z, 0, speed.x).mul(.065F * motionScale);
+            desired.add(new Vector3f(-accel.z, 0, accel.x)
+                    .mul(.015F * settings.accelerationStrength(.12F) * legacy(settings.inertia, 1)));
+            desired.fma(-.045F * settings.angularInertia(.7F) * legacy(settings.animationForce, 1), omega);
+            desired.y += legacy(settings.wind, 0) * .01F;
+            // Rest-space lever from actual cube centers; no double application of static rotation.
+            Vector3f lever = b.lever;
+            if (lever == null) {
+                lever = model.physicsRestLever(bone);
+                b.lever = new Vector3f(lever);
             }
-            state.samplePos = pos;
-            state.sampleNanos = nowNanos;
-        }
-        Vec3d delta = rawVelocity.subtract(state.lastVelocity);
-        state.lastVelocity = rawVelocity;
-        Vector3f accel = new Vector3f((float) (delta.x * 0.5 / dt),
-                (float) (delta.y * 0.5 / dt), (float) (delta.z * 0.5 / dt));
-        if (accel.lengthSquared() > 900.0F) {
-            accel.normalize(30.0F);
-        }
-        // Entity yaw is applied by the renderer outside the model. Convert world movement into the
-        // entity model frame before applying part-local physics.
-        float yaw = (float) Math.toRadians(player.getBodyYaw());
-        float cos = (float) Math.cos(yaw);
-        float sin = (float) Math.sin(yaw);
-        Vector3f speed = new Vector3f(
-                state.smoothedSpeed.x * cos + state.smoothedSpeed.z * sin,
-                state.smoothedSpeed.y,
-                -state.smoothedSpeed.x * sin + state.smoothedSpeed.z * cos);
-        state.smoothedAccel.lerp(accel, 0.2F);
-        Vector3f localAccel = new Vector3f(
-                state.smoothedAccel.x * cos + state.smoothedAccel.z * sin,
-                state.smoothedAccel.y,
-                -state.smoothedAccel.x * sin + state.smoothedAccel.z * cos);
-        for (CustomModel.PhysicsBoneRuntime bone : model.physicsBones()) {
-            BoneState boneState = state.bones.computeIfAbsent(bone.name().toLowerCase(java.util.Locale.ROOT),
-                    key -> new BoneState());
-            Quaternionf parent = model.worldRotation(bone.parent());
-            // Twenty half-steps equal ten normal render steps; the smaller integration step removes
-            // the jitter that the 10x response previously caused in the stiff spring.
-            int substeps = MathHelper.clamp(bone.settings().substeps(8), 1, 32);
-            for (int step = 0; step < substeps; step++) {
-                BoneState parentState = bone.parentPhysics() == null ? null
-                        : state.bones.get(bone.parentPhysics().toLowerCase(java.util.Locale.ROOT));
-                boneState.simulate(model, bone, parent, localAccel, speed, state.yawVelocity,
-                        state.pitchVelocity, parentState, dt * 0.5F);
+            Vector3f r = new Quaternionf(frame).transform(new Vector3f(lever));
+            float radius = r.length();
+            if (radius > 1e-5F) {
+                // +Y is down in model space. Gravity is not a hand-flipped pitch/roll coefficient.
+                Vector3f gravityTorque = r.cross(new Vector3f(0, 1, 0));
+                desired.fma(.04F * legacy(settings.gravity, .8F) / radius, gravityTorque);
             }
+            float maxAngle = (float) Math.toRadians(Math.min(120, Math.max(1,
+                    legacy(settings.maxAngle, 70) * (cloth ? legacy(settings.clothMaxAngleScale, 1.25F) : 1))));
+            cap(desired, maxAngle);
+            b.filtered.lerp(desired, blend(settings.forceSmoothing(10), dt));
+            float response = settings.restResponse(8) * (cloth ? settings.clothResponseScale(.8F) : 1);
+            float air = settings.airResistance(legacy(settings.airDrag, 1.5F));
+            b.motion.advance(b.filtered, response, settings.swingDamping(.9F), air,
+                    (float) Math.toRadians(settings.maxAngularSpeed(360)), maxAngle, dt,
+                    Math.min(32, Math.max(1, settings.substeps(8))));
         }
+        // Convert the desired MODEL-space orientation back into each child's actual parent frame.
+        // This compensates for inherited parent deflection rather than applying it again per link.
+        Map<String, Quaternionf> simulatedFrames = new HashMap<>();
+        for (var bone : ordered) {
+            BoneState b = state.bones.get(key(bone.name()));
+            Quaternionf restFrame = frames.get(key(bone.name()));
+            Quaternionf offset = AngularMotion.localOffset(restFrame, b.motion.angle);
+            Quaternionf desiredWorld = new Quaternionf(restFrame).mul(offset);
+            Quaternionf actualParent = bone.parentPhysics() == null ? model.worldRotation(bone.parent())
+                    : simulatedFrames.get(key(bone.parentPhysics()));
+            if (actualParent == null) actualParent = model.worldRotation(bone.parent());
+            Quaternionf local = new Quaternionf(actualParent).invert().mul(desiredWorld).normalize();
+            Vector3f euler = local.getEulerAnglesZYX(new Vector3f());
+            bone.part().pitch = euler.x;
+            bone.part().yaw = euler.y;
+            bone.part().roll = euler.z;
+            simulatedFrames.put(key(bone.name()), desiredWorld);
+        }
+        state.screen = screen;
     }
 
-    public void reset(UUID uuid) {
-        players.remove(uuid);
+    private static void order(CustomModel.PhysicsBoneRuntime bone,
+                              Map<String, CustomModel.PhysicsBoneRuntime> map,
+                              Set<String> visited, List<CustomModel.PhysicsBoneRuntime> result) {
+        if (!visited.add(key(bone.name()))) return;
+        if (bone.parentPhysics() != null && map.containsKey(key(bone.parentPhysics())))
+            order(map.get(key(bone.parentPhysics())), map, visited, result);
+        result.add(bone);
     }
-
-    public void clear() {
-        players.clear();
+    private static String key(String name) { return name.toLowerCase(Locale.ROOT); }
+    private static float blend(float rate, float dt) { return -(float) Math.expm1(-rate * dt); }
+    private static float legacy(Float value, float fallback) {
+        return value == null || !Float.isFinite(value) ? fallback : Math.max(0, value);
     }
-
+    private static void cap(Vector3f v, float length) {
+        float size = v.length();
+        if (size > length) v.mul(length / size);
+    }
+    public void reset(UUID uuid) { players.remove(uuid); }
+    public void clear() { players.clear(); }
+    private static final class BoneState {
+        final AngularMotion motion = new AngularMotion();
+        final Vector3f filtered = new Vector3f();
+        Quaternionf lastFrame;
+        Vector3f lever;
+    }
     private static final class PlayerState {
         CustomModel model;
-        long lastNanos;
-        Vec3d lastVelocity = Vec3d.ZERO;
-        Vec3d lastPos;
-        Vec3d samplePos;
-        long sampleNanos;
-        long lastLogNanos;
-        float lastYaw = Float.NaN;
-        float lastPitch = Float.NaN;
-        float yawVelocity;
-        float pitchVelocity;
-        Vector3f smoothedSpeed = new Vector3f();
-        Vector3f smoothedAccel = new Vector3f();
+        Vec3d position, samplePosition;
+        long time, sampleTime;
+        boolean screen;
+        final Vector3f sampleVelocity = new Vector3f(), velocity = new Vector3f();
+        final Vector3f acceleration = new Vector3f(), smoothAcceleration = new Vector3f();
         final Map<String, BoneState> bones = new HashMap<>();
-
-        void reset(CustomModel newModel) {
-            this.model = newModel;
-            this.lastNanos = 0L;
-            this.lastVelocity = Vec3d.ZERO;
-            this.lastPos = null;
-            this.samplePos = null;
-            this.sampleNanos = 0L;
-            this.lastLogNanos = 0L;
-            this.lastYaw = Float.NaN;
-            this.lastPitch = Float.NaN;
-            this.yawVelocity = 0.0F;
-            this.pitchVelocity = 0.0F;
-            this.smoothedSpeed = new Vector3f();
-            this.smoothedAccel = new Vector3f();
-            this.bones.clear();
-        }
-
-        void captureParents(CustomModel model) {
-            for (CustomModel.PhysicsBoneRuntime bone : model.physicsBones()) {
-                BoneState state = bones.computeIfAbsent(bone.name().toLowerCase(java.util.Locale.ROOT),
-                        key -> new BoneState());
-                state.lastParent = model.worldRotation(bone.parent());
-                state.initialized = true;
-            }
-        }
-    }
-
-    private static final class BoneState {
-        float pitch;
-        float yaw;
-        float roll;
-        float vPitch;
-        float vYaw;
-        float vRoll;
-        float targetPitch;
-        float targetYaw;
-        float targetRoll;
-        Quaternionf lastParent;
-        boolean initialized;
-
-        void simulate(CustomModel model, CustomModel.PhysicsBoneRuntime bone, Quaternionf parent, Vector3f accel,
-                      Vector3f speed, float viewYawVelocity, float viewPitchVelocity,
-                      BoneState parentState, float dt) {
-            if (!initialized || lastParent == null) {
-                lastParent = new Quaternionf(parent);
-                initialized = true;
-            }
-            PhysicsConfig.Settings settings = bone.settings();
-            boolean cloth = "cloth".equalsIgnoreCase(settings.mode);
-            float stiffness = settings.stiffness(75.0F);
-            float damping = settings.damping(9.0F);
-            float gravity = settings.gravity(0.8F) * 20.0F;
-            float inertia = settings.inertia(0.8F);
-            float maxAngle = settings.maxAngle(70.0F);
-            float wind = settings.wind(0.0F);
-            if (cloth) {
-                // Cloth chains use a softer, more damped spring at every segment. Each child also
-                // inherits its parent's simulated rotation through ModelPart hierarchy.
-                stiffness *= settings.clothStiffnessScale(0.65F);
-                damping *= settings.clothDampingScale(0.9F);
-                maxAngle *= settings.clothMaxAngleScale(1.25F);
-            }
-            maxAngle = Math.min(150.0F, maxAngle);
-
-            Vector3f omega = parentAngularVelocity(parent, lastParent, dt);
-            omega.mul(57.29578F);
-            Vector3f accelLocal = new Vector3f(accel);
-            new Quaternionf(parent).invert().transform(accelLocal);
-            Vector3f speedLocal = new Vector3f(speed);
-            new Quaternionf(parent).invert().transform(speedLocal);
-
-            float gain = 3000.0F / Math.max(5.0F, stiffness)
-                    * settings.speedGainScale(1.0F);
-            if (cloth) {
-                gain *= settings.clothSpeedScale(0.8F);
-            }
-            // Vertical velocity must not create a horizontal swing force. Falling is handled by
-            // gravity; horizontal motion alone drives the local pitch/roll targets.
-            float inertiaScale = settings.inertia(1.0F);
-            float animationForce = settings.animationForce(1.0F);
-            float externalPitch = accelLocal.z * inertiaScale * 0.35F;
-            float externalRoll = -accelLocal.x * inertiaScale * 0.35F;
-            float externalYaw = 0.0F;
-            Vector3f cubeTorque = model.physicsGravityTorque(bone);
-            Quaternionf torqueFrame = new Quaternionf(parent);
-            if (bone.staticRotation() != null) {
-                torqueFrame.mul(bone.staticRotation());
-            }
-            torqueFrame.invert().transform(cubeTorque);
-            float cubeGravity = settings.gravity(0.8F) * 0.5F;
-            externalPitch += cubeTorque.x * cubeGravity;
-            externalYaw += cubeTorque.y * cubeGravity;
-            externalRoll += cubeTorque.z * cubeGravity;
-            float viewYaw = clamp(viewYawVelocity, -180.0F, 180.0F);
-            float viewPitch = clamp(viewPitchVelocity, -180.0F, 180.0F);
-            float desiredPitch = clamp(speedLocal.z * gain + externalPitch
-                    - clamp(omega.x, -90.0F, 90.0F) * settings.pitchOmegaScale(0.6F) * inertiaScale * animationForce
-                    - viewPitch * 0.10F * inertiaScale, -maxAngle, maxAngle);
-            float desiredYaw = clamp(externalYaw
-                    - clamp(omega.y, -90.0F, 90.0F) * settings.yawOmegaScale(0.4F) * inertiaScale * animationForce
-                    - viewYaw * 0.16F * inertiaScale + wind, -maxAngle, maxAngle);
-            float desiredRoll = clamp(speedLocal.x * gain + externalRoll
-                    - clamp(omega.z, -90.0F, 90.0F) * settings.rollOmegaScale(0.6F) * inertiaScale * animationForce
-                    , -maxAngle, maxAngle);
-            // Low-pass the desired angle before the spring. A quick direction change then carries
-            // the old target for a few steps instead of snapping to the new direction.
-            // Cloth children share the root direction in the root frame, then conjugate it
-            // into this child static frame. Copying raw Euler numbers makes mirrored hair
-            // branches rotate in opposite world directions and look like wings.
-            if (cloth && parentState != null) {
-                Quaternionf rootOffset = new Quaternionf().rotationZYX(
-                        (float) Math.toRadians(parentState.targetRoll),
-                        (float) Math.toRadians(parentState.targetYaw),
-                        (float) Math.toRadians(parentState.targetPitch));
-                Quaternionf identity = new Quaternionf();
-                rootOffset = identity.slerp(rootOffset, 0.85F);
-                Quaternionf staticFrame = bone.staticRotation() == null
-                        ? new Quaternionf() : new Quaternionf(bone.staticRotation());
-                Quaternionf localOffset = staticFrame.invert().mul(rootOffset).mul(staticFrame);
-                Vector3f childEuler = localOffset.getEulerAnglesZYX(new Vector3f());
-                desiredPitch = clamp((float) Math.toDegrees(childEuler.x), -maxAngle, maxAngle);
-                // Mirrored hair branches must not inherit a shared yaw, or one branch swings
-                // inward through the head. Pitch/roll carry the trailing motion here.
-                desiredYaw = 0.0F;
-                // Roll is the remaining source of mirrored branches crossing through the back.
-                desiredRoll = 0.0F;
-            }
-            float targetBlend = 1.0F - (float) Math.exp(-settings.targetResponse(1.0F) * dt);
-            targetPitch += (desiredPitch - targetPitch) * targetBlend;
-            targetYaw += (desiredYaw - targetYaw) * targetBlend;
-            targetRoll += (desiredRoll - targetRoll) * targetBlend;
-            // Critically damped follow instead of snapping directly to the target. The
-            // previous 20 half-steps effectively reached the target almost instantly.
-            float springOmega = settings.springBase(6.0F)
-                    + damping * settings.springDampingScale(0.75F);
-            if (cloth) {
-                springOmega *= settings.springClothScale(0.72F);
-            }
-            float k = springOmega * springOmega;
-            float c = 2.0F * springOmega
-                    * (cloth ? settings.clothDampingRatio(0.72F) : settings.dampingRatio(0.82F));
-            vPitch += (k * (targetPitch - pitch) - c * vPitch) * dt;
-            vYaw += (k * (targetYaw - yaw) - c * vYaw) * dt;
-            vRoll += (k * (targetRoll - roll) - c * vRoll) * dt;
-            pitch += vPitch * dt;
-            yaw += vYaw * dt;
-            roll += vRoll * dt;
-            // Independent angular air drag, applied after the spring step.
-            float air = (float) Math.exp(-settings.airDrag(2.0F) * dt);
-            vPitch *= air;
-            vYaw *= air;
-            vRoll *= air;
-
-            Quaternionf offset = new Quaternionf().rotationZYX((float) Math.toRadians(roll),
-                    (float) Math.toRadians(yaw), (float) Math.toRadians(pitch));
-            if (bone.staticRotation() == null) {
-                bone.part().pitch = (float) Math.toRadians(pitch);
-                bone.part().yaw = (float) Math.toRadians(yaw);
-                bone.part().roll = (float) Math.toRadians(roll);
-            } else {
-                Quaternionf composed = new Quaternionf(bone.staticRotation()).mul(offset);
-                Vector3f euler = composed.getEulerAnglesZYX(new Vector3f());
-                bone.part().pitch = euler.x;
-                bone.part().yaw = euler.y;
-                bone.part().roll = euler.z;
-            }
-            lastParent.set(parent);
-        }
-
-        private static Vector3f parentAngularVelocity(Quaternionf current, Quaternionf last, float dt) {
-            Quaternionf delta = new Quaternionf(current).mul(new Quaternionf(last).invert());
-            float w = clamp(delta.w, -1.0F, 1.0F);
-            float angle = 2.0F * (float) Math.acos(w);
-            float sin = (float) Math.sqrt(Math.max(0.0F, 1.0F - w * w));
-            if (angle < 1.0E-4F || sin < 1.0E-5F) {
-                return new Vector3f();
-            }
-            Vector3f axis = new Vector3f(delta.x / sin, delta.y / sin, delta.z / sin);
-            new Quaternionf(current).invert().transform(axis);
-            return axis.mul(angle / dt);
-        }
-
-        private static float clamp(float value, float min, float max) {
-            return MathHelper.clamp(value, min, max);
+        void reset(CustomModel m, Vec3d pos, long now) {
+            model = m; position = samplePosition = pos; time = sampleTime = now;
+            sampleVelocity.zero(); velocity.zero(); acceleration.zero(); smoothAcceleration.zero();
+            bones.clear(); screen = true;
         }
     }
 }

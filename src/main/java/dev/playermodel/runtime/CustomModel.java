@@ -7,7 +7,6 @@ import net.minecraft.client.model.ModelPart;
 import net.minecraft.client.model.TexturedModelData;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.entity.model.PlayerEntityModel;
-import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
@@ -93,51 +92,26 @@ public final class CustomModel {
         }
     }
 
-    /** Gravity torque at the real centers of this physics bone's cubes. */
-    public Vector3f physicsGravityTorque(PhysicsBoneRuntime physics) {
-        Vector3f pivot = physicsPivot(physics);
-        // applyAngles() already composes static rotation into the ModelPart. Do not apply it
-        // again here, or oblique cubes get a double-rotated center and torque.
-        Matrix4f matrix = partMatrix(physics.part());
-        Vector3f torque = new Vector3f();
-        for (ModelPart.Cuboid cuboid : physics.part().cuboids) {
+    /** Rest-space center-of-mass lever. Unique corners avoid weighting visible faces twice. */
+    public Vector3f physicsRestLever(PhysicsBoneRuntime physics) {
+        Vector3f sum = new Vector3f();
+        float total = 0;
+        for (ModelPart.Cuboid cube : physics.part().cuboids) {
+            java.util.Set<Vector3f> corners = new java.util.HashSet<>();
+            for (ModelPart.Quad face : cube.sides)
+                for (ModelPart.Vertex vertex : face.vertices) corners.add(new Vector3f(vertex.pos));
+            if (corners.isEmpty()) continue;
             Vector3f center = new Vector3f();
-            int count = 0;
-            for (ModelPart.Quad quad : cuboid.sides) {
-                for (ModelPart.Vertex vertex : quad.vertices) {
-                    center.add(matrix.transformPosition(new Vector3f(vertex.pos)));
-                    count++;
-                }
-            }
-            if (count == 0) continue;
-            center.div(count);
-            torque.add(new Vector3f(center).sub(pivot).cross(new Vector3f(0.0F, -1.0F, 0.0F)));
+            Vector3f min = new Vector3f(Float.POSITIVE_INFINITY), max = new Vector3f(Float.NEGATIVE_INFINITY);
+            for (Vector3f corner : corners) { center.add(corner); min.min(corner); max.max(corner); }
+            center.div(corners.size());
+            Vector3f size = max.sub(min);
+            float weight = Math.max(.001F, size.x * size.y * size.z);
+            sum.fma(weight, center); total += weight;
         }
-        return torque;
+        return total > 0 ? sum.div(total) : sum;
     }
 
-    public Vector3f physicsPivot(PhysicsBoneRuntime physics) {
-        Matrix4f parent = partMatrix(physics.parent());
-        return parent.transformPosition(new Vector3f(physics.part().pivotX,
-                physics.part().pivotY, physics.part().pivotZ));
-    }
-
-    private Matrix4f partMatrix(ModelPart part) {
-        List<ModelPart> chain = new ArrayList<>();
-        ModelPart current = part;
-        while (current != null && current != rootPart) {
-            chain.add(current);
-            current = parents.get(current);
-        }
-        Matrix4f matrix = new Matrix4f();
-        for (int i = chain.size() - 1; i >= 0; i--) {
-            ModelPart node = chain.get(i);
-            matrix.translate(node.pivotX, node.pivotY, node.pivotZ);
-            matrix.rotate(new Quaternionf().rotationZYX(node.roll, node.yaw, node.pitch));
-            matrix.scale(node.xScale, node.yScale, node.zScale);
-        }
-        return matrix;
-    }
     /** Cumulative rotation of a part in model space, including all core/physics ancestors. */
     public Quaternionf worldRotation(ModelPart part) {
         List<ModelPart> chain = new ArrayList<>();

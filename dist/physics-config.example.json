@@ -2,46 +2,32 @@
   "physics": {
     "defaultSettings": {
       "mode": "pendulum",
-      "stiffness": 75,
-      "damping": 9,
+      "motionStrength": 1.0,
+      "accelerationStrength": 0.12,
+      "restResponse": 8.0,
+      "swingDamping": 0.9,
+      "clothResponseScale": 0.8,
+      "airResistance": 1.5,
+      "maxAngularSpeed": 360.0,
+      "forceSmoothing": 10.0,
+      "angularInertia": 0.7,
       "gravity": 0.8,
-      "inertia": 1.0,
       "maxAngle": 70,
       "wind": 0.0,
-      "drag": 0.0,
-      "iterations": 3,
-
-      "substeps": 8,
-      "springBase": 6.0,
-      "springDampingScale": 0.75,
-      "springClothScale": 0.72,
-      "dampingRatio": 0.82,
-      "clothDampingRatio": 0.72,
-      "speedGainScale": 1.0,
-      "clothSpeedScale": 0.8,
-      "liftScale": 1.25,
-      "airDrag": 2.0,
-      "animationForce": 1.0,
-      "targetResponse": 1.0,
-      "pitchOmegaScale": 0.6,
-      "yawOmegaScale": 0.4,
-      "rollOmegaScale": 0.6,
-      "clothStiffnessScale": 0.65,
-      "clothDampingScale": 0.9,
-      "clothMaxAngleScale": 1.25
+      "substeps": 8
     },
     "bones": {
       "hair_physics": {
-        "substeps": 10,
-        "springBase": 5.0,
-        "dampingRatio": 0.7,
-        "pitchOmegaScale": 0.8
+        "restResponse": 7.0,
+        "swingDamping": 0.8,
+        "angularInertia": 0.9,
+        "airResistance": 1.5
       },
       "skirt_physics": {
         "mode": "cloth",
-        "springBase": 4.0,
-        "clothDampingRatio": 0.6,
-        "clothSpeedScale": 0.6
+        "clothResponseScale": 0.7,
+        "motionStrength": 0.8,
+        "angularInertia": 0.8
       }
     }
   }
