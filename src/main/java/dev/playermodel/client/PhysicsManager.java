@@ -229,17 +229,24 @@ public final class PhysicsManager {
             float animationForce = settings.animationForce(1.0F);
             float externalPitch = accelLocal.z * inertiaScale * 0.35F;
             float externalRoll = -accelLocal.x * inertiaScale * 0.35F;
+            float externalYaw = 0.0F;
             Vector3f cubeTorque = model.physicsGravityTorque(bone);
-            new Quaternionf(parent).invert().transform(cubeTorque);
+            Quaternionf torqueFrame = new Quaternionf(parent);
+            if (bone.staticRotation() != null) {
+                torqueFrame.mul(bone.staticRotation());
+            }
+            torqueFrame.invert().transform(cubeTorque);
             float cubeGravity = settings.gravity(0.8F) * 0.5F;
             externalPitch += cubeTorque.x * cubeGravity;
+            externalYaw += cubeTorque.y * cubeGravity;
             externalRoll += cubeTorque.z * cubeGravity;
             float viewYaw = clamp(viewYawVelocity, -180.0F, 180.0F);
             float viewPitch = clamp(viewPitchVelocity, -180.0F, 180.0F);
             float desiredPitch = clamp(speedLocal.z * gain + externalPitch
                     - clamp(omega.x, -90.0F, 90.0F) * settings.pitchOmegaScale(0.6F) * inertiaScale * animationForce
                     - viewPitch * 0.10F * inertiaScale, -maxAngle, maxAngle);
-            float desiredYaw = clamp(-clamp(omega.y, -90.0F, 90.0F) * settings.yawOmegaScale(0.4F) * inertiaScale * animationForce
+            float desiredYaw = clamp(externalYaw
+                    - clamp(omega.y, -90.0F, 90.0F) * settings.yawOmegaScale(0.4F) * inertiaScale * animationForce
                     - viewYaw * 0.16F * inertiaScale + wind, -maxAngle, maxAngle);
             float desiredRoll = clamp(speedLocal.x * gain + externalRoll
                     - clamp(omega.z, -90.0F, 90.0F) * settings.rollOmegaScale(0.6F) * inertiaScale * animationForce
