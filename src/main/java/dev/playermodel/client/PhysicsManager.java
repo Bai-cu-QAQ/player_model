@@ -46,6 +46,19 @@ public final class PhysicsManager {
         }
         dt = Math.min(dt, MAX_DT);
 
+        float yawNow = player.getYaw();
+        if (!Float.isNaN(state.lastYaw)) {
+            float deltaYaw = MathHelper.wrapDegrees(yawNow - state.lastYaw);
+            state.yawVelocity = MathHelper.lerp(0.35F, state.yawVelocity, deltaYaw / dt);
+        }
+        state.lastYaw = yawNow;
+        float pitchNow = player.getPitch();
+        if (!Float.isNaN(state.lastPitch)) {
+            float deltaPitch = pitchNow - state.lastPitch;
+            state.pitchVelocity = MathHelper.lerp(0.35F, state.pitchVelocity, deltaPitch / dt);
+        }
+        state.lastPitch = pitchNow;
+
         Vec3d previousPos = state.lastPos == null ? pos : state.lastPos;
         Vec3d rawVelocity = pos.subtract(previousPos).multiply(1.0 / dt);
         state.lastPos = pos;
@@ -96,7 +109,8 @@ public final class PhysicsManager {
             // the jitter that the 10x response previously caused in the stiff spring.
             int substeps = MathHelper.clamp(bone.settings().substeps(8), 1, 32);
             for (int step = 0; step < substeps; step++) {
-                boneState.simulate(bone, parent, localAccel, speed, dt * 0.5F);
+                boneState.simulate(bone, parent, localAccel, speed, state.yawVelocity,
+                        state.pitchVelocity, dt * 0.5F);
             }
         }
     }
@@ -117,6 +131,10 @@ public final class PhysicsManager {
         Vec3d samplePos;
         long sampleNanos;
         long lastLogNanos;
+        float lastYaw = Float.NaN;
+        float lastPitch = Float.NaN;
+        float yawVelocity;
+        float pitchVelocity;
         Vector3f smoothedSpeed = new Vector3f();
         final Map<String, BoneState> bones = new HashMap<>();
 
@@ -128,6 +146,10 @@ public final class PhysicsManager {
             this.samplePos = null;
             this.sampleNanos = 0L;
             this.lastLogNanos = 0L;
+            this.lastYaw = Float.NaN;
+            this.lastPitch = Float.NaN;
+            this.yawVelocity = 0.0F;
+            this.pitchVelocity = 0.0F;
             this.smoothedSpeed = new Vector3f();
             this.bones.clear();
         }
@@ -156,7 +178,7 @@ public final class PhysicsManager {
         boolean initialized;
 
         void simulate(CustomModel.PhysicsBoneRuntime bone, Quaternionf parent, Vector3f accel,
-                      Vector3f speed, float dt) {
+                      Vector3f speed, float viewYawVelocity, float viewPitchVelocity, float dt) {
             if (!initialized || lastParent == null) {
                 lastParent = new Quaternionf(parent);
                 initialized = true;
@@ -198,10 +220,14 @@ public final class PhysicsManager {
             float animationForce = settings.animationForce(1.0F);
             float externalPitch = accelLocal.z * inertiaScale * 0.35F;
             float externalRoll = -accelLocal.x * inertiaScale * 0.35F;
+            float viewYaw = clamp(viewYawVelocity, -180.0F, 180.0F);
+            float viewPitch = clamp(viewPitchVelocity, -180.0F, 180.0F);
             float desiredPitch = clamp(speedLocal.z * gain + externalPitch
                     - clamp(omega.x, -90.0F, 90.0F) * settings.pitchOmegaScale(0.6F) * inertiaScale * animationForce
-                    + gravity * gravityLocal.z / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
-            float desiredYaw = clamp(-clamp(omega.y, -90.0F, 90.0F) * settings.yawOmegaScale(0.4F) * inertiaScale * animationForce + wind, -maxAngle, maxAngle);
+                    + gravity * gravityLocal.z / Math.max(5.0F, stiffness)
+                    - viewPitch * 0.10F * inertiaScale, -maxAngle, maxAngle);
+            float desiredYaw = clamp(-clamp(omega.y, -90.0F, 90.0F) * settings.yawOmegaScale(0.4F) * inertiaScale * animationForce
+                    - viewYaw * 0.16F * inertiaScale + wind, -maxAngle, maxAngle);
             float desiredRoll = clamp(speedLocal.x * gain + externalRoll
                     - clamp(omega.z, -90.0F, 90.0F) * settings.rollOmegaScale(0.6F) * inertiaScale * animationForce
                     - gravity * gravityLocal.x / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
