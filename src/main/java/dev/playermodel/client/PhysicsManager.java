@@ -2,6 +2,7 @@ package dev.playermodel.client;
 
 import dev.playermodel.model.PhysicsConfig;
 import dev.playermodel.runtime.CustomModel;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
@@ -47,17 +48,27 @@ public final class PhysicsManager {
         dt = Math.min(dt, MAX_DT);
 
         float yawNow = player.getYaw();
-        if (!Float.isNaN(state.lastYaw)) {
-            float deltaYaw = MathHelper.wrapDegrees(yawNow - state.lastYaw);
-            state.yawVelocity = MathHelper.lerp(0.35F, state.yawVelocity, deltaYaw / dt);
-        }
-        state.lastYaw = yawNow;
         float pitchNow = player.getPitch();
-        if (!Float.isNaN(state.lastPitch)) {
-            float deltaPitch = pitchNow - state.lastPitch;
-            state.pitchVelocity = MathHelper.lerp(0.35F, state.pitchVelocity, deltaPitch / dt);
+        boolean screenOpen = MinecraftClient.getInstance().currentScreen != null;
+        if (screenOpen) {
+            // Opening a screen must not accumulate hidden camera movement and then kick the
+            // physics when it closes.
+            state.lastYaw = yawNow;
+            state.lastPitch = pitchNow;
+            state.yawVelocity = 0.0F;
+            state.pitchVelocity = 0.0F;
+        } else {
+            if (!Float.isNaN(state.lastYaw)) {
+                float deltaYaw = MathHelper.wrapDegrees(yawNow - state.lastYaw);
+                state.yawVelocity = MathHelper.lerp(0.35F, state.yawVelocity, deltaYaw / dt);
+            }
+            state.lastYaw = yawNow;
+            if (!Float.isNaN(state.lastPitch)) {
+                float deltaPitch = pitchNow - state.lastPitch;
+                state.pitchVelocity = MathHelper.lerp(0.35F, state.pitchVelocity, deltaPitch / dt);
+            }
+            state.lastPitch = pitchNow;
         }
-        state.lastPitch = pitchNow;
 
         Vec3d previousPos = state.lastPos == null ? pos : state.lastPos;
         Vec3d rawVelocity = pos.subtract(previousPos).multiply(1.0 / dt);
