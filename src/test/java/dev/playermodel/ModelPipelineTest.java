@@ -11,6 +11,7 @@ import dev.playermodel.model.NormalizedCube;
 import dev.playermodel.model.NormalizedModel;
 import dev.playermodel.model.PhysicsBoneName;
 import dev.playermodel.model.PhysicsConfig;
+import dev.playermodel.util.JsonComments;
 import dev.playermodel.model.RawBone;
 import dev.playermodel.model.RawModel;
 import dev.playermodel.runtime.PreparedModel;
@@ -154,6 +155,14 @@ class ModelPipelineTest {
         assertEquals(0.7F, config.resolved("hair_physics").dampingRatio(0.82F), 0.001F);
         assertEquals(1.4F, config.resolved("hair_physics").liftScale(1.25F), 0.001F);
         assertEquals(3.0F, config.resolved("hair_physics").airDrag(2.0F), 0.001F);
+    }
+    @Test
+    void stripsCommentsFromMetaJson() {
+        String input = "{\n  // line comment\n  \"url\": \"http://example.com/a//b\",\n  /* block */\n  \"value\": 1\n}";
+        String stripped = JsonComments.strip(input);
+        assertTrue(stripped.contains("http://example.com/a//b"));
+        assertTrue(!stripped.contains("line comment"));
+        assertTrue(!stripped.contains("block"));
     }
     @Test
     void supportsStaticBoneRotation() throws Exception {

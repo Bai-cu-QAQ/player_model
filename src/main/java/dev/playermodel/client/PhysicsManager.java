@@ -192,14 +192,15 @@ public final class PhysicsManager {
             // Vertical velocity must not create a horizontal swing force. Falling is handled by
             // gravity; horizontal motion alone drives the local pitch/roll targets.
             float inertiaScale = settings.inertia(1.0F);
+            float animationForce = settings.animationForce(1.0F);
             float externalPitch = accelLocal.z * inertiaScale * 0.35F;
             float externalRoll = -accelLocal.x * inertiaScale * 0.35F;
             float targetPitch = clamp(speedLocal.z * gain + externalPitch
-                    - clamp(omega.x, -90.0F, 90.0F) * settings.pitchOmegaScale(0.6F) * inertiaScale
+                    - clamp(omega.x, -90.0F, 90.0F) * settings.pitchOmegaScale(0.6F) * inertiaScale * animationForce
                     + gravity * gravityLocal.z / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
-            float targetYaw = clamp(-clamp(omega.y, -90.0F, 90.0F) * settings.yawOmegaScale(0.4F) * inertiaScale + wind, -maxAngle, maxAngle);
+            float targetYaw = clamp(-clamp(omega.y, -90.0F, 90.0F) * settings.yawOmegaScale(0.4F) * inertiaScale * animationForce + wind, -maxAngle, maxAngle);
             float targetRoll = clamp(speedLocal.x * gain + externalRoll
-                    - clamp(omega.z, -90.0F, 90.0F) * settings.rollOmegaScale(0.6F) * inertiaScale
+                    - clamp(omega.z, -90.0F, 90.0F) * settings.rollOmegaScale(0.6F) * inertiaScale * animationForce
                     - gravity * gravityLocal.x / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
             // Critically damped follow instead of snapping directly to the target. The
             // previous 20 half-steps effectively reached the target almost instantly.
@@ -211,6 +212,13 @@ public final class PhysicsManager {
             float k = springOmega * springOmega;
             float c = 2.0F * springOmega
                     * (cloth ? settings.clothDampingRatio(0.72F) : settings.dampingRatio(0.82F));
+            // Parent animation alone must be able to kick the bone even when the player has no
+            // movement speed. This is an impulse from the parent angular velocity, separate from
+            // the spring target.
+            float animationKick = animationForce * dt * 3.0F;
+            vPitch -= omega.x * animationKick;
+            vYaw -= omega.y * animationKick;
+            vRoll -= omega.z * animationKick;
             vPitch += (k * (targetPitch - pitch) - c * vPitch) * dt;
             vYaw += (k * (targetYaw - yaw) - c * vYaw) * dt;
             vRoll += (k * (targetRoll - roll) - c * vRoll) * dt;

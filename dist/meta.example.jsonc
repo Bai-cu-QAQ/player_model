@@ -1,0 +1,134 @@
+{
+  // 模型列表和 UI 中显示的名称。
+  "displayName": "我的模型",
+
+  // 贴图来源："model" 使用模型自带贴图，"skin" 使用玩家皮肤。
+  "textureMode": "model",
+
+  // 骨骼 pivot 来源："model" 使用 bbmodel 的 pivot，"vanilla" 使用原版玩家 pivot。
+  "pivotMode": "model",
+
+  // 是否把 anchors 分组的位移也应用到盔甲/手持物/披风等 feature。
+  "customAnchors": false,
+
+  // 旧版兼容字段；当前版本不会生成双层皮肤。
+  "doubleLayer": true,
+
+  // Alex 细手臂模型。
+  "slim": false,
+
+  // 贴图 UV 尺寸；0 表示从 bbmodel 自动读取。
+  "textureWidth": 64,
+  "textureHeight": 64,
+
+  // 锚点位置和缩放覆盖；customAnchors=false 时只应用 scale。
+  "anchors": {
+    // "chest": { "x": 0, "y": 0, "z": 0, "scale": 0.6 }
+  },
+
+  "physics": {
+    // 所有 _physics 骨骼的默认参数；单骨骼可只覆盖需要的字段。
+    "defaultSettings": {
+      // "pendulum" 单骨骼摆动，"cloth" 连续骨骼组成的布料链。
+      "mode": "pendulum",
+
+      // 弹簧刚度；越大回正越快。
+      "stiffness": 75,
+
+      // 弹簧阻尼；越大越不容易持续摆动。
+      "damping": 9,
+
+      // 重力强度。
+      "gravity": 0.8,
+
+      // 惯性倍率，影响父骨骼角速度产生的摆动。
+      "inertia": 1.0,
+
+      // 单轴最大角度，单位度。
+      "maxAngle": 70,
+
+      // 固定风力，通常为 0。
+      "wind": 0.0,
+
+      // 速度拖拽预留参数。
+      "drag": 0.0,
+
+      // cloth 约束迭代预留参数。
+      "iterations": 3,
+
+      // 每个渲染帧执行多少个物理子步。
+      "substeps": 8,
+
+      // 回正阻尼弹簧的基础角频率。
+      "springBase": 6.0,
+
+      // damping 换算成角频率的比例。
+      "springDampingScale": 0.75,
+
+      // cloth 链的角频率倍率。
+      "springClothScale": 0.72,
+
+      // 普通物理阻尼比，1.0 为临界阻尼。
+      "dampingRatio": 0.82,
+
+      // cloth 链阻尼比。
+      "clothDampingRatio": 0.72,
+
+      // 速度目标增益倍率。
+      "speedGainScale": 1.0,
+
+      // cloth 速度目标倍率。
+      "clothSpeedScale": 0.8,
+
+      // 下落抬升项尺度；当前版本垂直速度不产生水平力，保留用于兼容。
+      "liftScale": 1.25,
+
+      // 父骨骼 pitch 角速度对物理的影响倍率。
+      "pitchOmegaScale": 0.6,
+
+      // 父骨骼 yaw 角速度影响倍率。
+      "yawOmegaScale": 0.4,
+
+      // 父骨骼 roll 角速度影响倍率。
+      "rollOmegaScale": 0.6,
+
+      // cloth 刚度倍率。
+      "clothStiffnessScale": 0.65,
+
+      // cloth 阻尼倍率。
+      "clothDampingScale": 0.9,
+
+      // cloth 最大角度倍率。
+      "clothMaxAngleScale": 1.25,
+
+      // 每秒线性空气阻力；越大越快停下。
+      "airDrag": 2.0,
+
+      // 父骨骼纯动画（无移动速度）时的角速度影响倍率。
+      "animationForce": 1.0,
+
+      // 按轴禁用主动物理。
+      "disablePitch": false,
+      "disableYaw": false,
+      "disableRoll": false
+    },
+
+    // 单骨骼覆盖示例；未写的字段继承 defaultSettings。
+    "bones": {
+      "hair_physics": {
+        "substeps": 10,
+        "springBase": 5.0,
+        "dampingRatio": 0.7,
+        "animationForce": 1.4,
+        "airDrag": 1.5
+      },
+      "skirt_physics": {
+        "mode": "cloth",
+        "springBase": 4.0,
+        "clothDampingRatio": 0.6,
+        "clothSpeedScale": 0.6,
+        "animationForce": 1.8
+      }
+    }
+  }
+}

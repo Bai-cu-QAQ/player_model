@@ -63,6 +63,8 @@ public final class PhysicsConfig {
         public Float liftScale;
         /** Linear angular air drag per second. */
         public Float airDrag;
+        /** Multiplier for parent animation rotation impulses. */
+        public Float animationForce;
         /** Parent pitch angular-velocity influence. */
         public Float pitchOmegaScale;
         /** Parent yaw angular-velocity influence. */
@@ -97,6 +99,7 @@ public final class PhysicsConfig {
             s.clothSpeedScale = clothSpeedScale;
             s.liftScale = liftScale;
             s.airDrag = airDrag;
+            s.animationForce = animationForce;
             s.pitchOmegaScale = pitchOmegaScale;
             s.yawOmegaScale = yawOmegaScale;
             s.rollOmegaScale = rollOmegaScale;
@@ -147,6 +150,7 @@ public final class PhysicsConfig {
             if (o.clothSpeedScale != null) clothSpeedScale = o.clothSpeedScale;
             if (o.liftScale != null) liftScale = o.liftScale;
             if (o.airDrag != null) airDrag = o.airDrag;
+            if (o.animationForce != null) animationForce = o.animationForce;
             if (o.pitchOmegaScale != null) pitchOmegaScale = o.pitchOmegaScale;
             if (o.yawOmegaScale != null) yawOmegaScale = o.yawOmegaScale;
             if (o.rollOmegaScale != null) rollOmegaScale = o.rollOmegaScale;
@@ -197,6 +201,7 @@ public final class PhysicsConfig {
         public float clothSpeedScale(float fallback) { return clothSpeedScale == null ? fallback : clothSpeedScale; }
         public float liftScale(float fallback) { return liftScale == null ? fallback : liftScale; }
         public float airDrag(float fallback) { return airDrag == null ? fallback : airDrag; }
+        public float animationForce(float fallback) { return animationForce == null ? fallback : animationForce; }
         public float pitchOmegaScale(float fallback) { return pitchOmegaScale == null ? fallback : pitchOmegaScale; }
         public float yawOmegaScale(float fallback) { return yawOmegaScale == null ? fallback : yawOmegaScale; }
         public float rollOmegaScale(float fallback) { return rollOmegaScale == null ? fallback : rollOmegaScale; }

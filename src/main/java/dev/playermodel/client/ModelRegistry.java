@@ -95,7 +95,8 @@ public final class ModelRegistry {
             Path metaFile = folder.resolve("meta.json");
             Meta meta = new Meta();
             if (Files.isRegularFile(metaFile)) {
-                Meta parsed = GSON.fromJson(Files.readString(metaFile), Meta.class);
+                Meta parsed = GSON.fromJson(
+                        dev.playermodel.util.JsonComments.strip(Files.readString(metaFile)), Meta.class);
                 if (parsed != null) {
                     meta = parsed;
                 }
