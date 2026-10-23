@@ -108,10 +108,11 @@ public final class PhysicsManager {
                 state.smoothedSpeed.x * cos + state.smoothedSpeed.z * sin,
                 state.smoothedSpeed.y,
                 -state.smoothedSpeed.x * sin + state.smoothedSpeed.z * cos);
+        state.smoothedAccel.lerp(accel, 0.2F);
         Vector3f localAccel = new Vector3f(
-                accel.x * cos + accel.z * sin,
-                accel.y,
-                -accel.x * sin + accel.z * cos);
+                state.smoothedAccel.x * cos + state.smoothedAccel.z * sin,
+                state.smoothedAccel.y,
+                -state.smoothedAccel.x * sin + state.smoothedAccel.z * cos);
         for (CustomModel.PhysicsBoneRuntime bone : model.physicsBones()) {
             BoneState boneState = state.bones.computeIfAbsent(bone.name().toLowerCase(java.util.Locale.ROOT),
                     key -> new BoneState());
@@ -149,6 +150,7 @@ public final class PhysicsManager {
         float yawVelocity;
         float pitchVelocity;
         Vector3f smoothedSpeed = new Vector3f();
+        Vector3f smoothedAccel = new Vector3f();
         final Map<String, BoneState> bones = new HashMap<>();
 
         void reset(CustomModel newModel) {
@@ -164,6 +166,7 @@ public final class PhysicsManager {
             this.yawVelocity = 0.0F;
             this.pitchVelocity = 0.0F;
             this.smoothedSpeed = new Vector3f();
+            this.smoothedAccel = new Vector3f();
             this.bones.clear();
         }
 
