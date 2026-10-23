@@ -96,7 +96,7 @@ public final class PhysicsManager {
             // the jitter that the 10x response previously caused in the stiff spring.
             int substeps = MathHelper.clamp(bone.settings().substeps(8), 1, 32);
             for (int step = 0; step < substeps; step++) {
-                boneState.simulate(bone, parent, localAccel, speed, dt * 0.5F);
+                boneState.simulate(bone, parent, localAccel, dt * 0.5F);
             }
         }
     }
@@ -153,7 +153,7 @@ public final class PhysicsManager {
         boolean initialized;
 
         void simulate(CustomModel.PhysicsBoneRuntime bone, Quaternionf parent, Vector3f accel,
-                      Vector3f speed, float dt) {
+                      float dt) {
             if (!initialized || lastParent == null) {
                 lastParent = new Quaternionf(parent);
                 initialized = true;
@@ -181,8 +181,6 @@ public final class PhysicsManager {
             new Quaternionf(parent).invert().transform(gravityLocal);
             Vector3f accelLocal = new Vector3f(accel);
             new Quaternionf(parent).invert().transform(accelLocal);
-            Vector3f speedLocal = new Vector3f(speed);
-            new Quaternionf(parent).invert().transform(speedLocal);
 
             float gain = 3000.0F / Math.max(5.0F, stiffness)
                     * settings.speedGainScale(1.0F);
@@ -192,11 +190,13 @@ public final class PhysicsManager {
             // Vertical velocity must not create a horizontal swing force. Falling is handled by
             // gravity; horizontal motion alone drives the local pitch/roll targets.
             float inertiaScale = settings.inertia(1.0F);
-            float targetPitch = clamp(speedLocal.z * gain
+            float externalPitch = accelLocal.z * inertiaScale * 0.35F;
+            float externalRoll = -accelLocal.x * inertiaScale * 0.35F;
+            float targetPitch = clamp(externalPitch
                     - clamp(omega.x, -90.0F, 90.0F) * settings.pitchOmegaScale(0.6F) * inertiaScale
                     + gravity * gravityLocal.z / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
             float targetYaw = clamp(-clamp(omega.y, -90.0F, 90.0F) * settings.yawOmegaScale(0.4F) * inertiaScale + wind, -maxAngle, maxAngle);
-            float targetRoll = clamp(speedLocal.x * gain
+            float targetRoll = clamp(externalRoll
                     - clamp(omega.z, -90.0F, 90.0F) * settings.rollOmegaScale(0.6F) * inertiaScale
                     - gravity * gravityLocal.x / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
             // Critically damped follow instead of snapping directly to the target. The
