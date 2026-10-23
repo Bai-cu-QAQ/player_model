@@ -120,7 +120,7 @@ public final class PhysicsManager {
             // the jitter that the 10x response previously caused in the stiff spring.
             int substeps = MathHelper.clamp(bone.settings().substeps(8), 1, 32);
             for (int step = 0; step < substeps; step++) {
-                boneState.simulate(bone, parent, localAccel, speed, state.yawVelocity,
+                boneState.simulate(model, bone, parent, localAccel, speed, state.yawVelocity,
                         state.pitchVelocity, dt * 0.5F);
             }
         }
@@ -188,7 +188,7 @@ public final class PhysicsManager {
         Quaternionf lastParent;
         boolean initialized;
 
-        void simulate(CustomModel.PhysicsBoneRuntime bone, Quaternionf parent, Vector3f accel,
+        void simulate(CustomModel model, CustomModel.PhysicsBoneRuntime bone, Quaternionf parent, Vector3f accel,
                       Vector3f speed, float viewYawVelocity, float viewPitchVelocity, float dt) {
             if (!initialized || lastParent == null) {
                 lastParent = new Quaternionf(parent);
@@ -213,8 +213,6 @@ public final class PhysicsManager {
 
             Vector3f omega = parentAngularVelocity(parent, lastParent, dt);
             omega.mul(57.29578F);
-            Vector3f gravityLocal = new Vector3f(0.0F, -1.0F, 0.0F);
-            new Quaternionf(parent).invert().transform(gravityLocal);
             Vector3f accelLocal = new Vector3f(accel);
             new Quaternionf(parent).invert().transform(accelLocal);
             Vector3f speedLocal = new Vector3f(speed);
@@ -231,17 +229,21 @@ public final class PhysicsManager {
             float animationForce = settings.animationForce(1.0F);
             float externalPitch = accelLocal.z * inertiaScale * 0.35F;
             float externalRoll = -accelLocal.x * inertiaScale * 0.35F;
+            Vector3f cubeTorque = model.physicsGravityTorque(bone);
+            new Quaternionf(parent).invert().transform(cubeTorque);
+            float cubeGravity = settings.gravity(0.8F) * 0.5F;
+            externalPitch += cubeTorque.x * cubeGravity;
+            externalRoll += cubeTorque.z * cubeGravity;
             float viewYaw = clamp(viewYawVelocity, -180.0F, 180.0F);
             float viewPitch = clamp(viewPitchVelocity, -180.0F, 180.0F);
             float desiredPitch = clamp(speedLocal.z * gain + externalPitch
                     - clamp(omega.x, -90.0F, 90.0F) * settings.pitchOmegaScale(0.6F) * inertiaScale * animationForce
-                    + gravity * gravityLocal.z / Math.max(5.0F, stiffness)
                     - viewPitch * 0.10F * inertiaScale, -maxAngle, maxAngle);
             float desiredYaw = clamp(-clamp(omega.y, -90.0F, 90.0F) * settings.yawOmegaScale(0.4F) * inertiaScale * animationForce
                     - viewYaw * 0.16F * inertiaScale + wind, -maxAngle, maxAngle);
             float desiredRoll = clamp(speedLocal.x * gain + externalRoll
                     - clamp(omega.z, -90.0F, 90.0F) * settings.rollOmegaScale(0.6F) * inertiaScale * animationForce
-                    - gravity * gravityLocal.x / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
+                    , -maxAngle, maxAngle);
             // Low-pass the desired angle before the spring. A quick direction change then carries
             // the old target for a few steps instead of snapping to the new direction.
             float targetBlend = 1.0F - (float) Math.exp(-settings.targetResponse(1.0F) * dt);

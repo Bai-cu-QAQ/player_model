@@ -7,6 +7,7 @@ import net.minecraft.client.model.ModelPart;
 import net.minecraft.client.model.TexturedModelData;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.entity.model.PlayerEntityModel;
+import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
@@ -92,6 +93,49 @@ public final class CustomModel {
         }
     }
 
+    /** Gravity torque at the real centers of this physics bone's cubes. */
+    public Vector3f physicsGravityTorque(PhysicsBoneRuntime physics) {
+        Vector3f pivot = physicsPivot(physics);
+        Matrix4f matrix = partMatrix(physics.part());
+        Vector3f torque = new Vector3f();
+        for (ModelPart.Cuboid cuboid : physics.part().cuboids) {
+            Vector3f center = new Vector3f();
+            int count = 0;
+            for (ModelPart.Quad quad : cuboid.sides) {
+                for (ModelPart.Vertex vertex : quad.vertices) {
+                    center.add(matrix.transformPosition(new Vector3f(vertex.pos)));
+                    count++;
+                }
+            }
+            if (count == 0) continue;
+            center.div(count);
+            torque.add(new Vector3f(center).sub(pivot).cross(new Vector3f(0.0F, -1.0F, 0.0F)));
+        }
+        return torque;
+    }
+
+    public Vector3f physicsPivot(PhysicsBoneRuntime physics) {
+        Matrix4f parent = partMatrix(physics.parent());
+        return parent.transformPosition(new Vector3f(physics.part().pivotX,
+                physics.part().pivotY, physics.part().pivotZ));
+    }
+
+    private Matrix4f partMatrix(ModelPart part) {
+        List<ModelPart> chain = new ArrayList<>();
+        ModelPart current = part;
+        while (current != null && current != rootPart) {
+            chain.add(current);
+            current = parents.get(current);
+        }
+        Matrix4f matrix = new Matrix4f();
+        for (int i = chain.size() - 1; i >= 0; i--) {
+            ModelPart node = chain.get(i);
+            matrix.translate(node.pivotX, node.pivotY, node.pivotZ);
+            matrix.rotate(new Quaternionf().rotationZYX(node.roll, node.yaw, node.pitch));
+            matrix.scale(node.xScale, node.yScale, node.zScale);
+        }
+        return matrix;
+    }
     /** Cumulative rotation of a part in model space, including all core/physics ancestors. */
     public Quaternionf worldRotation(ModelPart part) {
         List<ModelPart> chain = new ArrayList<>();
