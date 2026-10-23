@@ -221,13 +221,6 @@ public final class PhysicsManager {
             float k = springOmega * springOmega;
             float c = 2.0F * springOmega
                     * (cloth ? settings.clothDampingRatio(0.72F) : settings.dampingRatio(0.82F));
-            // Parent animation alone must be able to kick the bone even when the player has no
-            // movement speed. This is an impulse from the parent angular velocity, separate from
-            // the spring target.
-            float animationKick = animationForce * dt * 3.0F;
-            vPitch -= omega.x * animationKick;
-            vYaw -= omega.y * animationKick;
-            vRoll -= omega.z * animationKick;
             vPitch += (k * (targetPitch - pitch) - c * vPitch) * dt;
             vYaw += (k * (targetYaw - yaw) - c * vYaw) * dt;
             vRoll += (k * (targetRoll - roll) - c * vRoll) * dt;
