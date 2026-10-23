@@ -85,25 +85,25 @@ public final class PhysicsManager {
             boolean cloth = "cloth".equalsIgnoreCase(settings.mode);
             float motionScale = settings.motionStrength(1) * legacy(settings.speedGainScale, 1);
             if (cloth) motionScale *= legacy(settings.clothSpeedScale, .8F);
-            Vector3f desired = new Vector3f(-speed.z, 0, speed.x)
-                    .mul(settings.motionGain(.065F) * motionScale);
-            desired.add(new Vector3f(-accel.z, 0, accel.x)
-                    .mul(settings.accelerationGain(.015F) * settings.accelerationStrength(.12F) * legacy(settings.inertia, 1)));
-            desired.fma(-settings.animationGain(.045F) * settings.angularInertia(.7F) * legacy(settings.animationForce, 1), omega);
+            Vector3f desired = new Vector3f();
+            desired.fma(-settings.animationGain(.045F) * settings.angularInertia(.7F)
+                    * legacy(settings.animationForce, 1), omega);
             desired.y += legacy(settings.wind, 0) * .01F;
-            // Rest-space lever from actual cube centers; no double application of static rotation.
             Vector3f lever = b.lever;
             if (lever == null) {
                 lever = model.physicsRestLever(bone);
                 b.lever = new Vector3f(lever);
             }
             Vector3f r = new Quaternionf(frame).transform(new Vector3f(lever));
-            float radius = r.length();
-            if (radius > 1e-5F) {
-                // +Y is down in model space. Gravity is not a hand-flipped pitch/roll coefficient.
-                Vector3f gravityTorque = r.cross(new Vector3f(0, 1, 0));
-                desired.fma(settings.gravityGain(.04F) * legacy(settings.gravity, .8F) / radius, gravityTorque);
-            }
+            float radius = Math.max(1e-4F, r.length());
+            // Use the full 3D force at the cube-centroid lever. The old code dropped Y, so
+            // vertical falling/rising could not generate any secondary motion.
+            Vector3f motionForce = new Vector3f(speed).mul(-settings.motionGain(.065F) * motionScale);
+            motionForce.fma(-settings.accelerationGain(.015F)
+                    * settings.accelerationStrength(.12F) * legacy(settings.inertia, 1), accel);
+            desired.fma(1.0F / radius, r.cross(motionForce));
+            Vector3f gravityTorque = r.cross(new Vector3f(0, 1, 0));
+            desired.fma(settings.gravityGain(.04F) * legacy(settings.gravity, .8F) / radius, gravityTorque);
             float maxAngle = (float) Math.toRadians(Math.min(settings.maxAngleLimit(120), Math.max(1,
                     legacy(settings.maxAngle, 70) * (cloth ? legacy(settings.clothMaxAngleScale, 1.25F) : 1))));
             cap(desired, maxAngle);
