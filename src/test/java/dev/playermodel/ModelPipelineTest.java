@@ -14,6 +14,7 @@ import dev.playermodel.model.PhysicsConfig;
 import dev.playermodel.model.RawBone;
 import dev.playermodel.model.RawModel;
 import dev.playermodel.runtime.PreparedModel;
+import com.google.gson.Gson;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
@@ -138,6 +139,21 @@ class ModelPipelineTest {
         assertEquals(2, skirt);
     }
 
+    @Test
+    void parsesPhysicsTuningCoefficients() {
+        String json = """
+                {"defaultSettings":{"substeps":10,"springBase":5.5,
+                "dampingRatio":0.7,"clothSpeedScale":0.6,"liftScale":1.4},
+                "bones":{"hair_physics":{"pitchOmegaScale":0.8}}}
+                """;
+        PhysicsConfig config = new Gson().fromJson(json, PhysicsConfig.class);
+        assertEquals(10, config.resolved("hair_physics").substeps(8));
+        assertEquals(5.5F, config.resolved("hair_physics").springBase(6.0F), 0.001F);
+        assertEquals(0.8F, config.resolved("hair_physics").pitchOmegaScale(0.6F), 0.001F);
+        assertEquals(0.6F, config.resolved("hair_physics").clothSpeedScale(0.8F), 0.001F);
+        assertEquals(0.7F, config.resolved("hair_physics").dampingRatio(0.82F), 0.001F);
+        assertEquals(1.4F, config.resolved("hair_physics").liftScale(1.25F), 0.001F);
+    }
     @Test
     void strictPhysicsSuffixAndOverrides() {
         assertTrue(PhysicsBoneName.hasSuffix("hair_physics"));

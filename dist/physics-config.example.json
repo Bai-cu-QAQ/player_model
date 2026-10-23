@@ -1,0 +1,45 @@
+{
+  "physics": {
+    "defaultSettings": {
+      "mode": "pendulum",
+      "stiffness": 75,
+      "damping": 9,
+      "gravity": 0.8,
+      "inertia": 1.0,
+      "maxAngle": 70,
+      "wind": 0.0,
+      "drag": 0.0,
+      "iterations": 3,
+
+      "substeps": 8,
+      "springBase": 6.0,
+      "springDampingScale": 0.75,
+      "springClothScale": 0.72,
+      "dampingRatio": 0.82,
+      "clothDampingRatio": 0.72,
+      "speedGainScale": 1.0,
+      "clothSpeedScale": 0.8,
+      "liftScale": 1.25,
+      "pitchOmegaScale": 0.6,
+      "yawOmegaScale": 0.4,
+      "rollOmegaScale": 0.6,
+      "clothStiffnessScale": 0.65,
+      "clothDampingScale": 0.9,
+      "clothMaxAngleScale": 1.25
+    },
+    "bones": {
+      "hair_physics": {
+        "substeps": 10,
+        "springBase": 5.0,
+        "dampingRatio": 0.7,
+        "pitchOmegaScale": 0.8
+      },
+      "skirt_physics": {
+        "mode": "cloth",
+        "springBase": 4.0,
+        "clothDampingRatio": 0.6,
+        "clothSpeedScale": 0.6
+      }
+    }
+  }
+}

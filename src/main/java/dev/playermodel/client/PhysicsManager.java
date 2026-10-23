@@ -94,7 +94,8 @@ public final class PhysicsManager {
             Quaternionf parent = model.worldRotation(bone.parent());
             // Twenty half-steps equal ten normal render steps; the smaller integration step removes
             // the jitter that the 10x response previously caused in the stiff spring.
-            for (int step = 0; step < 8; step++) {
+            int substeps = MathHelper.clamp(bone.settings().substeps(8), 1, 32);
+            for (int step = 0; step < substeps; step++) {
                 boneState.simulate(bone, parent, localAccel, speed, dt * 0.5F);
             }
         }
@@ -168,9 +169,9 @@ public final class PhysicsManager {
             if (cloth) {
                 // Cloth chains use a softer, more damped spring at every segment. Each child also
                 // inherits its parent's simulated rotation through ModelPart hierarchy.
-                stiffness *= 0.65F;
-                damping *= 0.9F;
-                maxAngle *= 1.25F;
+                stiffness *= settings.clothStiffnessScale(0.65F);
+                damping *= settings.clothDampingScale(0.9F);
+                maxAngle *= settings.clothMaxAngleScale(1.25F);
             }
             maxAngle = Math.min(150.0F, maxAngle);
 
@@ -183,32 +184,34 @@ public final class PhysicsManager {
             Vector3f speedLocal = new Vector3f(speed);
             new Quaternionf(parent).invert().transform(speedLocal);
 
-            float gain = 3000.0F / Math.max(5.0F, stiffness);
-            float response = 8.0F + damping * 2.0F;
+            float gain = 3000.0F / Math.max(5.0F, stiffness)
+                    * settings.speedGainScale(1.0F);
             if (cloth) {
-                gain *= 0.8F;
-                response *= 0.75F;
+                gain *= settings.clothSpeedScale(0.8F);
             }
             // Vertical motion has no horizontal component: rising keeps the cloth hanging down,
             // falling lifts it upward. Horizontal speed is only an additional trail force.
             float rise = speedLocal.y;
-            float lift = rise < 0.0F ? Math.min(maxAngle, -rise * (maxAngle / 1.25F)) : 0.0F;
+            float lift = rise < 0.0F ? Math.min(maxAngle, -rise * (maxAngle / settings.liftScale(1.25F))) : 0.0F;
+            float inertiaScale = settings.inertia(1.0F);
             float targetPitch = clamp(speedLocal.z * gain
-                    - clamp(omega.x, -90.0F, 90.0F) * 0.6F
+                    - clamp(omega.x, -90.0F, 90.0F) * settings.pitchOmegaScale(0.6F) * inertiaScale
                     + gravity * gravityLocal.z / Math.max(5.0F, stiffness)
                     + lift, -maxAngle, maxAngle);
-            float targetYaw = clamp(-clamp(omega.y, -90.0F, 90.0F) * 0.4F + wind, -maxAngle, maxAngle);
+            float targetYaw = clamp(-clamp(omega.y, -90.0F, 90.0F) * settings.yawOmegaScale(0.4F) * inertiaScale + wind, -maxAngle, maxAngle);
             float targetRoll = clamp(speedLocal.x * gain
-                    - clamp(omega.z, -90.0F, 90.0F) * 0.6F
+                    - clamp(omega.z, -90.0F, 90.0F) * settings.rollOmegaScale(0.6F) * inertiaScale
                     - gravity * gravityLocal.x / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
             // Critically damped follow instead of snapping directly to the target. The
             // previous 20 half-steps effectively reached the target almost instantly.
-            float springOmega = 6.0F + damping * 0.75F;
+            float springOmega = settings.springBase(6.0F)
+                    + damping * settings.springDampingScale(0.75F);
             if (cloth) {
-                springOmega *= 0.72F;
+                springOmega *= settings.springClothScale(0.72F);
             }
             float k = springOmega * springOmega;
-            float c = 2.0F * springOmega * (cloth ? 0.72F : 0.82F);
+            float c = 2.0F * springOmega
+                    * (cloth ? settings.clothDampingRatio(0.72F) : settings.dampingRatio(0.82F));
             vPitch += (k * (targetPitch - pitch) - c * vPitch) * dt;
             vYaw += (k * (targetYaw - yaw) - c * vYaw) * dt;
             vRoll += (k * (targetRoll - roll) - c * vRoll) * dt;
