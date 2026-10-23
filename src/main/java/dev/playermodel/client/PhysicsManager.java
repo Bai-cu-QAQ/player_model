@@ -117,10 +117,23 @@ public final class PhysicsManager {
             BoneState b = state.bones.get(key(bone.name()));
             Quaternionf restFrame = frames.get(key(bone.name()));
             Quaternionf offset = AngularMotion.localOffset(restFrame, b.motion.angle);
-            Quaternionf desiredWorld = new Quaternionf(restFrame).mul(offset);
-            Quaternionf actualParent = bone.parentPhysics() == null ? model.worldRotation(bone.parent())
-                    : simulatedFrames.get(key(bone.parentPhysics()));
-            if (actualParent == null) actualParent = model.worldRotation(bone.parent());
+            Quaternionf desiredWorld;
+            Quaternionf actualParent;
+            if (bone.parentPhysics() == null) {
+                actualParent = model.worldRotation(bone.parent());
+                desiredWorld = new Quaternionf(restFrame).mul(offset);
+            } else {
+                String parentKey = key(bone.parentPhysics());
+                Quaternionf parentRest = frames.get(parentKey);
+                actualParent = simulatedFrames.get(parentKey);
+                if (parentRest == null) parentRest = new Quaternionf();
+                if (actualParent == null) actualParent = new Quaternionf(parentRest);
+                // Keep the child's own physics offset, but inherit the parent's simulated
+                // rotation. The old code built the child from animation-only rest, then divided
+                // by the simulated parent, cancelling the child's visible physics.
+                Quaternionf relativeRest = new Quaternionf(parentRest).invert().mul(restFrame).normalize();
+                desiredWorld = new Quaternionf(actualParent).mul(relativeRest).mul(offset).normalize();
+            }
             Quaternionf local = new Quaternionf(actualParent).invert().mul(desiredWorld).normalize();
             Vector3f euler = local.getEulerAnglesZYX(new Vector3f());
             bone.part().pitch = euler.x;
