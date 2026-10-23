@@ -120,8 +120,10 @@ public final class PhysicsManager {
             // the jitter that the 10x response previously caused in the stiff spring.
             int substeps = MathHelper.clamp(bone.settings().substeps(8), 1, 32);
             for (int step = 0; step < substeps; step++) {
+                BoneState parentState = bone.parentPhysics() == null ? null
+                        : state.bones.get(bone.parentPhysics().toLowerCase(java.util.Locale.ROOT));
                 boneState.simulate(model, bone, parent, localAccel, speed, state.yawVelocity,
-                        state.pitchVelocity, dt * 0.5F);
+                        state.pitchVelocity, parentState, dt * 0.5F);
             }
         }
     }
@@ -189,7 +191,8 @@ public final class PhysicsManager {
         boolean initialized;
 
         void simulate(CustomModel model, CustomModel.PhysicsBoneRuntime bone, Quaternionf parent, Vector3f accel,
-                      Vector3f speed, float viewYawVelocity, float viewPitchVelocity, float dt) {
+                      Vector3f speed, float viewYawVelocity, float viewPitchVelocity,
+                      BoneState parentState, float dt) {
             if (!initialized || lastParent == null) {
                 lastParent = new Quaternionf(parent);
                 initialized = true;
@@ -253,6 +256,13 @@ public final class PhysicsManager {
                     , -maxAngle, maxAngle);
             // Low-pass the desired angle before the spring. A quick direction change then carries
             // the old target for a few steps instead of snapping to the new direction.
+            // Cloth children share the root direction instead of projecting forces onto their
+            // own mirrored local axes. A small fraction keeps a bend in the chain.
+            if (cloth && parentState != null) {
+                desiredPitch = parentState.targetPitch * 0.22F;
+                desiredYaw = parentState.targetYaw * 0.22F;
+                desiredRoll = parentState.targetRoll * 0.22F;
+            }
             float targetBlend = 1.0F - (float) Math.exp(-settings.targetResponse(1.0F) * dt);
             targetPitch += (desiredPitch - targetPitch) * targetBlend;
             targetYaw += (desiredYaw - targetYaw) * targetBlend;
