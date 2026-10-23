@@ -256,12 +256,23 @@ public final class PhysicsManager {
                     , -maxAngle, maxAngle);
             // Low-pass the desired angle before the spring. A quick direction change then carries
             // the old target for a few steps instead of snapping to the new direction.
-            // Cloth children share the root direction instead of projecting forces onto their
-            // own mirrored local axes. A small fraction keeps a bend in the chain.
+            // Cloth children share the root direction in the root frame, then conjugate it
+            // into this child static frame. Copying raw Euler numbers makes mirrored hair
+            // branches rotate in opposite world directions and look like wings.
             if (cloth && parentState != null) {
-                desiredPitch = parentState.targetPitch * 0.70F + parentState.vPitch * 0.10F;
-                desiredYaw = parentState.targetYaw * 0.70F + parentState.vYaw * 0.10F;
-                desiredRoll = parentState.targetRoll * 0.70F + parentState.vRoll * 0.10F;
+                Quaternionf rootOffset = new Quaternionf().rotationZYX(
+                        (float) Math.toRadians(parentState.targetRoll),
+                        (float) Math.toRadians(parentState.targetYaw),
+                        (float) Math.toRadians(parentState.targetPitch));
+                Quaternionf identity = new Quaternionf();
+                rootOffset = identity.slerp(rootOffset, 0.85F);
+                Quaternionf staticFrame = bone.staticRotation() == null
+                        ? new Quaternionf() : new Quaternionf(bone.staticRotation());
+                Quaternionf localOffset = staticFrame.invert().mul(rootOffset).mul(staticFrame);
+                Vector3f childEuler = localOffset.getEulerAnglesZYX(new Vector3f());
+                desiredPitch = (float) Math.toDegrees(childEuler.x);
+                desiredYaw = (float) Math.toDegrees(childEuler.y);
+                desiredRoll = (float) Math.toDegrees(childEuler.z);
             }
             float targetBlend = 1.0F - (float) Math.exp(-settings.targetResponse(1.0F) * dt);
             targetPitch += (desiredPitch - targetPitch) * targetBlend;
