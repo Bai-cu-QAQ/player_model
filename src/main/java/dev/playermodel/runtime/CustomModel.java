@@ -8,6 +8,7 @@ import net.minecraft.client.model.TexturedModelData;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.entity.model.PlayerEntityModel;
 import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -28,13 +29,14 @@ public final class CustomModel {
     private final boolean modelPivots;
     private final float rigScale;
     private final List<PhysicsBoneRuntime> physicsBones = new ArrayList<>();
+    private final Map<BoneKind, Quaternionf> staticRotations = new EnumMap<>(BoneKind.class);
     private final Map<ModelPart, ModelPart> parents = new IdentityHashMap<>();
     private final ModelPart rootPart;
 
     public record PhysicsBoneRuntime(String name, ModelPart part, ModelPart parent,
                                      BoneKind parentBone, String parentPhysics,
                                      float pivotX, float pivotY, float pivotZ,
-                                     PhysicsConfig.Settings settings) {
+                                     PhysicsConfig.Settings settings, Quaternionf staticRotation) {
     }
 
     public CustomModel(PreparedModel prepared) {
@@ -52,6 +54,9 @@ public final class CustomModel {
             basePivots.put(kind, new float[]{array[kind.ordinal()].pivotX, array[kind.ordinal()].pivotY, array[kind.ordinal()].pivotZ});
         }
         this.modelPivots = prepared.usesModelPivots();
+        for (BoneKind kind : BoneKind.VALUES) {
+            staticRotations.put(kind, prepared.staticRotation(kind));
+        }
         Map<BoneKind, List<ModelPart.Cuboid>> cubes = prepared.cuboids(modelPivots, basePivots);
         for (BoneKind kind : BoneKind.VALUES) {
             ModelPart part = array[kind.ordinal()];
@@ -177,7 +182,8 @@ public final class CustomModel {
             }
             physicsBones.add(new PhysicsBoneRuntime(physics.name(), part, parent,
                     physics.parentBone(), physics.parentPhysics(),
-                    physics.pivotX(), physics.pivotY(), physics.pivotZ(), settings));
+                    physics.pivotX(), physics.pivotY(), physics.pivotZ(), settings,
+                    physics.staticRotation()));
         }
     }
 
@@ -197,6 +203,15 @@ public final class CustomModel {
             to.pitch = from.pitch;
             to.yaw = from.yaw;
             to.roll = from.roll;
+            Quaternionf staticRotation = staticRotations.get(kind);
+            if (staticRotation != null) {
+                Quaternionf animated = new Quaternionf().rotationZYX(to.roll, to.yaw, to.pitch);
+                Vector3f euler = new Quaternionf(staticRotation).mul(animated)
+                        .getEulerAnglesZYX(new Vector3f());
+                to.roll = euler.x;
+                to.yaw = euler.y;
+                to.pitch = euler.z;
+            }
             // EMF/CEM player models can bake different part scales into their rest pose. Copy the
             // animation delta relative to the rest scale so the imported geometry keeps its size.
             float[] baseScale = BaseSkeleton.baseScale(from);

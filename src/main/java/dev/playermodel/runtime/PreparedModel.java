@@ -10,6 +10,7 @@ import dev.playermodel.model.NormalizedModel;
 import dev.playermodel.model.NormalizedPhysicsBone;
 import dev.playermodel.model.PhysicsConfig;
 import net.minecraft.client.model.ModelPart;
+import org.joml.Quaternionf;
 import net.minecraft.util.math.Direction;
 
 import java.util.ArrayList;
@@ -31,26 +32,33 @@ public final class PreparedModel {
     private final Map<BoneKind, float[]> modelPivots = new EnumMap<>(BoneKind.class);
     private final List<VanillaVariant> vanillaVariants = new ArrayList<>();
     private final Map<String, PhysicsPart> physicsParts = new LinkedHashMap<>();
+    private final Map<BoneKind, Quaternionf> staticRotations = new EnumMap<>(BoneKind.class);
 
     public PreparedModel(NormalizedModel data) {
         this.data = data;
         for (NormalizedBone bone : data.bones) {
             modelPivots.put(bone.kind(), new float[]{bone.pivotX(), bone.pivotY(), bone.pivotZ()});
             modelPivoted.put(bone.kind(), buildCuboids(bone.cubes(), bone.pivotX(), bone.pivotY(), bone.pivotZ()));
+            staticRotations.put(bone.kind(), new Quaternionf().rotationZYX(
+                    (float) Math.toRadians(bone.rotZ()), (float) Math.toRadians(bone.rotY()),
+                    (float) Math.toRadians(bone.rotX())));
         }
         if (data.physicsBones != null) {
             for (NormalizedPhysicsBone bone : data.physicsBones) {
                 physicsParts.put(bone.name().toLowerCase(java.util.Locale.ROOT),
                         new PhysicsPart(bone.name(), bone.parentBone(), bone.parentPhysics(),
                                 bone.pivotX(), bone.pivotY(), bone.pivotZ(),
-                                buildCuboids(bone.cubes(), bone.pivotX(), bone.pivotY(), bone.pivotZ())));
+                                buildCuboids(bone.cubes(), bone.pivotX(), bone.pivotY(), bone.pivotZ()),
+                                new Quaternionf().rotationZYX((float) Math.toRadians(bone.rotZ()),
+                                        (float) Math.toRadians(bone.rotY()),
+                                        (float) Math.toRadians(bone.rotX()))));
             }
         }
     }
 
     public record PhysicsPart(String name, BoneKind parentBone, String parentPhysics,
                               float pivotX, float pivotY, float pivotZ,
-                              List<ModelPart.Cuboid> cuboids) {
+                              List<ModelPart.Cuboid> cuboids, Quaternionf staticRotation) {
     }
 
     public List<PhysicsPart> physicsBones() {
@@ -79,6 +87,11 @@ public final class PreparedModel {
             }
         }
         return null;
+    }
+
+    public Quaternionf staticRotation(BoneKind kind) {
+        Quaternionf q = staticRotations.get(kind);
+        return q == null ? new Quaternionf() : new Quaternionf(q);
     }
 
     public boolean customAnchors() {
