@@ -259,9 +259,9 @@ public final class PhysicsManager {
             // Cloth children share the root direction instead of projecting forces onto their
             // own mirrored local axes. A small fraction keeps a bend in the chain.
             if (cloth && parentState != null) {
-                desiredPitch = parentState.targetPitch * 0.22F;
-                desiredYaw = parentState.targetYaw * 0.22F;
-                desiredRoll = parentState.targetRoll * 0.22F;
+                desiredPitch = parentState.targetPitch * 0.70F + parentState.vPitch * 0.10F;
+                desiredYaw = parentState.targetYaw * 0.70F + parentState.vYaw * 0.10F;
+                desiredRoll = parentState.targetRoll * 0.70F + parentState.vRoll * 0.10F;
             }
             float targetBlend = 1.0F - (float) Math.exp(-settings.targetResponse(1.0F) * dt);
             targetPitch += (desiredPitch - targetPitch) * targetBlend;
