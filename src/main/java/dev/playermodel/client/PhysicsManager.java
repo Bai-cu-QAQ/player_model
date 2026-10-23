@@ -207,7 +207,7 @@ public final class PhysicsManager {
                     - gravity * gravityLocal.x / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
             // Low-pass the desired angle before the spring. A quick direction change then carries
             // the old target for a few steps instead of snapping to the new direction.
-            float targetBlend = 1.0F - (float) Math.exp(-settings.targetResponse(4.0F) * dt);
+            float targetBlend = 1.0F - (float) Math.exp(-settings.targetResponse(1.0F) * dt);
             targetPitch += (desiredPitch - targetPitch) * targetBlend;
             targetYaw += (desiredYaw - targetYaw) * targetBlend;
             targetRoll += (desiredRoll - targetRoll) * targetBlend;
