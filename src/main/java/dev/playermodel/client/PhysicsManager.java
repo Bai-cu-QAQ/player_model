@@ -189,15 +189,12 @@ public final class PhysicsManager {
             if (cloth) {
                 gain *= settings.clothSpeedScale(0.8F);
             }
-            // Vertical motion has no horizontal component: rising keeps the cloth hanging down,
-            // falling lifts it upward. Horizontal speed is only an additional trail force.
-            float rise = speedLocal.y;
-            float lift = rise < 0.0F ? Math.min(maxAngle, -rise * (maxAngle / settings.liftScale(1.25F))) : 0.0F;
+            // Vertical velocity must not create a horizontal swing force. Falling is handled by
+            // gravity; horizontal motion alone drives the local pitch/roll targets.
             float inertiaScale = settings.inertia(1.0F);
             float targetPitch = clamp(speedLocal.z * gain
                     - clamp(omega.x, -90.0F, 90.0F) * settings.pitchOmegaScale(0.6F) * inertiaScale
-                    + gravity * gravityLocal.z / Math.max(5.0F, stiffness)
-                    + lift, -maxAngle, maxAngle);
+                    + gravity * gravityLocal.z / Math.max(5.0F, stiffness), -maxAngle, maxAngle);
             float targetYaw = clamp(-clamp(omega.y, -90.0F, 90.0F) * settings.yawOmegaScale(0.4F) * inertiaScale + wind, -maxAngle, maxAngle);
             float targetRoll = clamp(speedLocal.x * gain
                     - clamp(omega.z, -90.0F, 90.0F) * settings.rollOmegaScale(0.6F) * inertiaScale
