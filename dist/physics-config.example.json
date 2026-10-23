@@ -14,7 +14,18 @@
       "gravity": 0.8,
       "maxAngle": 70,
       "wind": 0.0,
-      "substeps": 8
+      "substeps": 8,
+      "motionGain": 0.065,
+      "accelerationGain": 0.015,
+      "animationGain": 0.045,
+      "gravityGain": 0.04,
+      "maxAngleLimit": 120,
+      "maxSubsteps": 32,
+      "speedSmoothing": 10,
+      "accelerationSmoothing": 8,
+      "maxSpeed": 12.5,
+      "maxAcceleration": 30,
+      "maxAnimationSpeed": 6
     },
     "bones": {
       "hair_physics": {

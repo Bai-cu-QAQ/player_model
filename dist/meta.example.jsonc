@@ -45,6 +45,20 @@
       "maxAngle": 70,
       "wind": 0.0,
       "substeps": 8,
+      // 基础拖尾、加速度、动画和重力力矩增益。
+      "motionGain": 0.065,
+      "accelerationGain": 0.015,
+      "animationGain": 0.045,
+      "gravityGain": 0.04,
+      // 角度和子步硬上限。
+      "maxAngleLimit": 120,
+      "maxSubsteps": 32,
+      // 速度/加速度采样平滑和上限。
+      "speedSmoothing": 10,
+      "accelerationSmoothing": 8,
+      "maxSpeed": 12.5,
+      "maxAcceleration": 30,
+      "maxAnimationSpeed": 6,
       // 以下兼容倍率仍生效；通常保留默认即可。
       "inertia": 1.0,
       "animationForce": 1.0,

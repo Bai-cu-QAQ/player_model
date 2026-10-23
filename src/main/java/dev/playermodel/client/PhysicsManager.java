@@ -29,25 +29,28 @@ public final class PhysicsManager {
         if (elapsed <= 0) return;
         float dt = Math.min(elapsed, .05F);
 
+        PhysicsConfig.Settings global = model.physicsBones().isEmpty()
+                ? new PhysicsConfig.Settings() : model.physicsBones().get(0).settings();
+
         // Estimate translation over a tick-sized window, not a second derivative of render deltas.
         if (now - state.sampleTime >= 50_000_000L) {
             float interval = (now - state.sampleTime) / 1_000_000_000F;
             Vec3d v = position.subtract(state.samplePosition).multiply(1.0 / interval);
             Vector3f next = new Vector3f((float) v.x, (float) -v.y, (float) -v.z);
             state.acceleration.set(next).sub(state.sampleVelocity).div(interval);
-            cap(state.acceleration, 30);
+            cap(state.acceleration, global.maxAcceleration(30));
             state.sampleVelocity.set(next);
             state.sampleTime = now;
             state.samplePosition = position;
         }
         state.position = position;
-        state.velocity.lerp(state.sampleVelocity, blend(10, dt));
-        state.smoothAcceleration.lerp(state.acceleration, blend(8, dt));
+        state.velocity.lerp(state.sampleVelocity, blend(global.speedSmoothing(10), dt));
+        state.smoothAcceleration.lerp(state.acceleration, blend(global.accelerationSmoothing(8), dt));
         // Minecraft model coordinates have +Y down; body yaw rotates the model outside ModelPart.
         Quaternionf body = new Quaternionf().rotationY((float) Math.toRadians(player.getBodyYaw()));
         Vector3f speed = new Quaternionf(body).invert().transform(new Vector3f(state.velocity));
         Vector3f accel = new Quaternionf(body).invert().transform(new Vector3f(state.smoothAcceleration));
-        cap(speed, 12.5F);
+        cap(speed, global.maxSpeed(12.5F));
 
         List<CustomModel.PhysicsBoneRuntime> ordered = new ArrayList<>();
         Map<String, CustomModel.PhysicsBoneRuntime> byName = new HashMap<>();
@@ -77,15 +80,16 @@ public final class PhysicsManager {
             b.lastFrame = new Quaternionf(animation);
             // Move the world-frame angular vector back to the body/model frame.
             new Quaternionf(body).invert().transform(omega);
-            cap(omega, 6);
+            cap(omega, settings.maxAnimationSpeed(6));
 
             boolean cloth = "cloth".equalsIgnoreCase(settings.mode);
             float motionScale = settings.motionStrength(1) * legacy(settings.speedGainScale, 1);
             if (cloth) motionScale *= legacy(settings.clothSpeedScale, .8F);
-            Vector3f desired = new Vector3f(-speed.z, 0, speed.x).mul(.065F * motionScale);
+            Vector3f desired = new Vector3f(-speed.z, 0, speed.x)
+                    .mul(settings.motionGain(.065F) * motionScale);
             desired.add(new Vector3f(-accel.z, 0, accel.x)
-                    .mul(.015F * settings.accelerationStrength(.12F) * legacy(settings.inertia, 1)));
-            desired.fma(-.045F * settings.angularInertia(.7F) * legacy(settings.animationForce, 1), omega);
+                    .mul(settings.accelerationGain(.015F) * settings.accelerationStrength(.12F) * legacy(settings.inertia, 1)));
+            desired.fma(-settings.animationGain(.045F) * settings.angularInertia(.7F) * legacy(settings.animationForce, 1), omega);
             desired.y += legacy(settings.wind, 0) * .01F;
             // Rest-space lever from actual cube centers; no double application of static rotation.
             Vector3f lever = b.lever;
@@ -98,9 +102,9 @@ public final class PhysicsManager {
             if (radius > 1e-5F) {
                 // +Y is down in model space. Gravity is not a hand-flipped pitch/roll coefficient.
                 Vector3f gravityTorque = r.cross(new Vector3f(0, 1, 0));
-                desired.fma(.04F * legacy(settings.gravity, .8F) / radius, gravityTorque);
+                desired.fma(settings.gravityGain(.04F) * legacy(settings.gravity, .8F) / radius, gravityTorque);
             }
-            float maxAngle = (float) Math.toRadians(Math.min(120, Math.max(1,
+            float maxAngle = (float) Math.toRadians(Math.min(settings.maxAngleLimit(120), Math.max(1,
                     legacy(settings.maxAngle, 70) * (cloth ? legacy(settings.clothMaxAngleScale, 1.25F) : 1))));
             cap(desired, maxAngle);
             b.filtered.lerp(desired, blend(settings.forceSmoothing(10), dt));
@@ -108,7 +112,7 @@ public final class PhysicsManager {
             float air = settings.airResistance(legacy(settings.airDrag, 1.5F));
             b.motion.advance(b.filtered, response, settings.swingDamping(.9F), air,
                     (float) Math.toRadians(settings.maxAngularSpeed(360)), maxAngle, dt,
-                    Math.min(32, Math.max(1, settings.substeps(8))));
+                    Math.min(settings.maxSubsteps(32), Math.max(1, settings.substeps(8))));
         }
         // Convert the desired MODEL-space orientation back into each child's actual parent frame.
         // This compensates for inherited parent deflection rather than applying it again per link.

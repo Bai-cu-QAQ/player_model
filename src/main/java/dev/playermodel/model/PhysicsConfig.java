@@ -53,7 +53,28 @@ public final class PhysicsConfig {
         /** Force low-pass response per second (default 10). */
         public Float forceSmoothing;
         /** Parent rotation inertia multiplier (default 0.7). */
-        public Float angularInertia;
+        public Float angularInertia;        /** Base trail gain per unit local speed (default 0.065). */
+        public Float motionGain;
+        /** Base acceleration force gain (default 0.015). */
+        public Float accelerationGain;
+        /** Base animation angular-velocity gain (default 0.045). */
+        public Float animationGain;
+        /** Base gravity torque gain (default 0.04). */
+        public Float gravityGain;
+        /** Hard upper bound for the local angle in degrees (default 120). */
+        public Float maxAngleLimit;
+        /** Hard upper bound for substeps (default 32). */
+        public Integer maxSubsteps;
+        /** Linear speed smoothing rate (default 10). */
+        public Float speedSmoothing;
+        /** Acceleration smoothing rate (default 8). */
+        public Float accelerationSmoothing;
+        /** Maximum sampled linear speed (default 12.5). */
+        public Float maxSpeed;
+        /** Maximum sampled linear acceleration (default 30). */
+        public Float maxAcceleration;
+        /** Maximum inherited animation angular speed (default 6). */
+        public Float maxAnimationSpeed;
         public Float stiffness;
         public Float damping;
         public Float gravity;
@@ -110,7 +131,17 @@ public final class PhysicsConfig {
             s.airResistance = airResistance;
             s.maxAngularSpeed = maxAngularSpeed;
             s.forceSmoothing = forceSmoothing;
-            s.angularInertia = angularInertia;
+            s.angularInertia = angularInertia;            s.motionGain = motionGain;
+            s.accelerationGain = accelerationGain;
+            s.animationGain = animationGain;
+            s.gravityGain = gravityGain;
+            s.maxAngleLimit = maxAngleLimit;
+            s.maxSubsteps = maxSubsteps;
+            s.speedSmoothing = speedSmoothing;
+            s.accelerationSmoothing = accelerationSmoothing;
+            s.maxSpeed = maxSpeed;
+            s.maxAcceleration = maxAcceleration;
+            s.maxAnimationSpeed = maxAnimationSpeed;
             s.stiffness = stiffness;
             s.damping = damping;
             s.gravity = gravity;
@@ -155,7 +186,17 @@ public final class PhysicsConfig {
             if (o.airResistance != null) airResistance = o.airResistance;
             if (o.maxAngularSpeed != null) maxAngularSpeed = o.maxAngularSpeed;
             if (o.forceSmoothing != null) forceSmoothing = o.forceSmoothing;
-            if (o.angularInertia != null) angularInertia = o.angularInertia;
+            if (o.angularInertia != null) angularInertia = o.angularInertia;            if (o.motionGain != null) motionGain = o.motionGain;
+            if (o.accelerationGain != null) accelerationGain = o.accelerationGain;
+            if (o.animationGain != null) animationGain = o.animationGain;
+            if (o.gravityGain != null) gravityGain = o.gravityGain;
+            if (o.maxAngleLimit != null) maxAngleLimit = o.maxAngleLimit;
+            if (o.maxSubsteps != null) maxSubsteps = o.maxSubsteps;
+            if (o.speedSmoothing != null) speedSmoothing = o.speedSmoothing;
+            if (o.accelerationSmoothing != null) accelerationSmoothing = o.accelerationSmoothing;
+            if (o.maxSpeed != null) maxSpeed = o.maxSpeed;
+            if (o.maxAcceleration != null) maxAcceleration = o.maxAcceleration;
+            if (o.maxAnimationSpeed != null) maxAnimationSpeed = o.maxAnimationSpeed;
             if (o.stiffness != null) {
                 stiffness = o.stiffness;
             }
@@ -232,7 +273,17 @@ public final class PhysicsConfig {
             return bounded(forceSmoothing, fallback, 10.0F, 0.1F, 60.0F);
         }
 
-        public float angularInertia(float fallback) {
+        public float motionGain(float fallback) { return bounded(motionGain, fallback, 0.065F, 0.0F, 10.0F); }
+        public float accelerationGain(float fallback) { return bounded(accelerationGain, fallback, 0.015F, 0.0F, 10.0F); }
+        public float animationGain(float fallback) { return bounded(animationGain, fallback, 0.045F, 0.0F, 10.0F); }
+        public float gravityGain(float fallback) { return bounded(gravityGain, fallback, 0.04F, 0.0F, 10.0F); }
+        public float maxAngleLimit(float fallback) { return bounded(maxAngleLimit, fallback, 120.0F, 1.0F, 360.0F); }
+        public int maxSubsteps(int fallback) { return maxSubsteps == null ? fallback : Math.max(1, maxSubsteps); }
+        public float speedSmoothing(float fallback) { return bounded(speedSmoothing, fallback, 10.0F, 0.1F, 60.0F); }
+        public float accelerationSmoothing(float fallback) { return bounded(accelerationSmoothing, fallback, 8.0F, 0.1F, 60.0F); }
+        public float maxSpeed(float fallback) { return bounded(maxSpeed, fallback, 12.5F, 0.1F, 100.0F); }
+        public float maxAcceleration(float fallback) { return bounded(maxAcceleration, fallback, 30.0F, 0.1F, 200.0F); }
+        public float maxAnimationSpeed(float fallback) { return bounded(maxAnimationSpeed, fallback, 6.0F, 0.1F, 60.0F); }        public float angularInertia(float fallback) {
             return bounded(angularInertia, fallback, 0.7F, 0.0F, 2.0F);
         }
 
