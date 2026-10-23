@@ -96,14 +96,9 @@ public final class CustomModel {
     /** Gravity torque at the real centers of this physics bone's cubes. */
     public Vector3f physicsGravityTorque(PhysicsBoneRuntime physics) {
         Vector3f pivot = physicsPivot(physics);
-        Matrix4f matrix = partMatrix(physics.parent());
-        matrix.translate(physics.part().pivotX, physics.part().pivotY, physics.part().pivotZ);
-        if (physics.staticRotation() != null) {
-            matrix.rotate(physics.staticRotation());
-        }
-        matrix.rotate(new Quaternionf().rotationZYX(physics.part().roll, physics.part().yaw,
-                physics.part().pitch));
-        matrix.scale(physics.part().xScale, physics.part().yScale, physics.part().zScale);
+        // applyAngles() already composes static rotation into the ModelPart. Do not apply it
+        // again here, or oblique cubes get a double-rotated center and torque.
+        Matrix4f matrix = partMatrix(physics.part());
         Vector3f torque = new Vector3f();
         for (ModelPart.Cuboid cuboid : physics.part().cuboids) {
             Vector3f center = new Vector3f();
