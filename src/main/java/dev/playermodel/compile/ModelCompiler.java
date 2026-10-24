@@ -290,7 +290,7 @@ public final class ModelCompiler {
             return x > 0 ? FaceDir.EAST : FaceDir.WEST;
         }
         if (ay >= ax && ay >= az) {
-            return y > 0 ? FaceDir.UP : FaceDir.DOWN;
+            // Minecraft model space has +Y down: the top face has a negative Y offset.\n            return y > 0 ? FaceDir.DOWN : FaceDir.UP;
         }
         return z > 0 ? FaceDir.SOUTH : FaceDir.NORTH;
     }

@@ -1,0 +1,58 @@
+{
+  "displayName": "星海旅人",
+  "textureMode": "model",
+  "pivotMode": "model",
+  "customAnchors": false,
+  "doubleLayer": false,
+  "slim": false,
+  "textureWidth": 64,
+  "textureHeight": 64,
+  "anchors": {},
+  "physics": {
+    "defaultSettings": {
+      "mode": "pendulum",
+      "motionStrength": 1.0,
+      "accelerationStrength": 0.6,
+      "restResponse": 8.0,
+      "swingDamping": 0.8,
+      "clothResponseScale": 0.8,
+      "airResistance": 1.2,
+      "maxAngularSpeed": 120.0,
+      "forceSmoothing": 10.0,
+      "angularInertia": 0.7,
+      "gravity": 0.8,
+      "maxAngle": 70,
+      "wind": 0.0,
+      "substeps": 8,
+      "motionGain": 0.08,
+      "accelerationGain": 0.015,
+      "animationGain": 0.045,
+      "gravityGain": 0.04,
+      "maxAngleLimit": 120,
+      "maxSubsteps": 32,
+      "speedSmoothing": 10,
+      "accelerationSmoothing": 8,
+      "maxSpeed": 12.5,
+      "maxAcceleration": 30,
+      "maxAnimationSpeed": 6,
+      "verticalMotionScale": 1.0,
+      "verticalAccelerationScale": 1.0,
+      "viewYawScale": 1.0,
+      "viewPitchScale": 1.0,
+      "angularAccelerationGain": 0.004,
+      "maxAngularAcceleration": 40.0
+    },
+    "bones": {
+      "hair_physics": {
+        "mode": "cloth",
+        "restResponse": 7.0,
+        "swingDamping": 0.8
+      },
+      "skirt_physics": {
+        "mode": "cloth",
+        "clothResponseScale": 0.7,
+        "motionStrength": 0.8
+      }
+    }
+  }
+}
