@@ -119,8 +119,13 @@ public final class ModelCompiler {
         int u = Math.round(element.uvOffset[0]);
         int v = Math.round(element.uvOffset[1]);
         boolean boxUv = element.boxUv || element.faces.isEmpty();
+        RawTexture boxTexture = raw.textureAt(raw.selectedTextureIndex);
+        int boxUvWidth = boxTexture != null && boxTexture.uvWidth() > 0
+                ? boxTexture.uvWidth() : raw.textureWidth;
+        int boxUvHeight = boxTexture != null && boxTexture.uvHeight() > 0
+                ? boxTexture.uvHeight() : raw.textureHeight;
         ModelPart.Cuboid cuboid = new ModelPart.Cuboid(u, v, minX, minY, minZ, sizeX, sizeY, sizeZ,
-                0, 0, 0, boxUv && element.mirrorUv, raw.textureWidth, raw.textureHeight, ALL_FACES);
+                0, 0, 0, boxUv && element.mirrorUv, boxUvWidth, boxUvHeight, ALL_FACES);
 
         float centerX = minX + sizeX / 2.0F;
         float centerY = minY + sizeY / 2.0F;

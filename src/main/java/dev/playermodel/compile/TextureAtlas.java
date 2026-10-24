@@ -75,7 +75,9 @@ final class TextureAtlas {
             int w = image.getWidth();
             int h = image.getHeight();
             width = Math.max(width, w);
-            placements.put(index, new Placement(image, PADDING, height, w, h));
+            int uvW = texture.uvWidth() > 0 ? texture.uvWidth() : w;
+            int uvH = texture.uvHeight() > 0 ? texture.uvHeight() : h;
+            placements.put(index, new Placement(image, PADDING, height, w, h, uvW, uvH));
             height += h + PADDING;
         }
         int atlasWidth = width + PADDING * 2;
@@ -110,7 +112,7 @@ final class TextureAtlas {
             return u;
         }
         Placement placement = placements.get(textureIndex);
-        return placement == null ? u : (placement.x + u * placement.width) / width;
+        return placement == null ? u : (placement.x + u * placement.uvWidth) / width;
     }
 
     float mapV(int textureIndex, float v) {
@@ -118,7 +120,7 @@ final class TextureAtlas {
             return v;
         }
         Placement placement = placements.get(textureIndex);
-        return placement == null ? v : (placement.y + v * placement.height) / height;
+        return placement == null ? v : (placement.y + v * placement.uvHeight) / height;
     }
 
     byte[] png() {
@@ -145,6 +147,7 @@ final class TextureAtlas {
         }
     }
 
-    private record Placement(BufferedImage image, int x, int y, int width, int height) {
+    private record Placement(BufferedImage image, int x, int y, int width, int height,
+                             int uvWidth, int uvHeight) {
     }
 }
