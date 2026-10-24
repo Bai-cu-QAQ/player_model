@@ -29,7 +29,13 @@ class PhysicsSettingsTest {
             new Parameter("airResistance", 1.5F, 0.0F, 30.0F),
             new Parameter("maxAngularSpeed", 360.0F, 1.0F, 1440.0F),
             new Parameter("forceSmoothing", 10.0F, 0.1F, 60.0F),
-            new Parameter("angularInertia", 0.7F, 0.0F, 2.0F)
+            new Parameter("angularInertia", 0.7F, 0.0F, 2.0F),
+            new Parameter("verticalMotionScale", 1F, 0F, 10F),
+            new Parameter("verticalAccelerationScale", 1F, 0F, 10F),
+            new Parameter("viewYawScale", 1F, 0F, 10F),
+            new Parameter("viewPitchScale", 1F, 0F, 10F),
+            new Parameter("angularAccelerationGain", .004F, 0F, 1F),
+            new Parameter("maxAngularAcceleration", 40F, 0F, 300F)
     };
 
     @Test

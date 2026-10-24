@@ -3,6 +3,7 @@ package dev.playermodel.client;
 import dev.playermodel.model.PhysicsConfig;
 import dev.playermodel.runtime.CustomModel;
 import dev.playermodel.util.AngularMotion;
+import dev.playermodel.util.SecondaryForces;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.util.math.Vec3d;
@@ -75,19 +76,33 @@ public final class PhysicsManager {
             PhysicsConfig.Settings settings = bone.settings();
             Quaternionf frame = frames.get(id);
             Quaternionf animation = new Quaternionf(body).mul(frame);
-            Vector3f omega = b.lastFrame == null || screen || state.screen
-                    ? new Vector3f() : AngularMotion.angularVelocity(b.lastFrame, animation, elapsed);
+            boolean suppressRotation = b.lastFrame == null || screen || state.screen;
+            Vector3f worldOmega = suppressRotation ? new Vector3f()
+                    : AngularMotion.angularVelocity(b.lastFrame, animation, elapsed);
             b.lastFrame = new Quaternionf(animation);
-            // Move the world-frame angular vector back to the body/model frame.
-            new Quaternionf(body).invert().transform(omega);
-            cap(omega, settings.maxAnimationSpeed(6));
+            cap(worldOmega, settings.maxAnimationSpeed(6));
+            Vector3f worldAlpha = suppressRotation ? new Vector3f()
+                    : new Vector3f(worldOmega).sub(b.lastOmega).div(elapsed);
+            b.lastOmega.set(worldOmega);
+            cap(worldAlpha, settings.maxAngularAcceleration(40));
+            float angularBlend = blend(settings.forceSmoothing(10), dt);
+            if (suppressRotation) { b.smoothOmega.zero(); b.smoothAlpha.zero(); }
+            else {
+                b.smoothOmega.lerp(worldOmega, angularBlend);
+                b.smoothAlpha.lerp(worldAlpha, angularBlend);
+            }
+            Quaternionf inverseBody = new Quaternionf(body).invert();
+            Vector3f omega = inverseBody.transform(new Vector3f(b.smoothOmega));
+            Vector3f angularAcceleration = inverseBody.transform(new Vector3f(b.smoothAlpha));
 
             boolean cloth = "cloth".equalsIgnoreCase(settings.mode);
             float motionScale = settings.motionStrength(1) * legacy(settings.speedGainScale, 1);
             if (cloth) motionScale *= legacy(settings.clothSpeedScale, .8F);
-            Vector3f desired = new Vector3f();
-            desired.fma(-settings.animationGain(.045F) * settings.angularInertia(.7F)
-                    * legacy(settings.animationForce, 1), omega);
+            float animationScale = settings.angularInertia(.7F) * legacy(settings.animationForce, 1);
+            Vector3f desired = SecondaryForces.rotation(omega, angularAcceleration,
+                    settings.animationGain(.045F) * animationScale,
+                    settings.angularAccelerationGain(.004F) * animationScale,
+                    settings.viewYawScale(1), settings.viewPitchScale(1));
             desired.y += legacy(settings.wind, 0) * .01F;
             Vector3f lever = b.lever;
             if (lever == null) {
@@ -95,15 +110,15 @@ public final class PhysicsManager {
                 b.lever = new Vector3f(lever);
             }
             Vector3f r = new Quaternionf(frame).transform(new Vector3f(lever));
-            float radius = Math.max(1e-4F, r.length());
-            // Use the full 3D force at the cube-centroid lever. The old code dropped Y, so
-            // vertical falling/rising could not generate any secondary motion.
-            Vector3f motionForce = new Vector3f(speed).mul(-settings.motionGain(.065F) * motionScale);
-            motionForce.fma(-settings.accelerationGain(.015F)
-                    * settings.accelerationStrength(.12F) * legacy(settings.inertia, 1), accel);
-            desired.fma(1.0F / radius, r.cross(motionForce));
-            Vector3f gravityTorque = r.cross(new Vector3f(0, 1, 0));
-            desired.fma(settings.gravityGain(.04F) * legacy(settings.gravity, .8F) / radius, gravityTorque);
+            // Complete 3D torque: collinear vertical force remains zero for a vertical lever.
+            // A tilted/offset cube reacts to jumping, falling and landing on its actual lever.
+            desired.add(SecondaryForces.movement(r, speed, accel,
+                    settings.motionGain(.065F) * motionScale,
+                    settings.accelerationGain(.015F) * settings.accelerationStrength(.12F)
+                            * legacy(settings.inertia, 1),
+                    settings.verticalMotionScale(1), settings.verticalAccelerationScale(1)));
+            desired.fma(settings.gravityGain(.04F) * legacy(settings.gravity, .8F),
+                    SecondaryForces.torque(r, new Vector3f(0, 1, 0)));
             float maxAngle = (float) Math.toRadians(Math.min(settings.maxAngleLimit(120), Math.max(1,
                     legacy(settings.maxAngle, 70) * (cloth ? legacy(settings.clothMaxAngleScale, 1.25F) : 1))));
             cap(desired, maxAngle);
@@ -171,6 +186,9 @@ public final class PhysicsManager {
         final AngularMotion motion = new AngularMotion();
         final Vector3f filtered = new Vector3f();
         Quaternionf lastFrame;
+        final Vector3f lastOmega = new Vector3f();
+        final Vector3f smoothOmega = new Vector3f();
+        final Vector3f smoothAlpha = new Vector3f();
         Vector3f lever;
     }
     private static final class PlayerState {

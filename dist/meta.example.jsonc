@@ -40,6 +40,16 @@
       "forceSmoothing": 10.0,
       // 父骨骼旋转惯性倍率，0..2。
       "angularInertia": 0.7,
+      // 竖直速度、竖直加速度受力倍率，0..10；0 仅关闭对应竖直分量。
+      "verticalMotionScale": 1.0,
+      "verticalAccelerationScale": 1.0,
+      // 转头/视角的 yaw、pitch 惯性倍率，0..10；来自真实骨骼动画，不重复叠加镜头角度。
+      "viewYawScale": 1.0,
+      "viewPitchScale": 1.0,
+      // 启动/停止旋转时的角加速度惯性增益，0..1；设 0 关闭。
+      "angularAccelerationGain": 0.004,
+      // 角加速度输入上限，0..300，单位 rad/s²。
+      "maxAngularAcceleration": 40.0,
       "gravity": 0.8,
       // 单轴最大角度，单位度。
       "maxAngle": 70,

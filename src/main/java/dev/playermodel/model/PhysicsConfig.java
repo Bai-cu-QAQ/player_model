@@ -53,6 +53,12 @@ public final class PhysicsConfig {
         /** Force low-pass response per second (default 10). */
         public Float forceSmoothing;
         /** Parent rotation inertia multiplier (default 0.7). */
+        public Float verticalMotionScale;
+        public Float verticalAccelerationScale;
+        public Float viewYawScale;
+        public Float viewPitchScale;
+        public Float angularAccelerationGain;
+        public Float maxAngularAcceleration;
         public Float angularInertia;        /** Base trail gain per unit local speed (default 0.065). */
         public Float motionGain;
         /** Base acceleration force gain (default 0.015). */
@@ -131,6 +137,12 @@ public final class PhysicsConfig {
             s.airResistance = airResistance;
             s.maxAngularSpeed = maxAngularSpeed;
             s.forceSmoothing = forceSmoothing;
+            s.verticalMotionScale = verticalMotionScale;
+            s.verticalAccelerationScale = verticalAccelerationScale;
+            s.viewYawScale = viewYawScale;
+            s.viewPitchScale = viewPitchScale;
+            s.angularAccelerationGain = angularAccelerationGain;
+            s.maxAngularAcceleration = maxAngularAcceleration;
             s.angularInertia = angularInertia;            s.motionGain = motionGain;
             s.accelerationGain = accelerationGain;
             s.animationGain = animationGain;
@@ -186,6 +198,12 @@ public final class PhysicsConfig {
             if (o.airResistance != null) airResistance = o.airResistance;
             if (o.maxAngularSpeed != null) maxAngularSpeed = o.maxAngularSpeed;
             if (o.forceSmoothing != null) forceSmoothing = o.forceSmoothing;
+            if (o.verticalMotionScale != null) verticalMotionScale = o.verticalMotionScale;
+            if (o.verticalAccelerationScale != null) verticalAccelerationScale = o.verticalAccelerationScale;
+            if (o.viewYawScale != null) viewYawScale = o.viewYawScale;
+            if (o.viewPitchScale != null) viewPitchScale = o.viewPitchScale;
+            if (o.angularAccelerationGain != null) angularAccelerationGain = o.angularAccelerationGain;
+            if (o.maxAngularAcceleration != null) maxAngularAcceleration = o.maxAngularAcceleration;
             if (o.angularInertia != null) angularInertia = o.angularInertia;            if (o.motionGain != null) motionGain = o.motionGain;
             if (o.accelerationGain != null) accelerationGain = o.accelerationGain;
             if (o.animationGain != null) animationGain = o.animationGain;
@@ -287,6 +305,12 @@ public final class PhysicsConfig {
             return bounded(angularInertia, fallback, 0.7F, 0.0F, 2.0F);
         }
 
+        public float verticalMotionScale(float fallback) { return bounded(verticalMotionScale, fallback, 1F, 0F, 10F); }
+        public float verticalAccelerationScale(float fallback) { return bounded(verticalAccelerationScale, fallback, 1F, 0F, 10F); }
+        public float viewYawScale(float fallback) { return bounded(viewYawScale, fallback, 1F, 0F, 10F); }
+        public float viewPitchScale(float fallback) { return bounded(viewPitchScale, fallback, 1F, 0F, 10F); }
+        public float angularAccelerationGain(float fallback) { return bounded(angularAccelerationGain, fallback, 0.004F, 0F, 1F); }
+        public float maxAngularAcceleration(float fallback) { return bounded(maxAngularAcceleration, fallback, 40F, 0F, 300F); }
         private static float bounded(Float value, float fallback, float defaultValue, float min, float max) {
             float resolved = value != null && Float.isFinite(value) ? value : fallback;
             if (!Float.isFinite(resolved)) resolved = defaultValue;
