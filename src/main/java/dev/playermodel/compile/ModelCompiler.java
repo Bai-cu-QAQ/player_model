@@ -127,6 +127,8 @@ public final class ModelCompiler {
         ModelPart.Cuboid cuboid = new ModelPart.Cuboid(u, v, minX, minY, minZ, sizeX, sizeY, sizeZ,
                 0, 0, 0, boxUv && element.mirrorUv, boxUvWidth, boxUvHeight, ALL_FACES);
 
+        float cubeMinX = minX, cubeMinY = minY, cubeMinZ = minZ;
+        float cubeMaxX = maxX, cubeMaxY = maxY, cubeMaxZ = maxZ;
         float centerX = minX + sizeX / 2.0F;
         float centerY = minY + sizeY / 2.0F;
         float centerZ = minZ + sizeZ / 2.0F;
@@ -168,11 +170,11 @@ public final class ModelCompiler {
                 float uu = vertex.u;
                 float vv = vertex.v;
                 if (!boxUv && rawFace != null) {
-                    float fu = uMax - uMin < 1e-6F ? 0.5F : (vertex.u - uMin) / (uMax - uMin);
-                    float fv = vMax - vMin < 1e-6F ? 0.5F : (vertex.v - vMin) / (vMax - vMin);
-                    if (element.mirrorUv) {
-                        fu = 1.0F - fu;
-                    }
+                    float[] st = faceUv(dir, vertex.pos.x(), vertex.pos.y(), vertex.pos.z(),
+                            cubeMinX, cubeMinY, cubeMinZ, cubeMaxX, cubeMaxY, cubeMaxZ);
+                    float fu = st[0];
+                    float fv = st[1];
+                    if (element.mirrorUv) fu = 1.0F - fu;
                     float[] rotated = rotateUv(fu, fv, rawFace.rotation());
                     fu = rotated[0];
                     fv = rotated[1];
@@ -239,6 +241,24 @@ public final class ModelCompiler {
         return new float[]{(float) (px + origin[0]), (float) (py + origin[1]), (float) (pz + origin[2])};
     }
 
+    private static float[] faceUv(FaceDir dir, float x, float y, float z,
+                                  float minX, float minY, float minZ,
+                                  float maxX, float maxY, float maxZ) {
+        float sx = Math.max(1e-6F, maxX - minX);
+        float sy = Math.max(1e-6F, maxY - minY);
+        float sz = Math.max(1e-6F, maxZ - minZ);
+        float u = (x - minX) / sx;
+        float v = (y - minY) / sy;
+        float w = (z - minZ) / sz;
+        return switch (dir) {
+            case NORTH -> new float[]{u, v};
+            case SOUTH -> new float[]{1F - u, v};
+            case EAST -> new float[]{1F - w, v};
+            case WEST -> new float[]{w, v};
+            case UP -> new float[]{u, w};
+            case DOWN -> new float[]{u, 1F - w};
+        };
+    }
     private static float[] rotateUv(float u, float v, int degrees) {
         return switch (Math.floorMod(degrees, 360)) {
             case 90 -> new float[]{1.0F - v, u};
