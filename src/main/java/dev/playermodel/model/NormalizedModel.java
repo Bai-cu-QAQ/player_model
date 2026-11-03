@@ -15,6 +15,10 @@ public final class NormalizedModel {
     public String faceJpm;
     /** Independent PNG for the JPM face overlay; null means use the model/skin texture. */
     public byte[] faceTexturePng;
+    /** Optional JEM document used for the vanilla-part base layer. */
+    public String jem;
+    /** Directory used to resolve JEM referenced models. */
+    public String jemDirectory;
     public int textureWidth = 64;
     public int textureHeight = 64;
     public transient byte[] texturePng;

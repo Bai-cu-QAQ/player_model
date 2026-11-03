@@ -21,12 +21,23 @@ import java.util.Map;
  * preserved, and the animation expressions are evaluated as absolute writes.
  */
 public final class JpmFaceModel {
+    private static final java.util.regex.Pattern EYE_VARIANT = java.util.regex.Pattern
+            .compile("[rl]_(eye_white|pupil|eyelid|blink)(\\d+)$");
+
     private final JpmModel data;
     private final ModelPart root;
+    private final float headWidth;
+    private final float headHeight;
     private final Map<String, ModelPart> parts = new HashMap<>();
 
     public JpmFaceModel(JpmModel data) {
+        this(data, 8.0F, 8.0F);
+    }
+
+    public JpmFaceModel(JpmModel data, float headWidth, float headHeight) {
         this.data = data;
+        this.headWidth = headWidth;
+        this.headHeight = headHeight;
         Map<String, ModelPart> children = new HashMap<>();
         for (JpmPart part : data.roots) {
             children.put(part.id, build(part));
@@ -56,8 +67,24 @@ public final class JpmFaceModel {
             target.xScale = (float) state.sx;
             target.yScale = (float) state.sy;
             target.zScale = (float) state.sz;
-            target.visible = state.visible;
+            target.visible = state.visible && state.visibleBoxes
+                    && visibleVariant(part.id, context.distance);
         }
+    }
+
+    /**
+     * Selects the eye LOD group from the imported head dimensions. JustExpressions ships separate
+     * 2by1/2by2/2by3/simple/farset variants; EMF shows one group for a given face size.
+     */
+    private boolean visibleVariant(String id, double distance) {
+        java.util.regex.Matcher matcher = EYE_VARIANT.matcher(id);
+        if (!matcher.matches()) return true;
+        int variant = Integer.parseInt(matcher.group(2));
+        if (distance > 24) return variant == 16;
+        if (headWidth <= 5) return variant >= 12 && variant <= 15;
+        if (headHeight >= 11) return variant == 9;
+        if (headHeight >= 9) return variant >= 5 && variant <= 8;
+        return variant >= 1 && variant <= 4;
     }
 
     private ModelPart build(JpmPart part) {
@@ -79,6 +106,7 @@ public final class JpmFaceModel {
         modelPart.xScale = part.scale;
         modelPart.yScale = part.scale;
         modelPart.zScale = part.scale;
+        modelPart.visible = visibleVariant(part.id, 0);
         parts.put(part.id, modelPart);
         return modelPart;
     }

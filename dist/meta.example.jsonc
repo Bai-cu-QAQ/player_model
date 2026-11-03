@@ -16,6 +16,9 @@
   // 可选 JPM 独立贴图；省略时读取 JPM 的 texture 字段，否则尝试同目录 player_face.png。
   // 设置后 JPM 会使用独立 RenderLayer，不再读取模型/皮肤贴图。
   "faceTexture": "",
+  // 可选 JEM 描述文件路径；省略时自动查找同目录 player.jem。
+  // JEM 的 head/headwear inline 模型会作为可见基础头部层渲染在 JPM 覆盖层下方。
+  "jem": "",
   // 贴图 UV 尺寸；0 表示从 bbmodel 自动读取。
   "textureWidth": 64,
   "textureHeight": 64,

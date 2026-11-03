@@ -51,18 +51,37 @@ public final class JpmModel {
         for (JpmAnimation animation : animations) {
             for (var entry : animation.expressions.entrySet()) {
                 String key = entry.getKey();
-                double value = entry.getValue().eval(context);
+                context.currentPart = partForAnimationKey(key);
+                double value;
+                try {
+                    value = entry.getValue().eval(context);
+                } finally {
+                    context.currentPart = null;
+                }
                 if (!Double.isFinite(value)) continue;
                 if (key.startsWith("var.")) {
                     context.variables.put(key, value);
                 } else {
-                    int dot = key.lastIndexOf('.');
+                    String target = key.startsWith("part.") ? key.substring("part.".length()) : key;
+                    int dot = target.lastIndexOf('.');
                     if (dot > 0) {
-                        context.part(key.substring(0, dot))
-                                .set(key.substring(dot + 1), value);
+                        String partId = target.substring(0, dot);
+                        String property = target.substring(dot + 1);
+                        context.part(partId).set(property, value);
                     }
                 }
             }
         }
+    }
+
+    private static String partForAnimationKey(String key) {
+        if (key.startsWith("part.")) {
+            String target = key.substring("part.".length());
+            int dot = target.lastIndexOf('.');
+            return dot > 0 ? target.substring(0, dot) : null;
+        }
+        if (key.startsWith("var.") || key.startsWith("this.")) return null;
+        int dot = key.lastIndexOf('.');
+        return dot > 0 ? key.substring(0, dot) : null;
     }
 }

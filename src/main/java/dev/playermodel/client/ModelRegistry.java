@@ -133,6 +133,13 @@ public final class ModelRegistry {
                 }
             }
 
+            Path jemFile = meta.jem == null || meta.jem.isBlank()
+                    ? folder.resolve("player.jem") : folder.resolve(meta.jem).normalize();
+            if (Files.isRegularFile(jemFile) && jemFile.startsWith(folder.normalize())) {
+                raw.jem = Files.readString(jemFile);
+                raw.jemDirectory = folder.toAbsolutePath().normalize().toString();
+            }
+
             Path textureFile = folder.resolve("texture.png");
             byte[] png = raw.texture.png();
             if (Files.isRegularFile(textureFile)) {
@@ -366,6 +373,8 @@ public final class ModelRegistry {
         public String face;
         /** Optional independent PNG for the JPM face overlay. */
         public String faceTexture;
+        /** Optional JEM descriptor for the vanilla-part base layer. */
+        public String jem;
         public java.util.Map<String, AnchorMeta> anchors = new java.util.LinkedHashMap<>();
         public int textureWidth;
         public int textureHeight;

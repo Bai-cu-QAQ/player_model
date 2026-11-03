@@ -43,6 +43,8 @@ public final class ModelCompiler {
         model.slim = raw.slim;
         model.faceJpm = raw.faceJpm;
         model.faceTexturePng = raw.faceTexturePng;
+        model.jem = raw.jem;
+        model.jemDirectory = raw.jemDirectory;
         model.textureWidth = atlas.textureWidth();
         model.textureHeight = atlas.textureHeight();
         model.texturePng = atlas.png();

@@ -160,6 +160,19 @@ public final class AppearanceManager {
                         client.gameRenderer.getCamera().getPos()));
             }
             face.id = player.getId();
+            face.health = player.getHealth();
+            face.air = player.getAir();
+            face.isSneaking = player.isSneaking();
+            face.isSprinting = player.isSprinting();
+            face.isSwimming = player.isSwimming();
+            face.isOnGround = player.isOnGround();
+            face.isRiding = player.hasVehicle();
+            face.isChild = player.isBaby();
+            face.isInvisible = player.isInvisible();
+            face.tick = player.getWorld() == null ? 0 : player.getWorld().getTime();
+            face.time = face.tick / 20.0;
+            face.frame = face.age;
+            face.camera = face.distance;
             custom.animateFace(face);
             custom.model().render(matrices, vertices, light, overlay, color);
             if (custom.hasSeparateFaceTexture() && provider != null) {

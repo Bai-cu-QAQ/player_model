@@ -21,6 +21,10 @@ public final class RawModel {
     public String faceJpm;
     /** Optional independent PNG used by the JPM face overlay. */
     public byte[] faceTexturePng;
+    /** Optional JEM document used for the base vanilla-part layer. */
+    public String jem;
+    /** Directory used to resolve JEM referenced models. */
+    public String jemDirectory;
 
     public RawTexture textureAt(int index) {
         if (index >= 0 && index < textures.size()) {

@@ -36,6 +36,8 @@ public final class CustomModel {
     private final Map<ModelPart, ModelPart> parents = new IdentityHashMap<>();
     private final ModelPart rootPart;
     private final JpmFaceModel face;
+    private final ModelPart baseFaceRoot;
+    private final List<ModelPart> jemBaseHeads;
     private final ModelPart separateFaceRoot;
 
     public record PhysicsBoneRuntime(String name, ModelPart part, ModelPart parent,
@@ -84,13 +86,24 @@ public final class CustomModel {
             part.hidden = false;
         }
         attachPhysics(prepared, array);
-        this.face = prepared.face() == null ? null : new JpmFaceModel(prepared.face());
+        float[] headSize = faceSize(prepared);
+        this.face = prepared.face() == null ? null
+                : new JpmFaceModel(prepared.face(), headSize[0], headSize[1]);
+        ModelPart syntheticBase = face == null ? null : BaseFaceModel.build(prepared);
+        this.jemBaseHeads = buildJemBaseHeads(prepared);
+        this.baseFaceRoot = jemBaseHeads.isEmpty() ? syntheticBase : null;
         if (face != null && prepared.faceTexturePng() == null) {
             ModelPart head = parts.get(BoneKind.HEAD);
             Map<String, ModelPart> children = head.children == null
                     ? new HashMap<>() : new HashMap<>(head.children);
             face.root().setPivot(0, 0, 0);
             children.put("pm_face", face.root());
+            if (baseFaceRoot != null) {
+                children.put("pm_base_face", baseFaceRoot);
+            }
+            for (int i = 0; i < jemBaseHeads.size(); i++) {
+                children.put("pm_jem_base_" + i, jemBaseHeads.get(i));
+            }
             head.children = children;
             this.separateFaceRoot = null;
         } else if (face != null) {
@@ -101,6 +114,12 @@ public final class CustomModel {
             faceAnchor.setPivot(0, 0, 0);
             Map<String, ModelPart> children = new HashMap<>();
             children.put("pm_face_anchor", faceAnchor);
+            if (baseFaceRoot != null) {
+                children.put("pm_base_face", baseFaceRoot);
+            }
+            for (int i = 0; i < jemBaseHeads.size(); i++) {
+                children.put("pm_jem_base_" + i, jemBaseHeads.get(i));
+            }
             this.separateFaceRoot = new ModelPart(List.of(), children);
         } else {
             this.separateFaceRoot = null;
@@ -343,6 +362,45 @@ public final class CustomModel {
             to.zScale = from.zScale;
         }
         return new Installed(states);
+    }
+
+    private static List<ModelPart> buildJemBaseHeads(PreparedModel prepared) {
+        if (prepared == null || prepared.data() == null
+                || prepared.data().jem == null || prepared.data().jem.isBlank()) {
+            return List.of();
+        }
+        try {
+            java.nio.file.Path base = prepared.data().jemDirectory == null
+                    ? java.nio.file.Path.of("") : java.nio.file.Path.of(prepared.data().jemDirectory);
+            var jem = dev.playermodel.jpm.JemParser.parse(prepared.data().jem, base);
+            List<ModelPart> result = new ArrayList<>();
+            for (String part : new String[]{"head", "headwear"}) {
+                var inline = jem.inlineForVanillaPart(part);
+                if (inline == null) continue;
+                ModelPart root = new JpmFaceModel(inline).root();
+                root.setPivot(0, 0, 0);
+                result.add(root);
+            }
+            return result;
+        } catch (dev.playermodel.jpm.JpmException | RuntimeException e) {
+            return List.of();
+        }
+    }
+
+    private static float[] faceSize(PreparedModel prepared) {        if (prepared == null || prepared.data() == null) return new float[]{8, 8};
+        var head = prepared.data().bone(BoneKind.HEAD);
+        if (head == null || head.cubes().isEmpty()) return new float[]{8, 8};
+        float minX = Float.POSITIVE_INFINITY;
+        float maxX = Float.NEGATIVE_INFINITY;
+        float minY = Float.POSITIVE_INFINITY;
+        float maxY = Float.NEGATIVE_INFINITY;
+        for (var cube : head.cubes()) {
+            minX = Math.min(minX, cube.minX());
+            maxX = Math.max(maxX, cube.maxX());
+            minY = Math.min(minY, cube.minY());
+            maxY = Math.max(maxY, cube.maxY());
+        }
+        return new float[]{Math.max(0.1F, maxX - minX), Math.max(0.1F, maxY - minY)};
     }
 
     public record Installed(List<PartState> states) {
