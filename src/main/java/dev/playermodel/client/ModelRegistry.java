@@ -123,6 +123,9 @@ public final class ModelRegistry {
                 }
                 Path faceTextureFile = (meta.faceTexture != null && !meta.faceTexture.isBlank()
                         ? folder : faceFile.getParent()).resolve(faceTextureName).normalize();
+                if (!Files.isRegularFile(faceTextureFile) && !faceTextureName.endsWith(".png")) {
+                    faceTextureFile = faceTextureFile.resolveSibling(faceTextureFile.getFileName() + ".png");
+                }
                 if (Files.isRegularFile(faceTextureFile) && faceTextureFile.startsWith(folder.normalize())) {
                     raw.faceTexturePng = Files.readAllBytes(faceTextureFile);
                 }
