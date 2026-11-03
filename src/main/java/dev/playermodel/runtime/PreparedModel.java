@@ -97,6 +97,10 @@ public final class PreparedModel {
         return !"vanilla".equalsIgnoreCase(data.pivotMode);
     }
 
+    public boolean swapLimbs() {
+        return data.swapLimbs;
+    }
+
     public dev.playermodel.model.Anchor anchor(String name) {
         if (data.anchors == null || name == null) {
             return null;

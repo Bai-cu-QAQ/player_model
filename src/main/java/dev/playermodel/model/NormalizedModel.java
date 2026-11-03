@@ -11,6 +11,8 @@ public final class NormalizedModel {
     public boolean customAnchors;
     public boolean doubleLayer = true;
     public boolean slim;
+    /** Swap the animation source of left/right limbs without moving authored geometry. */
+    public boolean swapLimbs;
     /** Serialized JPM face overlay, if this model uses one. */
     public String faceJpm;
     /** Independent PNG for the JPM face overlay; null means use the model/skin texture. */

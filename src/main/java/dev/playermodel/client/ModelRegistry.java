@@ -105,10 +105,6 @@ public final class ModelRegistry {
             }
             RawModel raw = BbmodelParser.parse(bbmodel, meta.displayName == null || meta.displayName.isBlank()
                     ? safeName : meta.displayName);
-            if (meta.swapLimbs) {
-                raw.swapLimbs();
-                PlayerModelMod.LOG.info("Swapped left/right limb bindings for model {}", safeName);
-            }
             Path faceFile = meta.face == null || meta.face.isBlank()
                     ? folder.resolve("player_face.jpm") : folder.resolve(meta.face).normalize();
             if (Files.isRegularFile(faceFile) && faceFile.startsWith(folder.normalize())) {
@@ -158,6 +154,10 @@ public final class ModelRegistry {
             String textureMode = meta.textureMode == null || meta.textureMode.isBlank() ? "model" : meta.textureMode;
             String pivotMode = meta.pivotMode == null || meta.pivotMode.isBlank() ? "model" : meta.pivotMode;
             NormalizedModel model = ModelCompiler.compile(raw, textureMode, pivotMode);
+            model.swapLimbs = meta.swapLimbs;
+            if (meta.swapLimbs) {
+                PlayerModelMod.LOG.info("Swapped left/right limb animation bindings for model {}", safeName);
+            }
             model.customAnchors = meta.customAnchors;
             if (meta.physics != null) {
                 model.physics = meta.physics;
