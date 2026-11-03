@@ -4,6 +4,7 @@ import dev.playermodel.compile.ModelCompiler;
 import dev.playermodel.importing.BbmodelParser;
 import dev.playermodel.model.BoneKind;
 import dev.playermodel.model.CubeFace;
+import dev.playermodel.model.FaceDir;
 import dev.playermodel.model.FaceVertex;
 import dev.playermodel.model.ModelBundle;
 import dev.playermodel.model.NormalizedBone;
@@ -13,6 +14,8 @@ import dev.playermodel.model.PhysicsBoneName;
 import dev.playermodel.model.PhysicsConfig;
 import dev.playermodel.util.JsonComments;
 import dev.playermodel.model.RawBone;
+import dev.playermodel.model.RawElement;
+import dev.playermodel.model.RawFace;
 import dev.playermodel.model.RawModel;
 import dev.playermodel.runtime.PreparedModel;
 import com.google.gson.Gson;
@@ -125,6 +128,37 @@ class ModelPipelineTest {
         PreparedModel prepared = new PreparedModel(model);
         assertEquals(1, prepared.physicsBones().size());
         assertNotNull(prepared.physicsBones().get(0).cuboids());
+    }
+
+    @Test
+    void classifiesTopAndBottomFaces() throws Exception {
+        RawModel raw = BbmodelParser.parse(VANILLA, "uv");
+        RawElement element = raw.bone(BoneKind.HEAD).elements.get(0);
+        element.boxUv = false;
+        element.faces = new java.util.EnumMap<>(FaceDir.class);
+        for (FaceDir dir : FaceDir.values()) {
+            int start = dir.ordinal() * 8;
+            element.faces.put(dir, new RawFace(start, 0, start + 4, 4, 0, 0));
+        }
+        NormalizedModel model = ModelCompiler.compile(raw, "model", "model");
+        NormalizedBone head = model.bone(BoneKind.HEAD);
+        assertNotNull(head);
+        boolean up = false;
+        boolean down = false;
+        for (NormalizedCube cube : head.cubes()) {
+            for (CubeFace face : cube.faces()) {
+                if (face.dir() == FaceDir.UP) {
+                    up = true;
+                    for (FaceVertex v : face.vertices()) assertEquals(-8.0F, v.y(), 1e-5F);
+                }
+                if (face.dir() == FaceDir.DOWN) {
+                    down = true;
+                    for (FaceVertex v : face.vertices()) assertEquals(0.0F, v.y(), 1e-5F);
+                }
+            }
+        }
+        assertTrue(up, "top face must be classified as UP");
+        assertTrue(down, "bottom face must be classified as DOWN");
     }
 
     @Test
