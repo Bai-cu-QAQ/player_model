@@ -65,6 +65,15 @@ public final class RawModel {
             element.origin[0] = -element.origin[0];
             element.rotation[1] = -element.rotation[1];
             element.rotation[2] = -element.rotation[2];
+            if (!element.boxUv && (element.faces.containsKey(FaceDir.EAST)
+                    || element.faces.containsKey(FaceDir.WEST))) {
+                java.util.EnumMap<FaceDir, RawFace> faces = new java.util.EnumMap<>(element.faces);
+                RawFace east = faces.remove(FaceDir.EAST);
+                RawFace west = faces.remove(FaceDir.WEST);
+                if (east != null) faces.put(FaceDir.WEST, east);
+                if (west != null) faces.put(FaceDir.EAST, west);
+                element.faces = faces;
+            }
         }
     }
 

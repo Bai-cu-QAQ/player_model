@@ -177,7 +177,11 @@ class ModelPipelineTest {
         float[] rightArmPivot = rightArm.pivot.clone();
         float[] leftLegPivot = leftLeg.pivot.clone();
         float[] rightLegPivot = rightLeg.pivot.clone();
+        RawFace oldEast = rightArm.elements.get(0).faces.get(FaceDir.EAST);
+        RawFace oldWest = rightArm.elements.get(0).faces.get(FaceDir.WEST);
         raw.mirrorLimbPositions();
+        assertEquals(oldWest, raw.bone(BoneKind.RIGHT_ARM).elements.get(0).faces.get(FaceDir.EAST));
+        assertEquals(oldEast, raw.bone(BoneKind.RIGHT_ARM).elements.get(0).faces.get(FaceDir.WEST));
         assertArrayEquals(new float[]{-leftArmPivot[0], leftArmPivot[1], leftArmPivot[2]},
                 raw.bone(BoneKind.LEFT_ARM).pivot, 1e-6F);
         assertArrayEquals(new float[]{-rightArmPivot[0], rightArmPivot[1], rightArmPivot[2]},
