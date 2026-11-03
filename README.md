@@ -34,6 +34,19 @@ config/playermodel/models/
 - `player_face.jpm` 可选，放在模型目录会自动加载；也可在 `meta.json` 用 `"face": "player_face.jpm"` 指定。
 - `player_face.png` 是 JPM 独立贴图；省略时读取 JPM 的 `texture` 字段，否则尝试同目录 `player_face.png`。也可用 `"faceTexture": "..."` 指定。
 - JPM 的 UV 默认按 `textureSize` 解析；使用独立贴图时按 JPM 的 64×64 坐标系映射。
+
+### 2.1 JPM 动画锚点
+
+在模型里创建一个空分组（根层级或 `head` 下都可以）：
+
+```text
+anchor_jpm
+  anchor_jpm_size
+```
+
+- `anchor_jpm` 的 pivot 决定 JPM 面部/眼睛模型的位置；通常放在头部中心。
+- `anchor_jpm_size` 是 4×4×4 标记方块，缩小/放大会按比例改变 JPM 模型大小。
+- 没有 `anchor_jpm` 时，JPM 默认使用 1× 大小并贴合头部原点。
 - 多贴图自动合并图集；`texture.png` 只用于单贴图覆盖。
 - `meta.json`：
 

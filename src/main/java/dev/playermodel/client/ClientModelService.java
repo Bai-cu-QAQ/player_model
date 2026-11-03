@@ -74,7 +74,7 @@ public final class ClientModelService {
                                       String pivotMode, String displayName, boolean slim) throws IOException {
         Path dir = root.resolve(folder);
         Files.createDirectories(dir);
-        byte[] model = readResource(resource);
+        byte[] model = addJpmAnchor(readResource(resource));
         if (model == null) {
             throw new IOException("缺少内置资源 " + resource);
         }
@@ -88,6 +88,83 @@ public final class ClientModelService {
     private static byte[] readResource(String name) throws IOException {
         try (var in = ClientModelService.class.getResourceAsStream("/assets/playermodel/" + name)) {
             return in == null ? null : in.readAllBytes();
+        }
+    }
+
+    /** Adds an editable anchor_jpm group to generated templates without touching the source assets. */
+    private static byte[] addJpmAnchor(byte[] source) throws IOException {
+        if (source == null) return null;
+        try {
+            var root = com.google.gson.JsonParser.parseString(new String(source, StandardCharsets.UTF_8))
+                    .getAsJsonObject();
+            var outliner = root.getAsJsonArray("outliner");
+            var elements = root.getAsJsonArray("elements");
+            if (outliner == null || elements == null) return source;
+            for (var item : outliner) {
+                if (item.isJsonObject() && "anchor_jpm".equals(item.getAsJsonObject()
+                        .has("name") ? item.getAsJsonObject().get("name").getAsString() : "")) {
+                    return source;
+                }
+            }
+            com.google.gson.JsonObject head = null;
+            for (var item : outliner) {
+                if (item.isJsonObject() && item.getAsJsonObject().has("name")
+                        && "head".equals(item.getAsJsonObject().get("name").getAsString())) {
+                    head = item.getAsJsonObject();
+                    break;
+                }
+            }
+            com.google.gson.JsonObject marker = null;
+            for (var item : elements) {
+                if (item.isJsonObject() && item.getAsJsonObject().has("name")
+                        && item.getAsJsonObject().get("name").getAsString().endsWith("_size")) {
+                    marker = item.getAsJsonObject();
+                    break;
+                }
+            }
+            if (head == null || marker == null || !head.has("origin")) return source;
+            var origin = head.getAsJsonArray("origin");
+            float scale = Math.max(0.2F, Math.min(2.0F, origin.get(1).getAsFloat() / 24.0F));
+            com.google.gson.JsonObject newMarker = marker.deepCopy();
+            String markerId = java.util.UUID.randomUUID().toString();
+            newMarker.addProperty("uuid", markerId);
+            newMarker.addProperty("name", "anchor_jpm_size");
+            var from = new com.google.gson.JsonArray();
+            var to = new com.google.gson.JsonArray();
+            float half = 2.0F * scale;
+            for (int i = 0; i < 3; i++) {
+                from.add(origin.get(i).getAsFloat() - half);
+                to.add(origin.get(i).getAsFloat() + half);
+            }
+            newMarker.add("from", from);
+            newMarker.add("to", to);
+            newMarker.add("origin", from.deepCopy());
+            elements.add(newMarker);
+
+            var group = new com.google.gson.JsonObject();
+            group.addProperty("uuid", java.util.UUID.randomUUID().toString());
+            group.addProperty("name", "anchor_jpm");
+            var groupOrigin = new com.google.gson.JsonArray();
+            for (int i = 0; i < 3; i++) groupOrigin.add(origin.get(i).getAsFloat());
+            group.add("origin", groupOrigin);
+            var rotation = new com.google.gson.JsonArray();
+            rotation.add(0); rotation.add(0); rotation.add(0);
+            group.add("rotation", rotation);
+            group.addProperty("color", 0);
+            group.addProperty("mirror_uv", false);
+            group.addProperty("isOpen", true);
+            group.addProperty("locked", false);
+            group.addProperty("visibility", true);
+            group.addProperty("autouv", 0);
+            group.addProperty("export", true);
+            var children = new com.google.gson.JsonArray();
+            children.add(markerId);
+            group.add("children", children);
+            outliner.add(group);
+            return new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(root)
+                    .getBytes(StandardCharsets.UTF_8);
+        } catch (RuntimeException e) {
+            return source;
         }
     }
 
