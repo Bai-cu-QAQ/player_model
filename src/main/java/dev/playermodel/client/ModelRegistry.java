@@ -107,6 +107,7 @@ public final class ModelRegistry {
                     ? safeName : meta.displayName);
             if (meta.swapLimbs) {
                 raw.swapLimbs();
+                PlayerModelMod.LOG.info("Swapped left/right limb bindings for model {}", safeName);
             }
             Path faceFile = meta.face == null || meta.face.isBlank()
                     ? folder.resolve("player_face.jpm") : folder.resolve(meta.face).normalize();

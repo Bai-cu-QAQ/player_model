@@ -166,19 +166,38 @@ class ModelPipelineTest {
     void swapsLeftRightLimbBindings() throws Exception {
         RawModel raw = BbmodelParser.parse(VANILLA, "swap");
         RawBone leftArm = raw.bone(BoneKind.LEFT_ARM);
+        RawBone rightArm = raw.bone(BoneKind.RIGHT_ARM);
+        RawBone leftLeg = raw.bone(BoneKind.LEFT_LEG);
         RawBone rightLeg = raw.bone(BoneKind.RIGHT_LEG);
         assertNotNull(leftArm);
+        assertNotNull(rightArm);
+        assertNotNull(leftLeg);
         assertNotNull(rightLeg);
         float[] leftArmPivot = leftArm.pivot.clone();
+        float[] rightArmPivot = rightArm.pivot.clone();
+        float[] leftLegPivot = leftLeg.pivot.clone();
         float[] rightLegPivot = rightLeg.pivot.clone();
+        int leftArmElements = leftArm.elements.size();
+        int rightArmElements = rightArm.elements.size();
         raw.swapLimbs();
-        RawBone boundRightArm = raw.bone(BoneKind.RIGHT_ARM);
-        RawBone boundLeftLeg = raw.bone(BoneKind.LEFT_LEG);
-        assertNotNull(boundRightArm);
-        assertNotNull(boundLeftLeg);
-        assertArrayEquals(leftArmPivot, boundRightArm.pivot, 1e-6F);
-        assertArrayEquals(rightLegPivot, boundLeftLeg.pivot, 1e-6F);
-        assertEquals(leftArm.elements.size(), boundRightArm.elements.size());
+        RawBone swappedLeftArm = raw.bone(BoneKind.LEFT_ARM);
+        RawBone swappedRightArm = raw.bone(BoneKind.RIGHT_ARM);
+        RawBone swappedLeftLeg = raw.bone(BoneKind.LEFT_LEG);
+        RawBone swappedRightLeg = raw.bone(BoneKind.RIGHT_LEG);
+        assertNotNull(swappedLeftArm);
+        assertNotNull(swappedRightArm);
+        assertNotNull(swappedLeftLeg);
+        assertNotNull(swappedRightLeg);
+        assertArrayEquals(leftArmPivot, swappedRightArm.pivot, 1e-6F);
+        assertArrayEquals(rightArmPivot, swappedLeftArm.pivot, 1e-6F);
+        assertArrayEquals(leftLegPivot, swappedRightLeg.pivot, 1e-6F);
+        assertArrayEquals(rightLegPivot, swappedLeftLeg.pivot, 1e-6F);
+        assertEquals(rightArmElements, swappedLeftArm.elements.size());
+        assertEquals(leftArmElements, swappedRightArm.elements.size());
+        NormalizedBone compiledLeftArm = ModelCompiler.compile(raw, "model", "model").bone(BoneKind.LEFT_ARM);
+        assertNotNull(compiledLeftArm);
+        assertArrayEquals(rightArmPivot, new float[]{compiledLeftArm.pivotX(), compiledLeftArm.pivotY(),
+                compiledLeftArm.pivotZ()}, 1e-6F);
     }
 
     @Test

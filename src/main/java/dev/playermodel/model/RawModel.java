@@ -39,45 +39,56 @@ public final class RawModel {
     }
 
     /**
-     * Rebinds the imported limb geometry to the opposite vanilla limb while preserving each
-     * group's authored pivot and elements. Intended for models authored with reversed left/right
-     * limb names.
+     * Swaps the complete left/right limb binding: pivot, rotation and cubes move together. This is
+     * the correct operation when a model's authored left/right limb groups are named in reverse.
      */
     public void swapLimbs() {
-        for (int i = 0; i < bones.size(); i++) {
-            RawBone source = bones.get(i);
-            BoneKind target = swappedLimb(source.kind);
-            if (target != source.kind) {
-                RawBone swapped = new RawBone(target, source.pivot.clone(), source.rotation.clone());
-                swapped.elements.addAll(source.elements);
-                bones.set(i, swapped);
-            }
-        }
-        for (int i = 0; i < physicsBones.size(); i++) {
-            RawPhysicsBone source = physicsBones.get(i);
-            BoneKind parent = swappedLimb(source.parentBone);
-            if (parent != source.parentBone) {
-                RawPhysicsBone swapped = new RawPhysicsBone(source.name, parent, source.parentPhysics,
-                        source.pivot, source.rotation);
-                swapped.elements.addAll(source.elements);
-                physicsBones.set(i, swapped);
-            }
-        }
+        swapBones(BoneKind.LEFT_ARM, BoneKind.RIGHT_ARM);
+        swapBones(BoneKind.LEFT_LEG, BoneKind.RIGHT_LEG);
+        swapBones(BoneKind.LEFT_SLEEVE, BoneKind.RIGHT_SLEEVE);
+        swapBones(BoneKind.LEFT_PANTS, BoneKind.RIGHT_PANTS);
+        swapAnchorPositions();
         warnings.add("已交换左右手臂/腿部骨骼绑定");
     }
 
-    private static BoneKind swappedLimb(BoneKind kind) {
-        if (kind == null) return null;
-        return switch (kind) {
-            case RIGHT_ARM -> BoneKind.LEFT_ARM;
-            case LEFT_ARM -> BoneKind.RIGHT_ARM;
-            case RIGHT_LEG -> BoneKind.LEFT_LEG;
-            case LEFT_LEG -> BoneKind.RIGHT_LEG;
-            case RIGHT_SLEEVE -> BoneKind.LEFT_SLEEVE;
-            case LEFT_SLEEVE -> BoneKind.RIGHT_SLEEVE;
-            case RIGHT_PANTS -> BoneKind.LEFT_PANTS;
-            case LEFT_PANTS -> BoneKind.RIGHT_PANTS;
-            default -> kind;
-        };
+    private void swapBones(BoneKind leftKind, BoneKind rightKind) {
+        int leftIndex = indexOf(leftKind);
+        int rightIndex = indexOf(rightKind);
+        if (leftIndex < 0 || rightIndex < 0) return;
+        RawBone left = bones.get(leftIndex);
+        RawBone right = bones.get(rightIndex);
+        RawBone newLeft = new RawBone(leftKind, right.pivot.clone(), right.rotation.clone());
+        newLeft.elements.addAll(right.elements);
+        RawBone newRight = new RawBone(rightKind, left.pivot.clone(), left.rotation.clone());
+        newRight.elements.addAll(left.elements);
+        bones.set(leftIndex, newLeft);
+        bones.set(rightIndex, newRight);
+    }
+
+    private int indexOf(BoneKind kind) {
+        for (int i = 0; i < bones.size(); i++) {
+            if (bones.get(i).kind == kind) return i;
+        }
+        return -1;
+    }
+
+    private void swapAnchorPositions() {
+        Anchor right = null;
+        Anchor left = null;
+        int rightIndex = -1;
+        int leftIndex = -1;
+        for (int i = 0; i < anchors.size(); i++) {
+            Anchor anchor = anchors.get(i);
+            if (Anchor.RIGHT_HAND.equals(anchor.name())) {
+                right = anchor;
+                rightIndex = i;
+            } else if (Anchor.LEFT_HAND.equals(anchor.name())) {
+                left = anchor;
+                leftIndex = i;
+            }
+        }
+        if (right == null || left == null) return;
+        anchors.set(rightIndex, new Anchor(right.name(), right.bone(), left.x(), left.y(), left.z(), left.scale()));
+        anchors.set(leftIndex, new Anchor(left.name(), left.bone(), right.x(), right.y(), right.z(), right.scale()));
     }
 }

@@ -48,7 +48,7 @@ anchor_jpm
 - `anchor_jpm_size` 是 4×4×4 标记方块，缩小/放大会按比例改变 JPM 模型大小。
 - 没有 `anchor_jpm` 时，JPM 默认使用 1× 大小并贴合头部原点。
 - 多贴图自动合并图集；`texture.png` 只用于单贴图覆盖。
-- 如果模型左右手/脚绑定反了，可在 `meta.json` 设置 `"swapLimbs": true`；交换手臂、腿以及对应袖套/裤腿的骨骼绑定，保留模型原本的 pivot 和方块位置。
+- 如果模型左右手/脚绑定反了，可在 `meta.json` 设置 `"swapLimbs": true`；交换完整的手臂/腿绑定（pivot、旋转、方块一起交换），静态方块位置不变，走路/挥手等动画的左右侧互换。
 
 - `meta.json`：
 
