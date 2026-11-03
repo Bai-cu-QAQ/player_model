@@ -57,8 +57,13 @@ public final class JpmFaceModel {
             target.xScale = (float) state.sx;
             target.yScale = (float) state.sy;
             target.zScale = (float) state.sz;
-            target.visible = state.visible;
+            target.visible = state.visible && isPrimaryEyePart(part.id);
         }
+    }
+
+    /** JustExpressions ships many eye LOD variants; only the base 2by1 variant is shown here. */
+    private static boolean isPrimaryEyePart(String id) {
+        return !id.matches("[rl]_(eye_white|pupil|eyelid|blink)\\d+") || id.endsWith("1");
     }
 
     private ModelPart build(JpmPart part) {
@@ -81,6 +86,7 @@ public final class JpmFaceModel {
         modelPart.xScale = part.scale;
         modelPart.yScale = part.scale;
         modelPart.zScale = part.scale;
+        modelPart.visible = isPrimaryEyePart(part.id);
         parts.put(part.id, modelPart);
         return modelPart;
     }
