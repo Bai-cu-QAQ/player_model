@@ -38,53 +38,43 @@ public final class RawModel {
         return null;
     }
 
-    /** Exchanges the authored left/right limb positions, including pivots and cubes. */
-    public void swapLimbPositions() {
-        swapBones(BoneKind.LEFT_ARM, BoneKind.RIGHT_ARM);
-        swapBones(BoneKind.LEFT_LEG, BoneKind.RIGHT_LEG);
-        swapBones(BoneKind.LEFT_SLEEVE, BoneKind.RIGHT_SLEEVE);
-        swapBones(BoneKind.LEFT_PANTS, BoneKind.RIGHT_PANTS);
-        swapAnchorPositions();
+    /** Mirrors authored left/right limb positions across the model center. */
+    public void mirrorLimbPositions() {
+        mirrorBone(BoneKind.LEFT_ARM);
+        mirrorBone(BoneKind.RIGHT_ARM);
+        mirrorBone(BoneKind.LEFT_LEG);
+        mirrorBone(BoneKind.RIGHT_LEG);
+        mirrorBone(BoneKind.LEFT_SLEEVE);
+        mirrorBone(BoneKind.RIGHT_SLEEVE);
+        mirrorBone(BoneKind.LEFT_PANTS);
+        mirrorBone(BoneKind.RIGHT_PANTS);
+        mirrorLimbAnchors();
     }
 
-    private void swapBones(BoneKind leftKind, BoneKind rightKind) {
-        int leftIndex = indexOf(leftKind);
-        int rightIndex = indexOf(rightKind);
-        if (leftIndex < 0 || rightIndex < 0) return;
-        RawBone left = bones.get(leftIndex);
-        RawBone right = bones.get(rightIndex);
-        RawBone newLeft = new RawBone(leftKind, right.pivot.clone(), right.rotation.clone());
-        newLeft.elements.addAll(right.elements);
-        RawBone newRight = new RawBone(rightKind, left.pivot.clone(), left.rotation.clone());
-        newRight.elements.addAll(left.elements);
-        bones.set(leftIndex, newLeft);
-        bones.set(rightIndex, newRight);
-    }
-
-    private int indexOf(BoneKind kind) {
-        for (int i = 0; i < bones.size(); i++) {
-            if (bones.get(i).kind == kind) return i;
+    private void mirrorBone(BoneKind kind) {
+        RawBone bone = bone(kind);
+        if (bone == null) return;
+        bone.pivot[0] = -bone.pivot[0];
+        bone.rotation[1] = -bone.rotation[1];
+        bone.rotation[2] = -bone.rotation[2];
+        for (RawElement element : bone.elements) {
+            float fromX = -element.from[0];
+            float toX = -element.to[0];
+            element.from[0] = Math.min(fromX, toX);
+            element.to[0] = Math.max(fromX, toX);
+            element.origin[0] = -element.origin[0];
+            element.rotation[1] = -element.rotation[1];
+            element.rotation[2] = -element.rotation[2];
         }
-        return -1;
     }
 
-    private void swapAnchorPositions() {
-        Anchor right = null;
-        Anchor left = null;
-        int rightIndex = -1;
-        int leftIndex = -1;
+    private void mirrorLimbAnchors() {
         for (int i = 0; i < anchors.size(); i++) {
             Anchor anchor = anchors.get(i);
-            if (Anchor.RIGHT_HAND.equals(anchor.name())) {
-                right = anchor;
-                rightIndex = i;
-            } else if (Anchor.LEFT_HAND.equals(anchor.name())) {
-                left = anchor;
-                leftIndex = i;
+            if (Anchor.RIGHT_HAND.equals(anchor.name()) || Anchor.LEFT_HAND.equals(anchor.name())) {
+                anchors.set(i, new Anchor(anchor.name(), anchor.bone(), -anchor.x(), anchor.y(),
+                        anchor.z(), anchor.scale()));
             }
         }
-        if (right == null || left == null) return;
-        anchors.set(rightIndex, new Anchor(right.name(), right.bone(), left.x(), left.y(), left.z(), left.scale()));
-        anchors.set(leftIndex, new Anchor(left.name(), left.bone(), right.x(), right.y(), right.z(), right.scale()));
     }
 }

@@ -163,8 +163,8 @@ class ModelPipelineTest {
     }
 
     @Test
-    void swapLimbPositionsExchangesLeftAndRight() throws Exception {
-        RawModel raw = BbmodelParser.parse(VANILLA, "swap");
+    void mirrorsLimbPositionsAcrossCenter() throws Exception {
+        RawModel raw = BbmodelParser.parse(VANILLA, "mirror");
         RawBone leftArm = raw.bone(BoneKind.LEFT_ARM);
         RawBone rightArm = raw.bone(BoneKind.RIGHT_ARM);
         RawBone leftLeg = raw.bone(BoneKind.LEFT_LEG);
@@ -177,15 +177,15 @@ class ModelPipelineTest {
         float[] rightArmPivot = rightArm.pivot.clone();
         float[] leftLegPivot = leftLeg.pivot.clone();
         float[] rightLegPivot = rightLeg.pivot.clone();
-        raw.swapLimbPositions();
-        assertArrayEquals(rightArmPivot, raw.bone(BoneKind.LEFT_ARM).pivot, 1e-6F);
-        assertArrayEquals(leftArmPivot, raw.bone(BoneKind.RIGHT_ARM).pivot, 1e-6F);
-        assertArrayEquals(rightLegPivot, raw.bone(BoneKind.LEFT_LEG).pivot, 1e-6F);
-        assertArrayEquals(leftLegPivot, raw.bone(BoneKind.RIGHT_LEG).pivot, 1e-6F);
-        NormalizedBone compiled = ModelCompiler.compile(raw, "model", "model").bone(BoneKind.LEFT_ARM);
-        assertNotNull(compiled);
-        assertArrayEquals(rightArmPivot, new float[]{compiled.pivotX(), compiled.pivotY(), compiled.pivotZ()},
-                1e-6F);
+        raw.mirrorLimbPositions();
+        assertArrayEquals(new float[]{-leftArmPivot[0], leftArmPivot[1], leftArmPivot[2]},
+                raw.bone(BoneKind.LEFT_ARM).pivot, 1e-6F);
+        assertArrayEquals(new float[]{-rightArmPivot[0], rightArmPivot[1], rightArmPivot[2]},
+                raw.bone(BoneKind.RIGHT_ARM).pivot, 1e-6F);
+        assertArrayEquals(new float[]{-leftLegPivot[0], leftLegPivot[1], leftLegPivot[2]},
+                raw.bone(BoneKind.LEFT_LEG).pivot, 1e-6F);
+        assertArrayEquals(new float[]{-rightLegPivot[0], rightLegPivot[1], rightLegPivot[2]},
+                raw.bone(BoneKind.RIGHT_LEG).pivot, 1e-6F);
     }
 
     @Test
