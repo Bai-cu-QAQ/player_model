@@ -93,9 +93,15 @@ public final class RawModel {
         java.util.EnumMap<FaceDir, RawFace> faces = new java.util.EnumMap<>(element.faces);
         RawFace east = faces.remove(FaceDir.EAST);
         RawFace west = faces.remove(FaceDir.WEST);
-        if (east != null) faces.put(FaceDir.WEST, east);
-        if (west != null) faces.put(FaceDir.EAST, west);
+        if (east != null) faces.put(FaceDir.WEST, mirroredU(east));
+        if (west != null) faces.put(FaceDir.EAST, mirroredU(west));
         element.faces = faces;
+    }
+
+    /** Reverses a face's horizontal UV axis when the cube is reflected across X. */
+    private static RawFace mirroredU(RawFace face) {
+        return new RawFace(face.u2(), face.v1(), face.u1(), face.v2(),
+                face.rotation(), face.textureIndex());
     }
 
     private void mirrorLimbAnchors() {

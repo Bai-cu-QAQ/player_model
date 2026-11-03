@@ -177,18 +177,28 @@ class ModelPipelineTest {
         float[] rightArmPivot = rightArm.pivot.clone();
         float[] leftLegPivot = leftLeg.pivot.clone();
         float[] rightLegPivot = rightLeg.pivot.clone();
-        RawFace oldEast = rightArm.elements.get(0).faces.get(FaceDir.EAST);
-        RawFace oldWest = rightArm.elements.get(0).faces.get(FaceDir.WEST);
         RawBone head = raw.bone(BoneKind.HEAD);
         assertNotNull(head);
-        RawFace oldHeadEast = head.elements.get(0).faces.get(FaceDir.EAST);
-        RawFace oldHeadWest = head.elements.get(0).faces.get(FaceDir.WEST);
+        RawElement rightArmElement = rightArm.elements.get(0);
+        rightArmElement.boxUv = false;
+        rightArmElement.faces = new java.util.EnumMap<>(FaceDir.class);
+        rightArmElement.faces.put(FaceDir.EAST, new RawFace(0, 0, 4, 4, 0, 0));
+        rightArmElement.faces.put(FaceDir.WEST, new RawFace(8, 0, 12, 4, 0, 0));
+        RawElement headElement = head.elements.get(0);
+        headElement.boxUv = false;
+        headElement.faces = new java.util.EnumMap<>(FaceDir.class);
+        headElement.faces.put(FaceDir.EAST, new RawFace(0, 8, 8, 16, 0, 0));
+        headElement.faces.put(FaceDir.WEST, new RawFace(16, 8, 24, 16, 0, 0));
+        RawFace oldEast = rightArmElement.faces.get(FaceDir.EAST);
+        RawFace oldWest = rightArmElement.faces.get(FaceDir.WEST);
+        RawFace oldHeadEast = headElement.faces.get(FaceDir.EAST);
+        RawFace oldHeadWest = headElement.faces.get(FaceDir.WEST);
         raw.mirrorLimbPositions();
         raw.mirrorCenteredUvs();
-        assertEquals(oldWest, raw.bone(BoneKind.RIGHT_ARM).elements.get(0).faces.get(FaceDir.EAST));
-        assertEquals(oldEast, raw.bone(BoneKind.RIGHT_ARM).elements.get(0).faces.get(FaceDir.WEST));
-        assertEquals(oldHeadWest, raw.bone(BoneKind.HEAD).elements.get(0).faces.get(FaceDir.EAST));
-        assertEquals(oldHeadEast, raw.bone(BoneKind.HEAD).elements.get(0).faces.get(FaceDir.WEST));
+        assertEquals(mirrored(oldWest), raw.bone(BoneKind.RIGHT_ARM).elements.get(0).faces.get(FaceDir.EAST));
+        assertEquals(mirrored(oldEast), raw.bone(BoneKind.RIGHT_ARM).elements.get(0).faces.get(FaceDir.WEST));
+        assertEquals(mirrored(oldHeadWest), raw.bone(BoneKind.HEAD).elements.get(0).faces.get(FaceDir.EAST));
+        assertEquals(mirrored(oldHeadEast), raw.bone(BoneKind.HEAD).elements.get(0).faces.get(FaceDir.WEST));
         assertArrayEquals(new float[]{-leftArmPivot[0], leftArmPivot[1], leftArmPivot[2]},
                 raw.bone(BoneKind.LEFT_ARM).pivot, 1e-6F);
         assertArrayEquals(new float[]{-rightArmPivot[0], rightArmPivot[1], rightArmPivot[2]},
@@ -278,5 +288,10 @@ class ModelPipelineTest {
         } catch (Exception expected) {
             assertTrue(expected.getMessage().contains("mesh"), expected.getMessage());
         }
+    }
+
+    private static RawFace mirrored(RawFace face) {
+        return new RawFace(face.u2(), face.v1(), face.u1(), face.v2(),
+                face.rotation(), face.textureIndex());
     }
 }
