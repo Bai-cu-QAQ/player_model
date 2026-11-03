@@ -38,7 +38,6 @@ public final class CustomModel {
     private final ModelPart rootPart;
     private final JpmFaceModel face;
     private final ModelPart separateFaceRoot;
-    private final ModelPart separateFaceAnchor;
 
     public record PhysicsBoneRuntime(String name, ModelPart part, ModelPart parent,
                                      BoneKind parentBone, String parentPhysics,
@@ -101,22 +100,20 @@ public final class CustomModel {
             children.put("pm_face", face.root());
             head.children = children;
             this.separateFaceRoot = null;
-            this.separateFaceAnchor = null;
         } else if (face != null) {
             // A separate PNG needs its own render layer; keep this tree out of the body pass.
             Map<String, ModelPart> faceChildren = new HashMap<>();
             faceChildren.put("pm_face", face.root());
-            this.separateFaceAnchor = new ModelPart(List.of(), faceChildren);
-            separateFaceAnchor.setPivot(jpmOffset[0], jpmOffset[1], jpmOffset[2]);
-            separateFaceAnchor.xScale = jpmScale;
-            separateFaceAnchor.yScale = jpmScale;
-            separateFaceAnchor.zScale = jpmScale;
+            ModelPart faceAnchor = new ModelPart(List.of(), faceChildren);
+            faceAnchor.setPivot(jpmOffset[0], jpmOffset[1], jpmOffset[2]);
+            faceAnchor.xScale = jpmScale;
+            faceAnchor.yScale = jpmScale;
+            faceAnchor.zScale = jpmScale;
             Map<String, ModelPart> children = new HashMap<>();
-            children.put("pm_face_anchor", separateFaceAnchor);
+            children.put("pm_face_anchor", faceAnchor);
             this.separateFaceRoot = new ModelPart(List.of(), children);
         } else {
             this.separateFaceRoot = null;
-            this.separateFaceAnchor = null;
         }
         buildParentMap(rootPart);
     }
@@ -248,10 +245,6 @@ public final class CustomModel {
 
     public List<PhysicsBoneRuntime> physicsBones() {
         return List.copyOf(physicsBones);
-    }
-
-    public JpmFaceModel faceModel() {
-        return face;
     }
 
     public boolean hasSeparateFaceTexture() {

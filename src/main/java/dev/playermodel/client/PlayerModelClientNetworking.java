@@ -10,7 +10,6 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
 
 import java.util.HashMap;
 import java.util.HashSet;

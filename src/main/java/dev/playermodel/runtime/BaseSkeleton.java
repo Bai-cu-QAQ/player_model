@@ -1,6 +1,5 @@
 package dev.playermodel.runtime;
 
-import dev.playermodel.model.BoneKind;
 import net.minecraft.client.model.ModelPart;
 
 import java.util.IdentityHashMap;

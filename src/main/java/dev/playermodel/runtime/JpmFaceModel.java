@@ -1,6 +1,5 @@
 package dev.playermodel.runtime;
 
-import dev.playermodel.compile.ModelCompiler;
 import dev.playermodel.jpm.JpmBox;
 import dev.playermodel.jpm.JpmEvalContext;
 import dev.playermodel.jpm.JpmModel;
@@ -12,7 +11,6 @@ import dev.playermodel.model.NormalizedCube;
 import net.minecraft.client.model.ModelPart;
 
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,10 +32,6 @@ public final class JpmFaceModel {
             children.put(part.id, build(part));
         }
         this.root = new ModelPart(List.of(), children);
-    }
-
-    public JpmModel data() {
-        return data;
     }
 
     public ModelPart root() {

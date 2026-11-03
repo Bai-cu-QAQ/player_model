@@ -10,7 +10,6 @@ import dev.playermodel.runtime.ModelParts;
 import dev.playermodel.runtime.PreparedModel;
 import dev.playermodel.runtime.TextureCache;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.model.ModelPart;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;

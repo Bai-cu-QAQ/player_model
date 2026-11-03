@@ -35,7 +35,7 @@ public final class JpmBox {
     public float height() { return coordinates[4]; }
     public float depth() { return coordinates[5]; }
 
-    public boolean autoUv() {
+    private boolean autoUv() {
         return textureOffset.length == 2;
     }
 

@@ -40,12 +40,10 @@ public final class JpmParser {
             Map.entry("uvright", FaceDir.EAST)
     );
 
-    private final Path source;
     private int nodes;
     private int boxes;
 
-    private JpmParser(Path source) {
-        this.source = source;
+    private JpmParser() {
     }
 
     public static JpmModel parse(Path file) throws JpmException {
@@ -67,7 +65,7 @@ public final class JpmParser {
         try {
             JsonElement element = JsonParser.parseString(text);
             if (!element.isJsonObject()) throw new JpmException("JPM 根节点不是对象");
-            return new JpmParser(null).parseRoot(element.getAsJsonObject());
+            return new JpmParser().parseRoot(element.getAsJsonObject());
         } catch (JpmException e) {
             throw e;
         } catch (JsonSyntaxException e) {
@@ -136,7 +134,6 @@ public final class JpmParser {
         float[] translate = floats(object, "translate", 3, new float[]{0, 0, 0});
         float[] rotate = floats(object, "rotate", 3, new float[]{0, 0, 0});
         float scale = number(object, "scale", 1.0F);
-        boolean attach = bool(object, "attach", false);
         String invertAxis = string(object, "invertAxis", "");
         String mirrorTexture = string(object, "mirrorTexture", "");
         invertPart(translate, rotate, invertAxis);
@@ -148,7 +145,7 @@ public final class JpmParser {
                 if (++boxes > MAX_BOXES) throw new JpmException("JPM 盒子数量过多");
                 try {
                     partBoxes.add(parseBox(boxArray.get(i).getAsJsonObject(), invertAxis,
-                            mirrorTexture, path + ".boxes[" + i + "]"));
+                            mirrorTexture));
                 } catch (JpmException e) {
                     throw new JpmException(path + ".boxes[" + i + "]: " + e.getMessage(), e);
                 }
@@ -164,10 +161,10 @@ public final class JpmParser {
                 }
             }
         }
-        return new JpmPart(id, translate, rotate, scale, attach, invertAxis, mirrorTexture, partBoxes, children);
+        return new JpmPart(id, translate, rotate, scale, partBoxes, children);
     }
 
-    private JpmBox parseBox(JsonObject object, String invertAxis, String mirrorTexture, String path)
+    private JpmBox parseBox(JsonObject object, String invertAxis, String mirrorTexture)
             throws JpmException {
         float[] coordinates = floats(object, "coordinates", 6, null);
         if (coordinates == null || coordinates.length != 6) {
@@ -235,16 +232,8 @@ public final class JpmParser {
         }
     }
 
-    private static boolean bool(JsonObject object, String key, boolean fallback) {
+    private static float number(JsonObject object, String key, float fallback) {
         if (object == null || !object.has(key) || object.get(key).isJsonNull()) return fallback;
-        try {
-            return object.get(key).getAsBoolean();
-        } catch (RuntimeException e) {
-            return fallback;
-        }
-    }
-
-    private static float number(JsonObject object, String key, float fallback) {        if (object == null || !object.has(key) || object.get(key).isJsonNull()) return fallback;
         try {
             return object.get(key).getAsFloat();
         } catch (RuntimeException e) {

@@ -22,14 +22,6 @@ public final class JpmModel {
         this.animations = List.copyOf(animations);
     }
 
-    public JpmPart find(String partId) {
-        for (JpmPart root : roots) {
-            JpmPart found = root.find(partId);
-            if (found != null) return found;
-        }
-        return null;
-    }
-
     public List<JpmPart> flatten() {
         List<JpmPart> out = new ArrayList<>();
         for (JpmPart root : roots) root.collect(out);
