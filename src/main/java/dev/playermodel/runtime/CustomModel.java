@@ -281,10 +281,8 @@ public final class CustomModel {
     public void copyPose(PlayerEntityModel<?> live, PreparedModel prepared) {
         ModelPart[] source = ModelParts.of(live);
         float scale = prepared.rigScale();
-        boolean swapLimbs = prepared.swapLimbs();
         for (BoneKind kind : BoneKind.VALUES) {
-            BoneKind sourceKind = swapLimbs ? oppositeLimb(kind) : kind;
-            ModelPart from = source[sourceKind.ordinal()];
+            ModelPart from = source[kind.ordinal()];
             ModelPart to = parts.get(kind);
             if (to == null) {
                 continue;
@@ -307,19 +305,12 @@ public final class CustomModel {
             to.xScale = baseScale[0] == 0 ? 1.0F : from.xScale / baseScale[0];
             to.yScale = baseScale[1] == 0 ? 1.0F : from.yScale / baseScale[1];
             to.zScale = baseScale[2] == 0 ? 1.0F : from.zScale / baseScale[2];
+            float[] base = BaseSkeleton.basePivot(from);
             float[] target = modelPivots ? prepared.pivot(kind) : basePivots.get(kind);
             if (target != null) {
-                if (swapLimbs) {
-                    // Keep authored geometry at its own side; only its animation source is swapped.
-                    to.pivotX = target[0];
-                    to.pivotY = target[1];
-                    to.pivotZ = target[2];
-                } else {
-                    float[] base = BaseSkeleton.basePivot(from);
-                    to.pivotX = target[0] + (from.pivotX - base[0]) * scale;
-                    to.pivotY = target[1] + (from.pivotY - base[1]) * scale;
-                    to.pivotZ = target[2] + (from.pivotZ - base[2]) * scale;
-                }
+                to.pivotX = target[0] + (from.pivotX - base[0]) * scale;
+                to.pivotY = target[1] + (from.pivotY - base[1]) * scale;
+                to.pivotZ = target[2] + (from.pivotZ - base[2]) * scale;
             }
             to.visible = true;
             to.hidden = false;
@@ -327,20 +318,6 @@ public final class CustomModel {
         this.model.handSwingProgress = live.handSwingProgress;
         this.model.riding = live.riding;
         this.model.child = live.child;
-    }
-
-    private static BoneKind oppositeLimb(BoneKind kind) {
-        return switch (kind) {
-            case RIGHT_ARM -> BoneKind.LEFT_ARM;
-            case LEFT_ARM -> BoneKind.RIGHT_ARM;
-            case RIGHT_LEG -> BoneKind.LEFT_LEG;
-            case LEFT_LEG -> BoneKind.RIGHT_LEG;
-            case RIGHT_SLEEVE -> BoneKind.LEFT_SLEEVE;
-            case LEFT_SLEEVE -> BoneKind.RIGHT_SLEEVE;
-            case RIGHT_PANTS -> BoneKind.LEFT_PANTS;
-            case LEFT_PANTS -> BoneKind.RIGHT_PANTS;
-            default -> kind;
-        };
     }
 
     public PlayerEntityModel<AbstractClientPlayerEntity> model() {

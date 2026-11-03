@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -162,14 +163,29 @@ class ModelPipelineTest {
     }
 
     @Test
-    void swapLimbsFlagSurvivesBundle() throws Exception {
+    void swapLimbPositionsExchangesLeftAndRight() throws Exception {
         RawModel raw = BbmodelParser.parse(VANILLA, "swap");
-        NormalizedModel model = ModelCompiler.compile(raw, "model", "model");
-        model.swapLimbs = true;
-        ModelBundle bundle = ModelBundle.create(model, raw.texture.png());
-        NormalizedModel decoded = ModelBundle.fromBytes(bundle.bytes).model;
-        assertTrue(decoded.swapLimbs);
-        assertTrue(new PreparedModel(decoded).swapLimbs());
+        RawBone leftArm = raw.bone(BoneKind.LEFT_ARM);
+        RawBone rightArm = raw.bone(BoneKind.RIGHT_ARM);
+        RawBone leftLeg = raw.bone(BoneKind.LEFT_LEG);
+        RawBone rightLeg = raw.bone(BoneKind.RIGHT_LEG);
+        assertNotNull(leftArm);
+        assertNotNull(rightArm);
+        assertNotNull(leftLeg);
+        assertNotNull(rightLeg);
+        float[] leftArmPivot = leftArm.pivot.clone();
+        float[] rightArmPivot = rightArm.pivot.clone();
+        float[] leftLegPivot = leftLeg.pivot.clone();
+        float[] rightLegPivot = rightLeg.pivot.clone();
+        raw.swapLimbPositions();
+        assertArrayEquals(rightArmPivot, raw.bone(BoneKind.LEFT_ARM).pivot, 1e-6F);
+        assertArrayEquals(leftArmPivot, raw.bone(BoneKind.RIGHT_ARM).pivot, 1e-6F);
+        assertArrayEquals(rightLegPivot, raw.bone(BoneKind.LEFT_LEG).pivot, 1e-6F);
+        assertArrayEquals(leftLegPivot, raw.bone(BoneKind.RIGHT_LEG).pivot, 1e-6F);
+        NormalizedBone compiled = ModelCompiler.compile(raw, "model", "model").bone(BoneKind.LEFT_ARM);
+        assertNotNull(compiled);
+        assertArrayEquals(rightArmPivot, new float[]{compiled.pivotX(), compiled.pivotY(), compiled.pivotZ()},
+                1e-6F);
     }
 
     @Test

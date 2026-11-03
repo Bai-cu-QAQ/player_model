@@ -38,4 +38,53 @@ public final class RawModel {
         return null;
     }
 
+    /** Exchanges the authored left/right limb positions, including pivots and cubes. */
+    public void swapLimbPositions() {
+        swapBones(BoneKind.LEFT_ARM, BoneKind.RIGHT_ARM);
+        swapBones(BoneKind.LEFT_LEG, BoneKind.RIGHT_LEG);
+        swapBones(BoneKind.LEFT_SLEEVE, BoneKind.RIGHT_SLEEVE);
+        swapBones(BoneKind.LEFT_PANTS, BoneKind.RIGHT_PANTS);
+        swapAnchorPositions();
+    }
+
+    private void swapBones(BoneKind leftKind, BoneKind rightKind) {
+        int leftIndex = indexOf(leftKind);
+        int rightIndex = indexOf(rightKind);
+        if (leftIndex < 0 || rightIndex < 0) return;
+        RawBone left = bones.get(leftIndex);
+        RawBone right = bones.get(rightIndex);
+        RawBone newLeft = new RawBone(leftKind, right.pivot.clone(), right.rotation.clone());
+        newLeft.elements.addAll(right.elements);
+        RawBone newRight = new RawBone(rightKind, left.pivot.clone(), left.rotation.clone());
+        newRight.elements.addAll(left.elements);
+        bones.set(leftIndex, newLeft);
+        bones.set(rightIndex, newRight);
+    }
+
+    private int indexOf(BoneKind kind) {
+        for (int i = 0; i < bones.size(); i++) {
+            if (bones.get(i).kind == kind) return i;
+        }
+        return -1;
+    }
+
+    private void swapAnchorPositions() {
+        Anchor right = null;
+        Anchor left = null;
+        int rightIndex = -1;
+        int leftIndex = -1;
+        for (int i = 0; i < anchors.size(); i++) {
+            Anchor anchor = anchors.get(i);
+            if (Anchor.RIGHT_HAND.equals(anchor.name())) {
+                right = anchor;
+                rightIndex = i;
+            } else if (Anchor.LEFT_HAND.equals(anchor.name())) {
+                left = anchor;
+                leftIndex = i;
+            }
+        }
+        if (right == null || left == null) return;
+        anchors.set(rightIndex, new Anchor(right.name(), right.bone(), left.x(), left.y(), left.z(), left.scale()));
+        anchors.set(leftIndex, new Anchor(left.name(), left.bone(), right.x(), right.y(), right.z(), right.scale()));
+    }
 }
