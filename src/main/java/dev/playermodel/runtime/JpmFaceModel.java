@@ -49,7 +49,8 @@ public final class JpmFaceModel {
             JpmEvalContext.PartState state = context.parts.get(part.id);
             if (state == null) continue;
             // JPM properties are absolute pivot/rotation/scale writes, not offsets.
-            target.setPivot((float) state.tx, (float) state.ty, (float) state.tz);
+            target.setPivot((float) state.tx, (float) state.ty + layerYOffset(part.id),
+                    (float) state.tz);
             target.pitch = (float) state.rx;
             target.yaw = (float) state.ry;
             target.roll = (float) state.rz;
@@ -72,7 +73,8 @@ public final class JpmFaceModel {
             children.put(child.id, build(child));
         }
         ModelPart modelPart = new ModelPart(cuboids, children);
-        modelPart.setPivot(part.translate[0], part.translate[1], part.translate[2]);
+        modelPart.setPivot(part.translate[0], part.translate[1] + layerYOffset(part.id),
+                part.translate[2]);
         modelPart.pitch = part.rotate[0];
         modelPart.yaw = part.rotate[1];
         modelPart.roll = part.rotate[2];
@@ -81,6 +83,14 @@ public final class JpmFaceModel {
         modelPart.zScale = part.scale;
         parts.put(part.id, modelPart);
         return modelPart;
+    }
+
+    /**
+     * JustExpressions' white layer is authored one pixel above the pupil/lid band. The hidden
+     * base face uses the normal eye line, so bring the white down to the same band.
+     */
+    private static float layerYOffset(String id) {
+        return id.matches("[rl]_eye_white\\d+") ? 1.0F : 0;
     }
 
     private NormalizedCube toCube(JpmBox box) {
