@@ -98,7 +98,7 @@ class JpmInlineTest {
         assertEquals(0.1F, find(face.root(), "pupil").pivotX, 1e-5F);
         assertEquals(0.2F, find(face.root(), "pupil").pivotY, 1e-5F);
         assertEquals(0.5F, find(face.root(), "eye_white").pivotX, 1e-5F);
-        assertEquals(1.0F, find(face.root(), "eye_white").pivotY, 1e-5F);
+        assertEquals(1.0F + 2.0F, find(face.root(), "eye_white").pivotY, 1e-5F);
     }
 
     private static ModelPart find(ModelPart part, String id) {

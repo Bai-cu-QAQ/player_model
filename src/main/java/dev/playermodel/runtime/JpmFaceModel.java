@@ -86,11 +86,11 @@ public final class JpmFaceModel {
     }
 
     /**
-     * JustExpressions' white layer is authored one pixel above the pupil/lid band. The hidden
+     * JustExpressions' white layer is authored two pixels above the pupil/lid band. The hidden
      * base face uses the normal eye line, so bring the white down to the same band.
      */
     private static float layerYOffset(String id) {
-        return id.matches("[rl]_eye_white\\d+") ? 1.0F : 0;
+        return id.matches("(?:[rl]_)?eye_white\\d*") ? 2.0F : 0;
     }
 
     private NormalizedCube toCube(JpmBox box) {
