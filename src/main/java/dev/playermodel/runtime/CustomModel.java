@@ -1,7 +1,6 @@
 package dev.playermodel.runtime;
 
 import dev.playermodel.jpm.JpmEvalContext;
-import dev.playermodel.model.Anchor;
 import dev.playermodel.model.BoneKind;
 import dev.playermodel.model.PhysicsConfig;
 import net.minecraft.client.model.Dilation;
@@ -86,22 +85,11 @@ public final class CustomModel {
         }
         attachPhysics(prepared, array);
         this.face = prepared.face() == null ? null : new JpmFaceModel(prepared.face());
-        Anchor jpmAnchor = prepared.anchor(Anchor.JPM);
-        float[] jpmOffset = JpmAnchorTransform.offset(prepared, jpmAnchor, basePivots.get(BoneKind.HEAD));
-        if (prepared.face() != null) {
-            jpmOffset[1] += JpmFaceFit.offsetY(prepared, prepared.face());
-        }
-        float jpmScale = prepared.face() == null ? 1.0F
-                : (jpmAnchor != null && jpmAnchor.scale() > 0
-                ? jpmAnchor.scale() : JpmFaceFit.scale(prepared, prepared.face()));
         if (face != null && prepared.faceTexturePng() == null) {
             ModelPart head = parts.get(BoneKind.HEAD);
             Map<String, ModelPart> children = head.children == null
                     ? new HashMap<>() : new HashMap<>(head.children);
-            face.root().setPivot(jpmOffset[0], jpmOffset[1], jpmOffset[2]);
-            face.root().xScale = jpmScale;
-            face.root().yScale = jpmScale;
-            face.root().zScale = jpmScale;
+            face.root().setPivot(0, 0, 0);
             children.put("pm_face", face.root());
             head.children = children;
             this.separateFaceRoot = null;
@@ -110,10 +98,7 @@ public final class CustomModel {
             Map<String, ModelPart> faceChildren = new HashMap<>();
             faceChildren.put("pm_face", face.root());
             ModelPart faceAnchor = new ModelPart(List.of(), faceChildren);
-            faceAnchor.setPivot(jpmOffset[0], jpmOffset[1], jpmOffset[2]);
-            faceAnchor.xScale = jpmScale;
-            faceAnchor.yScale = jpmScale;
-            faceAnchor.zScale = jpmScale;
+            faceAnchor.setPivot(0, 0, 0);
             Map<String, ModelPart> children = new HashMap<>();
             children.put("pm_face_anchor", faceAnchor);
             this.separateFaceRoot = new ModelPart(List.of(), children);

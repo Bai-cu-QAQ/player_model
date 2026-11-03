@@ -12,5 +12,4 @@ public record Anchor(String name, BoneKind bone, float x, float y, float z, floa
     public static final String RIGHT_HAND = "right_hand";
     public static final String LEFT_HAND = "left_hand";
     public static final String CAPE = "cape";
-    public static final String JPM = "jpm";
 }

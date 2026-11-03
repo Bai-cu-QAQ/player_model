@@ -16,8 +16,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * A JPM face tree ready to attach under an imported player head. Geometry is built once; the JPM
- * expression evaluator writes part state into this tree before it is copied into a render snapshot.
+ * JPM face tree built directly from the resource-pack model. No eye-specific offsets, variant
+ * filtering or hidden-base-face fitting is applied: the declared JPM transforms and UVs are
+ * preserved, and the animation expressions are evaluated as absolute writes.
  */
 public final class JpmFaceModel {
     private final JpmModel data;
@@ -48,30 +49,15 @@ public final class JpmFaceModel {
             if (target == null) continue;
             JpmEvalContext.PartState state = context.parts.get(part.id);
             if (state == null) continue;
-            // JPM properties are absolute pivot/rotation/scale writes, not offsets.
-            target.setPivot((float) state.tx, (float) state.ty + layerYOffset(part.id),
-                    (float) state.tz);
+            target.setPivot((float) state.tx, (float) state.ty, (float) state.tz);
             target.pitch = (float) state.rx;
             target.yaw = (float) state.ry;
             target.roll = (float) state.rz;
             target.xScale = (float) state.sx;
             target.yScale = (float) state.sy;
             target.zScale = (float) state.sz;
-            target.visible = state.visible && isPrimaryEyePart(part.id);
+            target.visible = state.visible;
         }
-    }
-
-    /**
-     * JustExpressions contains enderman/farset variants whose eye whites cross the model center
-     * (e.g. r_eye_white10 spans -1..2). For the standard 8px head only the 2by1 variants 1..4
-     * are valid; hide the rest so the two whites never join.
-     */
-    private static boolean isPrimaryEyePart(String id) {
-        java.util.regex.Matcher matcher = java.util.regex.Pattern
-                .compile("[rl]_(eye_white|pupil|eyelid|blink)(\\d+)$").matcher(id);
-        if (!matcher.matches()) return true;
-        int variant = Integer.parseInt(matcher.group(2));
-        return variant >= 1 && variant <= 4;
     }
 
     private ModelPart build(JpmPart part) {
@@ -86,27 +72,15 @@ public final class JpmFaceModel {
             children.put(child.id, build(child));
         }
         ModelPart modelPart = new ModelPart(cuboids, children);
-        modelPart.setPivot(part.translate[0], part.translate[1] + layerYOffset(part.id),
-                part.translate[2]);
+        modelPart.setPivot(part.translate[0], part.translate[1], part.translate[2]);
         modelPart.pitch = part.rotate[0];
         modelPart.yaw = part.rotate[1];
         modelPart.roll = part.rotate[2];
         modelPart.xScale = part.scale;
         modelPart.yScale = part.scale;
         modelPart.zScale = part.scale;
-        modelPart.visible = isPrimaryEyePart(part.id);
         parts.put(part.id, modelPart);
         return modelPart;
-    }
-
-    /**
-     * JPM's pupil and lid layers are authored below the white layer. Keep the white in place and
-     * raise the pupil/lid groups by two JPM units so they sit inside the eye opening.
-     */
-    private static float layerYOffset(String id) {
-        if (id.matches("[rl]_eye_white\\d+")) return 0;
-        if (id.matches("[rl]_(pupil|eyelid)\\d+")) return -2.0F;
-        return 0;
     }
 
     private NormalizedCube toCube(JpmBox box) {
