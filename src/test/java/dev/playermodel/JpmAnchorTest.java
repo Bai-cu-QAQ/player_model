@@ -87,6 +87,14 @@ class JpmAnchorTest {
     }
 
     @Test
+    void fallsBackToRigScaleForSmallModels() throws Exception {
+        RawModel raw = BbmodelParser.parse(Path.of("src/test/resources/player_small.bbmodel"), "small");
+        PreparedModel prepared = new PreparedModel(ModelCompiler.compile(raw, "model", "model"));
+        assertEquals(prepared.rigScale(), JpmAnchorTransform.scale(prepared, null), 1e-5F);
+        assertTrue(JpmAnchorTransform.scale(prepared, null) < 1.0F);
+    }
+
+    @Test
     void generatedTemplateContainsJpmAnchor() throws Exception {
         byte[] source;
         try (var in = JpmAnchorTest.class.getResourceAsStream("/assets/playermodel/template.bbmodel")) {

@@ -17,8 +17,7 @@ public final class JpmAnchorTransform {
     }
 
     public static float scale(PreparedModel prepared, Anchor anchor) {
-        if (anchor == null) return 1.0F;
-        if (anchor.scale() > 0) return anchor.scale();
+        if (anchor != null && anchor.scale() > 0) return anchor.scale();
         return prepared.rigScale() > 0 ? prepared.rigScale() : 1.0F;
     }
 }
