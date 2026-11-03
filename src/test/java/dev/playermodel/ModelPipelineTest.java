@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -159,6 +160,25 @@ class ModelPipelineTest {
         }
         assertTrue(up, "top face must be classified as UP");
         assertTrue(down, "bottom face must be classified as DOWN");
+    }
+
+    @Test
+    void swapsLeftRightLimbBindings() throws Exception {
+        RawModel raw = BbmodelParser.parse(VANILLA, "swap");
+        RawBone leftArm = raw.bone(BoneKind.LEFT_ARM);
+        RawBone rightLeg = raw.bone(BoneKind.RIGHT_LEG);
+        assertNotNull(leftArm);
+        assertNotNull(rightLeg);
+        float[] leftArmPivot = leftArm.pivot.clone();
+        float[] rightLegPivot = rightLeg.pivot.clone();
+        raw.swapLimbs();
+        RawBone boundRightArm = raw.bone(BoneKind.RIGHT_ARM);
+        RawBone boundLeftLeg = raw.bone(BoneKind.LEFT_LEG);
+        assertNotNull(boundRightArm);
+        assertNotNull(boundLeftLeg);
+        assertArrayEquals(leftArmPivot, boundRightArm.pivot, 1e-6F);
+        assertArrayEquals(rightLegPivot, boundLeftLeg.pivot, 1e-6F);
+        assertEquals(leftArm.elements.size(), boundRightArm.elements.size());
     }
 
     @Test

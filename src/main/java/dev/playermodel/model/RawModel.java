@@ -37,4 +37,47 @@ public final class RawModel {
         }
         return null;
     }
+
+    /**
+     * Rebinds the imported limb geometry to the opposite vanilla limb while preserving each
+     * group's authored pivot and elements. Intended for models authored with reversed left/right
+     * limb names.
+     */
+    public void swapLimbs() {
+        for (int i = 0; i < bones.size(); i++) {
+            RawBone source = bones.get(i);
+            BoneKind target = swappedLimb(source.kind);
+            if (target != source.kind) {
+                RawBone swapped = new RawBone(target, source.pivot.clone(), source.rotation.clone());
+                swapped.elements.addAll(source.elements);
+                bones.set(i, swapped);
+            }
+        }
+        for (int i = 0; i < physicsBones.size(); i++) {
+            RawPhysicsBone source = physicsBones.get(i);
+            BoneKind parent = swappedLimb(source.parentBone);
+            if (parent != source.parentBone) {
+                RawPhysicsBone swapped = new RawPhysicsBone(source.name, parent, source.parentPhysics,
+                        source.pivot, source.rotation);
+                swapped.elements.addAll(source.elements);
+                physicsBones.set(i, swapped);
+            }
+        }
+        warnings.add("已交换左右手臂/腿部骨骼绑定");
+    }
+
+    private static BoneKind swappedLimb(BoneKind kind) {
+        if (kind == null) return null;
+        return switch (kind) {
+            case RIGHT_ARM -> BoneKind.LEFT_ARM;
+            case LEFT_ARM -> BoneKind.RIGHT_ARM;
+            case RIGHT_LEG -> BoneKind.LEFT_LEG;
+            case LEFT_LEG -> BoneKind.RIGHT_LEG;
+            case RIGHT_SLEEVE -> BoneKind.LEFT_SLEEVE;
+            case LEFT_SLEEVE -> BoneKind.RIGHT_SLEEVE;
+            case RIGHT_PANTS -> BoneKind.LEFT_PANTS;
+            case LEFT_PANTS -> BoneKind.RIGHT_PANTS;
+            default -> kind;
+        };
+    }
 }
