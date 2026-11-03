@@ -111,6 +111,11 @@ public final class ModelRegistry {
             }
             RawModel raw = BbmodelParser.parse(bbmodel, meta.displayName == null || meta.displayName.isBlank()
                     ? safeName : meta.displayName);
+            Path faceFile = meta.face == null || meta.face.isBlank()
+                    ? folder.resolve("player_face.jpm") : folder.resolve(meta.face).normalize();
+            if (Files.isRegularFile(faceFile) && faceFile.startsWith(folder.normalize())) {
+                raw.faceJpm = Files.readString(faceFile);
+            }
 
             Path textureFile = folder.resolve("texture.png");
             byte[] png = raw.texture.png();
@@ -356,6 +361,8 @@ public final class ModelRegistry {
         public PhysicsConfig physics;
         public boolean doubleLayer = true;
         public boolean slim;
+        /** Optional JPM face overlay path relative to the model folder. */
+        public String face;
         public java.util.Map<String, AnchorMeta> anchors = new java.util.LinkedHashMap<>();
         public int textureWidth;
         public int textureHeight;

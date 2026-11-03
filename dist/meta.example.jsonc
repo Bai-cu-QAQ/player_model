@@ -10,6 +10,9 @@
   // 旧版兼容字段；当前版本不会生成双层皮肤。
   "doubleLayer": true,
   "slim": false,
+  // 可选 JPM 面部/眼睛覆盖模型路径；省略时自动查找同目录 player_face.jpm。
+  // JPM 的 UV 以 textureSize 为准，通常使用玩家 64×64 皮肤。
+  "face": "",
   // 贴图 UV 尺寸；0 表示从 bbmodel 自动读取。
   "textureWidth": 64,
   "textureHeight": 64,

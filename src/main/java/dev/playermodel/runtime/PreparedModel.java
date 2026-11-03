@@ -1,6 +1,8 @@
 package dev.playermodel.runtime;
 
 import dev.playermodel.compile.ModelCompiler;
+import dev.playermodel.jpm.JpmModel;
+import dev.playermodel.jpm.JpmParser;
 import dev.playermodel.model.BoneKind;
 import dev.playermodel.model.CubeFace;
 import dev.playermodel.model.FaceVertex;
@@ -33,9 +35,19 @@ public final class PreparedModel {
     private final List<VanillaVariant> vanillaVariants = new ArrayList<>();
     private final Map<String, PhysicsPart> physicsParts = new LinkedHashMap<>();
     private final Map<BoneKind, Quaternionf> staticRotations = new EnumMap<>(BoneKind.class);
+    private final JpmModel face;
 
     public PreparedModel(NormalizedModel data) {
         this.data = data;
+        JpmModel parsedFace = null;
+        if (data.faceJpm != null && !data.faceJpm.isBlank()) {
+            try {
+                parsedFace = JpmParser.parseText(data.faceJpm);
+            } catch (Exception ignored) {
+                // An invalid optional face overlay must not make the base model unusable.
+            }
+        }
+        this.face = parsedFace;
         for (NormalizedBone bone : data.bones) {
             modelPivots.put(bone.kind(), new float[]{bone.pivotX(), bone.pivotY(), bone.pivotZ()});
             modelPivoted.put(bone.kind(), buildCuboids(bone.cubes(), bone.pivotX(), bone.pivotY(), bone.pivotZ()));
@@ -71,6 +83,10 @@ public final class PreparedModel {
 
     public NormalizedModel data() {
         return data;
+    }
+
+    public JpmModel face() {
+        return face;
     }
 
     public boolean usesModelPivots() {
@@ -203,7 +219,7 @@ public final class PreparedModel {
         return copy;
     }
 
-    private static List<ModelPart.Cuboid> buildCuboids(List<NormalizedCube> cubes, float px, float py, float pz) {
+    static List<ModelPart.Cuboid> buildCuboids(List<NormalizedCube> cubes, float px, float py, float pz) {
         List<ModelPart.Cuboid> result = new ArrayList<>(cubes.size());
         for (NormalizedCube cube : cubes) {
             float minX = cube.minX() - px;

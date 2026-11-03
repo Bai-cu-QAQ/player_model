@@ -11,6 +11,8 @@ public final class NormalizedModel {
     public boolean customAnchors;
     public boolean doubleLayer = true;
     public boolean slim;
+    /** Serialized JPM face overlay, if this model uses one. */
+    public String faceJpm;
     public int textureWidth = 64;
     public int textureHeight = 64;
     public transient byte[] texturePng;

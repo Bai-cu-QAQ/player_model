@@ -1,6 +1,7 @@
 package dev.playermodel.client;
 
 import dev.playermodel.PlayerModelMod;
+import dev.playermodel.jpm.JpmEvalContext;
 import dev.playermodel.model.BoneKind;
 import dev.playermodel.runtime.Appearance;
 import dev.playermodel.runtime.BaseSkeleton;
@@ -159,6 +160,17 @@ public final class AppearanceManager {
             CustomModel custom = customModelFor(prepared);
             custom.copyPose(live, prepared);
             physics.update(player, custom, System.nanoTime());
+            JpmEvalContext face = new JpmEvalContext();
+            face.age = state.age;
+            face.headYaw = state.relativeHeadYaw;
+            face.headPitch = state.pitch;
+            face.limbSpeed = state.limbSwingAmplitude;
+            face.limbSwing = state.limbSwingAnimationProgress;
+            face.hurt = state.hurt;
+            face.hurtTime = state.hurt ? 1 : 0;
+            face.distance = Math.sqrt(state.squaredDistanceToCamera);
+            face.id = player.getUuid().hashCode() / (double) Integer.MAX_VALUE;
+            custom.animateFace(face);
             return new RenderPose(new PlayerEntityModel(copyPart(custom.model().getRootPart()), prepared.slim()), prepared);
         } catch (Throwable t) {
             if (config.debug) PlayerModelMod.LOG.warn("Failed to capture custom player pose", t);
