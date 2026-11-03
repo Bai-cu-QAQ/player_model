@@ -64,7 +64,7 @@ public final class JpmFaceFit {
 
     private static float[] collect(JpmPart part, float parentY) {
         float partY = parentY + part.translate[1];
-        boolean eyePart = part.id.matches("[rl]_(eye_white|pupil|eyelid|blink)\\d+");
+        boolean eyePart = part.id.matches("[rl]_(eye_white|pupil|eyelid|blink)1$");
         float min = Float.POSITIVE_INFINITY;
         float max = Float.NEGATIVE_INFINITY;
         if (eyePart) {
