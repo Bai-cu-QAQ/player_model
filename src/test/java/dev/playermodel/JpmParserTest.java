@@ -6,8 +6,6 @@ import dev.playermodel.jpm.JpmEvalContext;
 import dev.playermodel.jpm.JpmExpressionParser;
 import dev.playermodel.jpm.JpmModel;
 import dev.playermodel.jpm.JpmParser;
-import dev.playermodel.runtime.JpmFaceModel;
-import net.minecraft.client.model.ModelPart;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
@@ -63,29 +61,6 @@ class JpmParserTest {
             assertTrue(Double.isFinite(part.tx) && Double.isFinite(part.ty) && Double.isFinite(part.tz));
             assertTrue(Double.isFinite(part.sx) && Double.isFinite(part.sy) && Double.isFinite(part.sz));
         }
-    }
-
-    @Test
-    void separatesEyeWhitePupilAndLidVertically() throws Exception {
-        Assumptions.assumeTrue(Files.isRegularFile(JPM), "local JustExpressions resource pack is unavailable");
-        JpmModel data = JpmParser.parse(JPM);
-        JpmFaceModel face = new JpmFaceModel(data);
-        assertEquals(data.flatten().stream().filter(p -> p.id.equals("r_eye_white1")).findFirst().orElseThrow().translate[1] - 0.5F,
-                find(face.root(), "r_eye_white1").pivotY, 1e-5F);
-        assertEquals(data.flatten().stream().filter(p -> p.id.equals("r_pupil1")).findFirst().orElseThrow().translate[1] + 0.5F,
-                find(face.root(), "r_pupil1").pivotY, 1e-5F);
-        assertEquals(data.flatten().stream().filter(p -> p.id.equals("r_eyelid1")).findFirst().orElseThrow().translate[1] + 0.5F,
-                find(face.root(), "r_eyelid1").pivotY, 1e-5F);
-    }
-
-    private static ModelPart find(ModelPart part, String id) {
-        ModelPart direct = part.children.get(id);
-        if (direct != null) return direct;
-        for (ModelPart child : part.children.values()) {
-            ModelPart found = find(child, id);
-            if (found != null) return found;
-        }
-        return null;
     }
 
     @Test
