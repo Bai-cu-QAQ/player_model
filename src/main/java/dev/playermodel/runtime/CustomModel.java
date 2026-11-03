@@ -88,7 +88,12 @@ public final class CustomModel {
         this.face = prepared.face() == null ? null : new JpmFaceModel(prepared.face());
         Anchor jpmAnchor = prepared.anchor(Anchor.JPM);
         float[] jpmOffset = JpmAnchorTransform.offset(prepared, jpmAnchor, basePivots.get(BoneKind.HEAD));
-        float jpmScale = JpmAnchorTransform.scale(prepared, jpmAnchor);
+        if (prepared.face() != null) {
+            jpmOffset[1] += JpmFaceFit.offsetY(prepared, prepared.face());
+        }
+        float jpmScale = prepared.face() == null ? 1.0F
+                : (jpmAnchor != null && jpmAnchor.scale() > 0
+                ? jpmAnchor.scale() : JpmFaceFit.scale(prepared, prepared.face()));
         if (face != null && prepared.faceTexturePng() == null) {
             ModelPart head = parts.get(BoneKind.HEAD);
             Map<String, ModelPart> children = head.children == null

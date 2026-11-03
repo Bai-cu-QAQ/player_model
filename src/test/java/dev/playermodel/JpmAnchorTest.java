@@ -10,6 +10,7 @@ import dev.playermodel.model.BoneKind;
 import dev.playermodel.model.NormalizedModel;
 import dev.playermodel.model.RawModel;
 import dev.playermodel.runtime.JpmAnchorTransform;
+import dev.playermodel.runtime.JpmFaceFit;
 import dev.playermodel.runtime.PreparedModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -84,6 +85,17 @@ class JpmAnchorTest {
         assertEquals(2.0F, offset[1], 1e-5F);
         assertEquals(3.0F, offset[2], 1e-5F);
         assertEquals(0.5F, JpmAnchorTransform.scale(prepared, anchor), 1e-5F);
+    }
+
+    @Test
+    void fitsJpmFaceToSmallHead() throws Exception {
+        RawModel raw = BbmodelParser.parse(Path.of("src/test/resources/player_small.bbmodel"), "small");
+        PreparedModel prepared = new PreparedModel(ModelCompiler.compile(raw, "model", "model"));
+        Path jpm = Path.of(".tools/JustExpressions/assets/minecraft/emf/cem/player_face.jpm");
+        if (!Files.isRegularFile(jpm)) return;
+        var face = dev.playermodel.jpm.JpmParser.parse(jpm);
+        assertTrue(JpmFaceFit.scale(prepared, face) < 1.0F);
+        assertTrue(JpmFaceFit.scale(prepared, face) > 0.2F);
     }
 
     @Test
