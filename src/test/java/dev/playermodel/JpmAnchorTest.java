@@ -14,6 +14,7 @@ import dev.playermodel.runtime.PreparedModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,6 +22,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JpmAnchorTest {
     @TempDir
@@ -82,5 +84,22 @@ class JpmAnchorTest {
         assertEquals(2.0F, offset[1], 1e-5F);
         assertEquals(3.0F, offset[2], 1e-5F);
         assertEquals(0.5F, JpmAnchorTransform.scale(prepared, anchor), 1e-5F);
+    }
+
+    @Test
+    void generatedTemplateContainsJpmAnchor() throws Exception {
+        byte[] source;
+        try (var in = JpmAnchorTest.class.getResourceAsStream("/assets/playermodel/template.bbmodel")) {
+            assertNotNull(in);
+            source = in.readAllBytes();
+        }
+        Method inject = Class.forName("dev.playermodel.client.ClientModelService")
+                .getDeclaredMethod("addJpmAnchor", byte[].class);
+        inject.setAccessible(true);
+        byte[] generated = (byte[]) inject.invoke(null, (Object) source);
+        Path file = temp.resolve("template_with_jpm_anchor.bbmodel");
+        Files.write(file, generated);
+        RawModel raw = BbmodelParser.parse(file, "template");
+        assertTrue(raw.anchors.stream().anyMatch(a -> a.name().equals(Anchor.JPM)));
     }
 }
