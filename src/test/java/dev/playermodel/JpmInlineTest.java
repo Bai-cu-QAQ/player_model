@@ -3,7 +3,9 @@ package dev.playermodel;
 import dev.playermodel.jpm.JpmEvalContext;
 import dev.playermodel.jpm.JpmModel;
 import dev.playermodel.jpm.JpmParser;
+import dev.playermodel.model.NormalizedModel;
 import dev.playermodel.runtime.JpmFaceModel;
+import dev.playermodel.runtime.PreparedModel;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -69,5 +71,8 @@ class JpmInlineTest {
         JpmFaceModel face = new JpmFaceModel(model);
         assertNotNull(face.root());
         face.apply(context);
+        NormalizedModel normalized = new NormalizedModel();
+        normalized.faceJpm = json;
+        assertNotNull(new PreparedModel(normalized).face());
     }
 }
