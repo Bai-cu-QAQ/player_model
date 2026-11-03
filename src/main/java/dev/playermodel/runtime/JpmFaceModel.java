@@ -76,7 +76,9 @@ public final class JpmFaceModel {
             children.put(child.id, build(child));
         }
         ModelPart modelPart = new ModelPart(cuboids, children);
-        modelPart.setPivot(part.translate[0], part.translate[1], part.translate[2]);
+        float[] pivot = part.translate.clone();
+        pivot[1] += layerYOffset(part.id);
+        modelPart.setPivot(pivot[0], pivot[1], pivot[2]);
         modelPart.pitch = part.rotate[0];
         modelPart.yaw = part.rotate[1];
         modelPart.roll = part.rotate[2];
@@ -84,8 +86,19 @@ public final class JpmFaceModel {
         modelPart.yScale = part.scale;
         modelPart.zScale = part.scale;
         parts.put(part.id, modelPart);
-        origins.put(part.id, part.translate.clone());
+        origins.put(part.id, pivot);
         return modelPart;
+    }
+
+    /**
+     * JustExpressions uses the same Y plane for the white, pupil and lid layers. Keep the white
+     * slightly above the eye opening and the pupil/lid slightly below it so the layers read
+     * correctly against the head surface.
+     */
+    private static float layerYOffset(String id) {
+        if (id.matches("[rl]_eye_white\\d+")) return -0.5F;
+        if (id.matches("[rl]_(pupil|eyelid)\\d+")) return 0.5F;
+        return 0;
     }
 
     private NormalizedCube toCube(JpmBox box) {
