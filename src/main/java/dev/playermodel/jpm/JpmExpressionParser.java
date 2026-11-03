@@ -312,6 +312,64 @@ public final class JpmExpressionParser {
                     require(name, args, 2, position);
                     yield context -> Math.atan2(args.get(0).eval(context), args.get(1).eval(context));
                 }
+                case "pow" -> {
+                    require(name, args, 2, position);
+                    yield context -> Math.pow(args.get(0).eval(context), args.get(1).eval(context));
+                }
+                case "fmod" -> {
+                    require(name, args, 2, position);
+                    yield context -> args.get(1).eval(context) == 0 ? 0
+                            : args.get(0).eval(context) % args.get(1).eval(context);
+                }
+                case "lerp" -> {
+                    require(name, args, 3, position);
+                    yield context -> {
+                        double a = args.get(0).eval(context);
+                        double b = args.get(1).eval(context);
+                        return a + (b - a) * args.get(2).eval(context);
+                    };
+                }
+                case "frac" -> unaryMath(name, args, position, value -> value - Math.floor(value));
+                case "signum" -> unaryMath(name, args, position, Math::signum);
+                case "wrapdeg" -> unaryMath(name, args, position, value -> net.minecraft.util.math.MathHelper.wrapDegrees((float) value));
+                case "wraprad" -> unaryMath(name, args, position, value -> org.joml.Math.toRadians(net.minecraft.util.math.MathHelper.wrapDegrees((float) org.joml.Math.toDegrees(value))));
+                case "degdiff" -> {
+                    require(name, args, 2, position);
+                    yield context -> net.minecraft.util.math.MathHelper.wrapDegrees((float) (args.get(0).eval(context) - args.get(1).eval(context)));
+                }
+                case "raddiff" -> {
+                    require(name, args, 2, position);
+                    yield context -> org.joml.Math.toRadians(net.minecraft.util.math.MathHelper.wrapDegrees(
+                            (float) org.joml.Math.toDegrees(args.get(0).eval(context) - args.get(1).eval(context))));
+                }
+                case "in" -> {
+                    requireAtLeast(name, args, 2, position);
+                    yield context -> {
+                        double value = args.get(0).eval(context);
+                        for (int i = 1; i < args.size(); i++) {
+                            if (Math.abs(value - args.get(i).eval(context)) < 1e-9) return 1;
+                        }
+                        return 0;
+                    };
+                }
+                case "between" -> {
+                    require(name, args, 3, position);
+                    yield context -> {
+                        double value = args.get(0).eval(context);
+                        double low = Math.min(args.get(1).eval(context), args.get(2).eval(context));
+                        double high = Math.max(args.get(1).eval(context), args.get(2).eval(context));
+                        return value >= low && value <= high ? 1 : 0;
+                    };
+                }
+                case "equals" -> {
+                    require(name, args, 2, position);
+                    yield context -> Math.abs(args.get(0).eval(context) - args.get(1).eval(context)) < 1e-9 ? 1 : 0;
+                }
+                case "ifb" -> {
+                    require(name, args, 3, position);
+                    yield context -> args.get(0).eval(context) != 0
+                            ? args.get(1).eval(context) : args.get(2).eval(context);
+                }
                 case "min", "max" -> {
                     requireAtLeast(name, args, 1, position);
                     yield context -> {

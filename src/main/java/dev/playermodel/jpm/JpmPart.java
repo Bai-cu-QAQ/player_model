@@ -7,15 +7,22 @@ import java.util.List;
 public final class JpmPart {
     public final String id;
     public final float[] translate;
+    public final float[] rotate;
+    public final float scale;
+    public final boolean attach;
     public final String invertAxis;
     public final String mirrorTexture;
     public final List<JpmBox> boxes;
     public final List<JpmPart> children;
 
-    public JpmPart(String id, float[] translate, String invertAxis, String mirrorTexture,
+    public JpmPart(String id, float[] translate, float[] rotate, float scale, boolean attach,
+                   String invertAxis, String mirrorTexture,
                    List<JpmBox> boxes, List<JpmPart> children) {
         this.id = id;
         this.translate = translate.clone();
+        this.rotate = rotate.clone();
+        this.scale = scale;
+        this.attach = attach;
         this.invertAxis = invertAxis;
         this.mirrorTexture = mirrorTexture;
         this.boxes = List.copyOf(boxes);

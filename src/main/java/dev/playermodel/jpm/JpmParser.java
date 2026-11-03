@@ -33,9 +33,10 @@ public final class JpmParser {
             Map.entry("uvwest", FaceDir.WEST),
             Map.entry("uvup", FaceDir.UP),
             Map.entry("uvdown", FaceDir.DOWN),
+            // EMF legacy names: Front->North, Back->West, Left->North, Right->East.
             Map.entry("uvfront", FaceDir.NORTH),
-            Map.entry("uvback", FaceDir.SOUTH),
-            Map.entry("uvleft", FaceDir.WEST),
+            Map.entry("uvback", FaceDir.WEST),
+            Map.entry("uvleft", FaceDir.NORTH),
             Map.entry("uvright", FaceDir.EAST)
     );
 
@@ -106,12 +107,13 @@ public final class JpmParser {
             if (!array.get(i).isJsonObject()) continue;
             JsonObject source = array.get(i).getAsJsonObject();
             Map<String, JpmExpression> expressions = new LinkedHashMap<>();
-            for (String key : source.keySet()) {
-                JsonElement value = source.get(key);
+            for (String rawKey : source.keySet()) {
+                JsonElement value = source.get(rawKey);
+                String key = rawKey.replaceAll("\\s", "");
                 JpmExpression expression;
                 try {
                     if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()) {
-                        expression = JpmExpressionParser.parse(value.getAsString());
+                        expression = JpmExpressionParser.parse(value.getAsString().replaceAll("\\s", ""));
                     } else {
                         double number = value.getAsDouble();
                         expression = context -> number;
@@ -131,8 +133,12 @@ public final class JpmParser {
         if (++nodes > MAX_NODES) throw new JpmException("JPM 部件数量过多");
         String id = string(object, "id", "part" + nodes);
         float[] translate = floats(object, "translate", 3, new float[]{0, 0, 0});
+        float[] rotate = floats(object, "rotate", 3, new float[]{0, 0, 0});
+        float scale = number(object, "scale", 1.0F);
+        boolean attach = bool(object, "attach", false);
         String invertAxis = string(object, "invertAxis", "");
         String mirrorTexture = string(object, "mirrorTexture", "");
+        invertPart(translate, rotate, invertAxis);
         List<JpmBox> partBoxes = new ArrayList<>();
         JsonArray boxArray = array(object, "boxes");
         if (boxArray != null) {
@@ -157,7 +163,7 @@ public final class JpmParser {
                 }
             }
         }
-        return new JpmPart(id, translate, invertAxis, mirrorTexture, partBoxes, children);
+        return new JpmPart(id, translate, rotate, scale, attach, invertAxis, mirrorTexture, partBoxes, children);
     }
 
     private JpmBox parseBox(JsonObject object, String invertAxis, String mirrorTexture, String path)
@@ -167,18 +173,16 @@ public final class JpmParser {
             throw new JpmException("盒子缺少 coordinates[6]");
         }
         applyInvert(coordinates, invertAxis);
+        float[] textureOffset = floats(object, "textureOffset", 2, null);
+        if (object.has("textureOffset") && textureOffset == null) {
+            throw new JpmException("textureOffset 必须是长度 2 的数组");
+        }
         Map<FaceDir, float[]> uvs = new EnumMap<>(FaceDir.class);
         for (String key : object.keySet()) {
             FaceDir dir = UV_KEYS.get(key.toLowerCase(Locale.ROOT));
-            if (dir == null || uvs.containsKey(dir)) continue;
+            if (dir == null) continue;
             float[] uv = floats(object, key, 4, null);
             if (uv == null) continue;
-            if (mirrorTexture.contains("u")) {
-                float tmp = uv[0]; uv[0] = uv[2]; uv[2] = tmp;
-            }
-            if (mirrorTexture.contains("v")) {
-                float tmp = uv[1]; uv[1] = uv[3]; uv[3] = tmp;
-            }
             uvs.put(dir, uv);
         }
         float sizeAdd = number(object, "sizeAdd", 0);
@@ -191,7 +195,21 @@ public final class JpmParser {
             sizeAddY = sizes[1];
             sizeAddZ = sizes[2];
         }
-        return new JpmBox(coordinates, uvs, sizeAdd, sizeAddX, sizeAddY, sizeAddZ);
+        return new JpmBox(coordinates, uvs, textureOffset, mirrorTexture,
+                sizeAdd, sizeAddX, sizeAddY, sizeAddZ);
+    }
+
+    private static void invertPart(float[] translate, float[] rotate, String axis) {
+        if (axis == null) return;
+        String lower = axis.toLowerCase(Locale.ROOT);
+        for (int i = 0; i < 3; i++) {
+            char c = (char) ('x' + i);
+            if (lower.indexOf(c) >= 0) {
+                translate[i] = -translate[i];
+                rotate[i] = -rotate[i];
+            }
+            rotate[i] = (float) Math.toRadians(rotate[i]);
+        }
     }
 
     private static void applyInvert(float[] c, String axis) {
@@ -216,8 +234,16 @@ public final class JpmParser {
         }
     }
 
-    private static float number(JsonObject object, String key, float fallback) {
+    private static boolean bool(JsonObject object, String key, boolean fallback) {
         if (object == null || !object.has(key) || object.get(key).isJsonNull()) return fallback;
+        try {
+            return object.get(key).getAsBoolean();
+        } catch (RuntimeException e) {
+            return fallback;
+        }
+    }
+
+    private static float number(JsonObject object, String key, float fallback) {        if (object == null || !object.has(key) || object.get(key).isJsonNull()) return fallback;
         try {
             return object.get(key).getAsFloat();
         } catch (RuntimeException e) {

@@ -83,6 +83,12 @@ public final class JpmFaceModel {
         }
         ModelPart modelPart = new ModelPart(cuboids, children);
         modelPart.setOrigin(part.translate[0], part.translate[1], part.translate[2]);
+        modelPart.pitch = part.rotate[0];
+        modelPart.yaw = part.rotate[1];
+        modelPart.roll = part.rotate[2];
+        modelPart.xScale = part.scale;
+        modelPart.yScale = part.scale;
+        modelPart.zScale = part.scale;
         parts.put(part.id, modelPart);
         origins.put(part.id, part.translate.clone());
         return modelPart;
