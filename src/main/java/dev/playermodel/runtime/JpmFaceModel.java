@@ -101,15 +101,24 @@ public final class JpmFaceModel {
         float maxX = minX + box.width();
         float maxY = minY + box.height();
         float maxZ = minZ + box.depth();
+        float padX = box.sizeAddX != 0 ? box.sizeAddX : box.sizeAdd;
+        float padY = box.sizeAddY != 0 ? box.sizeAddY : box.sizeAdd;
+        float padZ = box.sizeAddZ != 0 ? box.sizeAddZ : box.sizeAdd;
+        float minXp = minX - padX;
+        float minYp = minY - padY;
+        float minZp = minZ - padZ;
+        float maxXp = maxX + padX;
+        float maxYp = maxY + padY;
+        float maxZp = maxZ + padZ;
         List<CubeFace> faces = new ArrayList<>();
         for (FaceDir dir : FaceDir.values()) {
             float[] uv = box.uv(dir);
             if (uv == null) continue;
-            faces.add(new CubeFace(dir, 0, vertices(dir, minX, minY, minZ, maxX, maxY, maxZ,
+            faces.add(new CubeFace(dir, 0, vertices(dir, minXp, minYp, minZp, maxXp, maxYp, maxZp,
                     uv[0] / data.textureWidth, uv[1] / data.textureHeight,
                     uv[2] / data.textureWidth, uv[3] / data.textureHeight)));
         }
-        return new NormalizedCube(minX, minY, minZ, maxX, maxY, maxZ, faces);
+        return new NormalizedCube(minXp, minYp, minZp, maxXp, maxYp, maxZp, faces);
     }
 
     private static FaceVertex[] vertices(FaceDir dir, float minX, float minY, float minZ,

@@ -6,6 +6,7 @@ import dev.playermodel.jpm.JpmParser;
 import dev.playermodel.model.NormalizedModel;
 import dev.playermodel.runtime.JpmFaceModel;
 import dev.playermodel.runtime.PreparedModel;
+import net.minecraft.client.model.ModelPart;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -79,5 +80,31 @@ class JpmInlineTest {
         PreparedModel prepared = new PreparedModel(normalized);
         assertNotNull(prepared.face());
         assertArrayEquals(new byte[]{1, 2, 3}, prepared.faceTexturePng());
+    }
+
+    @Test
+    void sizeAddPlacesPupilInFrontOfEyeWhite() throws Exception {
+        String json = """
+                {"id":"layers","textureSize":[64,64],"submodels":[
+                  {"id":"eye_white","boxes":[{"coordinates":[-2,0,-1.002,4,1,0.002],"uvNorth":[0,0,4,1]}]},
+                  {"id":"pupil","boxes":[{"coordinates":[-1,0,-1,1,1,0],"uvNorth":[0,0,2,1],"sizeAdd":0.004}]}
+                ]}
+                """;
+        JpmFaceModel face = new JpmFaceModel(JpmParser.parseText(json));
+        float whiteFront = minZ(face.root().children.get("eye_white"));
+        float pupilFront = minZ(face.root().children.get("pupil"));
+        assertTrue(pupilFront < whiteFront, "pupil must be in front of eye white");
+    }
+
+    private static float minZ(ModelPart part) {
+        float min = Float.POSITIVE_INFINITY;
+        for (ModelPart.Cuboid cuboid : part.cuboids) {
+            for (ModelPart.Quad quad : cuboid.sides) {
+                for (ModelPart.Vertex vertex : quad.vertices) {
+                    min = Math.min(min, vertex.pos.z());
+                }
+            }
+        }
+        return min;
     }
 }
