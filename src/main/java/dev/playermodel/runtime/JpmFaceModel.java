@@ -57,8 +57,21 @@ public final class JpmFaceModel {
             target.xScale = (float) state.sx;
             target.yScale = (float) state.sy;
             target.zScale = (float) state.sz;
-            target.visible = state.visible;
+            target.visible = state.visible && isPrimaryEyePart(part.id);
         }
+    }
+
+    /**
+     * JustExpressions contains enderman/farset variants whose eye whites cross the model center
+     * (e.g. r_eye_white10 spans -1..2). For the standard 8px head only the 2by1 variants 1..4
+     * are valid; hide the rest so the two whites never join.
+     */
+    private static boolean isPrimaryEyePart(String id) {
+        java.util.regex.Matcher matcher = java.util.regex.Pattern
+                .compile("[rl]_(eye_white|pupil|eyelid|blink)(\\d+)$").matcher(id);
+        if (!matcher.matches()) return true;
+        int variant = Integer.parseInt(matcher.group(2));
+        return variant >= 1 && variant <= 4;
     }
 
     private ModelPart build(JpmPart part) {
@@ -81,6 +94,7 @@ public final class JpmFaceModel {
         modelPart.xScale = part.scale;
         modelPart.yScale = part.scale;
         modelPart.zScale = part.scale;
+        modelPart.visible = isPrimaryEyePart(part.id);
         parts.put(part.id, modelPart);
         return modelPart;
     }
