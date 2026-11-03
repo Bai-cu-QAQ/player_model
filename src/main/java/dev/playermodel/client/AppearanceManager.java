@@ -159,7 +159,7 @@ public final class AppearanceManager {
                 face.distance = Math.sqrt(player.getPos().squaredDistanceTo(
                         client.gameRenderer.getCamera().getPos()));
             }
-            face.id = player.getUuid().hashCode() / (double) Integer.MAX_VALUE;
+            face.id = player.getId();
             custom.animateFace(face);
             custom.model().render(matrices, vertices, light, overlay, color);
             if (custom.hasSeparateFaceTexture() && provider != null) {

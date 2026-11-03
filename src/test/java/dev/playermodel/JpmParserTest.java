@@ -31,6 +31,10 @@ class JpmParserTest {
         assertEquals(20.0, JpmExpressionParser.parse("1 > 2 ? 10 : 20").eval(context), 1e-9);
         double random = JpmExpressionParser.parse("random(id)").eval(context);
         assertTrue(random >= 0 && random < 1);
+        JpmEvalContext other = new JpmEvalContext();
+        other.id = 0.75;
+        double otherRandom = JpmExpressionParser.parse("random(id)").eval(other);
+        assertNotEquals(random, otherRandom, "per-entity random phases must differ");
     }
 
     @Test

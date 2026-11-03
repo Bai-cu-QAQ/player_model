@@ -59,9 +59,9 @@ public final class JpmEvalContext {
         return 0;
     }
 
-    /** Deterministic random per seed, suitable for JPM's random(id) expressions. */
+    /** Deterministic random per seed, matching EMF's seeded random(id) idiom. */
     public double random(double seed) {
-        long key = Double.doubleToLongBits(seed) ^ Double.doubleToLongBits(id);
+        long key = Double.doubleToLongBits(seed);
         Double cached = randomCache.get(key);
         if (cached != null) return cached;
         long state = key;
