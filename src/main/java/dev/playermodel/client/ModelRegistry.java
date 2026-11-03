@@ -6,6 +6,8 @@ import dev.playermodel.PlayerModelMod;
 import dev.playermodel.compile.ModelCompiler;
 import dev.playermodel.importing.BbmodelParser;
 import dev.playermodel.importing.PngUtils;
+import dev.playermodel.jpm.JpmModel;
+import dev.playermodel.jpm.JpmParser;
 import dev.playermodel.model.ModelBundle;
 import dev.playermodel.model.NormalizedModel;
 import dev.playermodel.model.PhysicsConfig;
@@ -107,6 +109,23 @@ public final class ModelRegistry {
                     ? folder.resolve("player_face.jpm") : folder.resolve(meta.face).normalize();
             if (Files.isRegularFile(faceFile) && faceFile.startsWith(folder.normalize())) {
                 raw.faceJpm = Files.readString(faceFile);
+                String faceTextureName = meta.faceTexture;
+                if (faceTextureName == null || faceTextureName.isBlank()) {
+                    try {
+                        JpmModel jpm = JpmParser.parseText(raw.faceJpm);
+                        faceTextureName = jpm.texture;
+                    } catch (Exception ignored) {
+                        faceTextureName = "";
+                    }
+                    if (faceTextureName == null || faceTextureName.isBlank()) {
+                        faceTextureName = "player_face.png";
+                    }
+                }
+                Path faceTextureFile = (meta.faceTexture != null && !meta.faceTexture.isBlank()
+                        ? folder : faceFile.getParent()).resolve(faceTextureName).normalize();
+                if (Files.isRegularFile(faceTextureFile) && faceTextureFile.startsWith(folder.normalize())) {
+                    raw.faceTexturePng = Files.readAllBytes(faceTextureFile);
+                }
             }
 
             Path textureFile = folder.resolve("texture.png");
@@ -340,6 +359,8 @@ public final class ModelRegistry {
         public boolean slim;
         /** Optional JPM face overlay path relative to the model folder. */
         public String face;
+        /** Optional independent PNG for the JPM face overlay. */
+        public String faceTexture;
         public java.util.Map<String, AnchorMeta> anchors = new java.util.LinkedHashMap<>();
         public int textureWidth;
         public int textureHeight;

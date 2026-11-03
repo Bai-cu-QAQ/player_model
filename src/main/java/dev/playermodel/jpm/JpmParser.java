@@ -77,6 +77,7 @@ public final class JpmParser {
 
     private JpmModel parseRoot(JsonObject root) throws JpmException {
         String id = string(root, "id", "");
+        String textureName = string(root, "texture", "");
         int[] texture = ints(root, "textureSize", 2, new int[]{64, 64});
         if (texture[0] <= 0 || texture[1] <= 0) {
             throw new JpmException("JPM textureSize 无效");
@@ -94,7 +95,7 @@ public final class JpmParser {
         if (parts.isEmpty()) {
             throw new JpmException("JPM 没有模型部件");
         }
-        return new JpmModel(id, texture[0], texture[1], parts, animations);
+        return new JpmModel(id, texture[0], texture[1], textureName, parts, animations);
     }
 
     private List<JpmAnimation> parseAnimations(JsonArray array) throws JpmException {

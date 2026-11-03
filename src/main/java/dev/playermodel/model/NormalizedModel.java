@@ -13,6 +13,8 @@ public final class NormalizedModel {
     public boolean slim;
     /** Serialized JPM face overlay, if this model uses one. */
     public String faceJpm;
+    /** Independent PNG for the JPM face overlay; null means use the model/skin texture. */
+    public byte[] faceTexturePng;
     public int textureWidth = 64;
     public int textureHeight = 64;
     public transient byte[] texturePng;

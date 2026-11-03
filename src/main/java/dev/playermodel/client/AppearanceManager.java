@@ -8,11 +8,13 @@ import dev.playermodel.runtime.BaseSkeleton;
 import dev.playermodel.runtime.CustomModel;
 import dev.playermodel.runtime.ModelParts;
 import dev.playermodel.runtime.PreparedModel;
+import dev.playermodel.runtime.TextureCache;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.model.ModelPart;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
+import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.entity.model.EntityModel;
 import net.minecraft.client.render.entity.model.PlayerEntityModel;
 import net.minecraft.client.util.math.MatrixStack;
@@ -128,7 +130,8 @@ public final class AppearanceManager {
      * was rendered instead of the live model.
      */
     public boolean renderCustom(EntityModel<?> live, MatrixStack matrices, VertexConsumer vertices,
-                                int light, int overlay, int color, LivingEntity entity) {
+                                int light, int overlay, int color, LivingEntity entity,
+                                VertexConsumerProvider provider) {
         if (!(entity instanceof AbstractClientPlayerEntity player) || !config.viewEnabled) {
             return false;
         }
@@ -160,6 +163,14 @@ public final class AppearanceManager {
             face.id = player.getUuid().hashCode() / (double) Integer.MAX_VALUE;
             custom.animateFace(face);
             custom.model().render(matrices, vertices, light, overlay, color);
+            if (custom.hasSeparateFaceTexture() && provider != null) {
+                String faceHash = "face-" + Integer.toHexString(System.identityHashCode(prepared));
+                Identifier faceTexture = TextureCache.ensure(faceHash, prepared.faceTexturePng());
+                if (faceTexture != null) {
+                    RenderLayer faceLayer = RenderLayer.getEntityTranslucent(faceTexture);
+                    custom.renderSeparateFace(matrices, provider.getBuffer(faceLayer), light, overlay, color);
+                }
+            }
             return true;
         } catch (Throwable t) {
             if (config.debug) {

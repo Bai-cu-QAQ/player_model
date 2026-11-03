@@ -7,7 +7,9 @@ import net.minecraft.client.model.Dilation;
 import net.minecraft.client.model.ModelPart;
 import net.minecraft.client.model.TexturedModelData;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
+import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.entity.model.PlayerEntityModel;
+import net.minecraft.client.util.math.MatrixStack;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
@@ -34,6 +36,7 @@ public final class CustomModel {
     private final Map<ModelPart, ModelPart> parents = new IdentityHashMap<>();
     private final ModelPart rootPart;
     private final JpmFaceModel face;
+    private final ModelPart separateFaceRoot;
 
     public record PhysicsBoneRuntime(String name, ModelPart part, ModelPart parent,
                                      BoneKind parentBone, String parentPhysics,
@@ -82,12 +85,20 @@ public final class CustomModel {
         }
         attachPhysics(prepared, array);
         this.face = prepared.face() == null ? null : new JpmFaceModel(prepared.face());
-        if (face != null) {
+        if (face != null && prepared.faceTexturePng() == null) {
             ModelPart head = parts.get(BoneKind.HEAD);
             Map<String, ModelPart> children = head.children == null
                     ? new HashMap<>() : new HashMap<>(head.children);
             children.put("pm_face", face.root());
             head.children = children;
+            this.separateFaceRoot = null;
+        } else if (face != null) {
+            // A separate PNG needs its own render layer; keep this tree out of the body pass.
+            Map<String, ModelPart> children = new HashMap<>();
+            children.put("pm_face", face.root());
+            this.separateFaceRoot = new ModelPart(List.of(), children);
+        } else {
+            this.separateFaceRoot = null;
         }
         buildParentMap(rootPart);
     }
@@ -223,6 +234,26 @@ public final class CustomModel {
 
     public JpmFaceModel faceModel() {
         return face;
+    }
+
+    public boolean hasSeparateFaceTexture() {
+        return separateFaceRoot != null;
+    }
+
+    public void renderSeparateFace(MatrixStack matrices, VertexConsumer vertices,
+                                   int light, int overlay, int color) {
+        if (separateFaceRoot == null) return;
+        ModelPart head = parts.get(BoneKind.HEAD);
+        if (head == null) return;
+        separateFaceRoot.setPivot(head.pivotX, head.pivotY, head.pivotZ);
+        separateFaceRoot.pitch = head.pitch;
+        separateFaceRoot.yaw = head.yaw;
+        separateFaceRoot.roll = head.roll;
+        separateFaceRoot.xScale = head.xScale;
+        separateFaceRoot.yScale = head.yScale;
+        separateFaceRoot.zScale = head.zScale;
+        separateFaceRoot.visible = head.visible;
+        separateFaceRoot.render(matrices, vertices, light, overlay, color);
     }
 
     public void animateFace(JpmEvalContext context) {

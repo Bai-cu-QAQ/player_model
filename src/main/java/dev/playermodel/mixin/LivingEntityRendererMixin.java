@@ -55,9 +55,10 @@ public abstract class LivingEntityRendererMixin {
             target = "Lnet/minecraft/client/render/entity/model/EntityModel;render(Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumer;III)V"))
     private void playermodel$renderModel(EntityModel<?> model, MatrixStack matrices, VertexConsumer vertices,
                                          int light, int overlay, int color,
-                                         @Local(argsOnly = true) LivingEntity entity) {
+                                         @Local(argsOnly = true) LivingEntity entity,
+                                         @Local(argsOnly = true) VertexConsumerProvider provider) {
         boolean custom = PlayerModelClient.appearanceManager()
-                .renderCustom(model, matrices, vertices, light, overlay, color, entity);
+                .renderCustom(model, matrices, vertices, light, overlay, color, entity, provider);
         if (!custom) {
             model.render(matrices, vertices, light, overlay, color);
         }

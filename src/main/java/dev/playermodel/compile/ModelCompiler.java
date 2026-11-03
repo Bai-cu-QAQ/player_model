@@ -42,6 +42,7 @@ public final class ModelCompiler {
         model.pivotMode = pivotMode;
         model.slim = raw.slim;
         model.faceJpm = raw.faceJpm;
+        model.faceTexturePng = raw.faceTexturePng;
         model.textureWidth = atlas.textureWidth();
         model.textureHeight = atlas.textureHeight();
         model.texturePng = atlas.png();

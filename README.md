@@ -27,11 +27,13 @@ config/playermodel/models/
     texture.png
     meta.json
     player_face.jpm
+    player_face.png
 ```
 
 - 启动时扫描；修改后 `/pmodel reload`。
 - `player_face.jpm` 可选，放在模型目录会自动加载；也可在 `meta.json` 用 `"face": "player_face.jpm"` 指定。
-- JPM 的 UV 默认按 64×64 皮肤解析，建议 `"textureMode": "skin"`。
+- `player_face.png` 是 JPM 独立贴图；省略时读取 JPM 的 `texture` 字段，否则尝试同目录 `player_face.png`。也可用 `"faceTexture": "..."` 指定。
+- JPM 的 UV 默认按 `textureSize` 解析；使用独立贴图时按 JPM 的 64×64 坐标系映射。
 - 多贴图自动合并图集；`texture.png` 只用于单贴图覆盖。
 - `meta.json`：
 

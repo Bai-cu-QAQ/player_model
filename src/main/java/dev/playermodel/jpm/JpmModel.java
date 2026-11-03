@@ -8,14 +8,16 @@ public final class JpmModel {
     public final String id;
     public final int textureWidth;
     public final int textureHeight;
+    public final String texture;
     public final List<JpmPart> roots;
     public final List<JpmAnimation> animations;
 
-    public JpmModel(String id, int textureWidth, int textureHeight,
+    public JpmModel(String id, int textureWidth, int textureHeight, String texture,
                     List<JpmPart> roots, List<JpmAnimation> animations) {
         this.id = id;
         this.textureWidth = textureWidth;
         this.textureHeight = textureHeight;
+        this.texture = texture == null ? "" : texture;
         this.roots = List.copyOf(roots);
         this.animations = List.copyOf(animations);
     }

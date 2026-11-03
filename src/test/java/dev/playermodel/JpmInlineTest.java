@@ -38,6 +38,7 @@ class JpmInlineTest {
         String json = """
                 {
                   "id": "inline",
+                  "texture": "face/face.png",
                   "textureSize": [64, 64],
                   "animations": [
                     {"var.t": "1 + 2", "pupil.tx": "var.t"},
@@ -62,6 +63,7 @@ class JpmInlineTest {
                 """;
         JpmModel model = JpmParser.parseText(json);
         assertEquals("inline", model.id);
+        assertEquals("face/face.png", model.texture);
         assertEquals(2, model.boxCount());
         assertEquals(2, model.animations.size());
         JpmEvalContext context = new JpmEvalContext();
@@ -73,6 +75,9 @@ class JpmInlineTest {
         face.apply(context);
         NormalizedModel normalized = new NormalizedModel();
         normalized.faceJpm = json;
-        assertNotNull(new PreparedModel(normalized).face());
+        normalized.faceTexturePng = new byte[]{1, 2, 3};
+        PreparedModel prepared = new PreparedModel(normalized);
+        assertNotNull(prepared.face());
+        assertArrayEquals(new byte[]{1, 2, 3}, prepared.faceTexturePng());
     }
 }

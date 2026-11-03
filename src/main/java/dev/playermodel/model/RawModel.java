@@ -19,6 +19,8 @@ public final class RawModel {
     public boolean slim;
     /** Optional JPM face overlay source, relative to the model folder. */
     public String faceJpm;
+    /** Optional independent PNG used by the JPM face overlay. */
+    public byte[] faceTexturePng;
 
     public RawTexture textureAt(int index) {
         if (index >= 0 && index < textures.size()) {
