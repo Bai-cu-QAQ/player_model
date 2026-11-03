@@ -51,6 +51,14 @@ public final class RawModel {
         mirrorLimbAnchors();
     }
 
+    /** Swaps the East/West texture faces of centered body parts after the limb mirror. */
+    public void mirrorCenteredUvs() {
+        mirrorUvs(BoneKind.HEAD);
+        mirrorUvs(BoneKind.BODY);
+        mirrorUvs(BoneKind.HAT);
+        mirrorUvs(BoneKind.JACKET);
+    }
+
     private void mirrorBone(BoneKind kind) {
         RawBone bone = bone(kind);
         if (bone == null) return;
@@ -65,16 +73,29 @@ public final class RawModel {
             element.origin[0] = -element.origin[0];
             element.rotation[1] = -element.rotation[1];
             element.rotation[2] = -element.rotation[2];
-            if (!element.boxUv && (element.faces.containsKey(FaceDir.EAST)
-                    || element.faces.containsKey(FaceDir.WEST))) {
-                java.util.EnumMap<FaceDir, RawFace> faces = new java.util.EnumMap<>(element.faces);
-                RawFace east = faces.remove(FaceDir.EAST);
-                RawFace west = faces.remove(FaceDir.WEST);
-                if (east != null) faces.put(FaceDir.WEST, east);
-                if (west != null) faces.put(FaceDir.EAST, west);
-                element.faces = faces;
-            }
+            swapEastWest(element);
         }
+    }
+
+    private void mirrorUvs(BoneKind kind) {
+        RawBone bone = bone(kind);
+        if (bone == null) return;
+        for (RawElement element : bone.elements) {
+            swapEastWest(element);
+        }
+    }
+
+    private static void swapEastWest(RawElement element) {
+        if (element.boxUv || (!element.faces.containsKey(FaceDir.EAST)
+                && !element.faces.containsKey(FaceDir.WEST))) {
+            return;
+        }
+        java.util.EnumMap<FaceDir, RawFace> faces = new java.util.EnumMap<>(element.faces);
+        RawFace east = faces.remove(FaceDir.EAST);
+        RawFace west = faces.remove(FaceDir.WEST);
+        if (east != null) faces.put(FaceDir.WEST, east);
+        if (west != null) faces.put(FaceDir.EAST, west);
+        element.faces = faces;
     }
 
     private void mirrorLimbAnchors() {
