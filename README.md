@@ -26,9 +26,12 @@ config/playermodel/models/
     model.bbmodel
     texture.png
     meta.json
+    player_face.jpm
 ```
 
 - 启动时扫描；修改后 `/pmodel reload`。
+- `player_face.jpm` 可选，放在模型目录会自动加载；也可在 `meta.json` 用 `"face": "player_face.jpm"` 指定。
+- JPM 的 UV 默认按 64×64 皮肤解析，建议 `"textureMode": "skin"`。
 - 多贴图自动合并图集；`texture.png` 只用于单贴图覆盖。
 - `meta.json`：
 
@@ -38,7 +41,8 @@ config/playermodel/models/
   "textureMode": "model",
   "pivotMode": "model",
   "textureWidth": 64,
-  "textureHeight": 64
+  "textureHeight": 64,
+  "face": "player_face.jpm"
 }
 ```
 

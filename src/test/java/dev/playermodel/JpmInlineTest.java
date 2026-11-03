@@ -3,6 +3,7 @@ package dev.playermodel;
 import dev.playermodel.jpm.JpmEvalContext;
 import dev.playermodel.jpm.JpmModel;
 import dev.playermodel.jpm.JpmParser;
+import dev.playermodel.runtime.JpmFaceModel;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -65,5 +66,8 @@ class JpmInlineTest {
         model.animate(context);
         assertEquals(3.0, context.variables.get("var.t"), 1e-9);
         assertEquals(3.0, context.parts.get("pupil").tx, 1e-9);
+        JpmFaceModel face = new JpmFaceModel(model);
+        assertNotNull(face.root());
+        face.apply(context);
     }
 }

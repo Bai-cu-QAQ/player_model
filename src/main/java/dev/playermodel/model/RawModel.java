@@ -17,6 +17,8 @@ public final class RawModel {
     public int selectedTextureIndex;
     public int textureCount;
     public boolean slim;
+    /** Optional JPM face overlay source, relative to the model folder. */
+    public String faceJpm;
 
     public RawTexture textureAt(int index) {
         if (index >= 0 && index < textures.size()) {

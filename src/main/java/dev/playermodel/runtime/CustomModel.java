@@ -1,5 +1,6 @@
 package dev.playermodel.runtime;
 
+import dev.playermodel.jpm.JpmEvalContext;
 import dev.playermodel.model.BoneKind;
 import dev.playermodel.model.PhysicsConfig;
 import net.minecraft.client.model.Dilation;
@@ -32,6 +33,7 @@ public final class CustomModel {
     private final Map<BoneKind, Quaternionf> staticRotations = new EnumMap<>(BoneKind.class);
     private final Map<ModelPart, ModelPart> parents = new IdentityHashMap<>();
     private final ModelPart rootPart;
+    private final JpmFaceModel face;
 
     public record PhysicsBoneRuntime(String name, ModelPart part, ModelPart parent,
                                      BoneKind parentBone, String parentPhysics,
@@ -79,6 +81,14 @@ public final class CustomModel {
             part.hidden = false;
         }
         attachPhysics(prepared, array);
+        this.face = prepared.face() == null ? null : new JpmFaceModel(prepared.face());
+        if (face != null) {
+            ModelPart head = parts.get(BoneKind.HEAD);
+            Map<String, ModelPart> children = head.children == null
+                    ? new HashMap<>() : new HashMap<>(head.children);
+            children.put("pm_face", face.root());
+            head.children = children;
+        }
         buildParentMap(rootPart);
     }
 
@@ -209,6 +219,14 @@ public final class CustomModel {
 
     public List<PhysicsBoneRuntime> physicsBones() {
         return List.copyOf(physicsBones);
+    }
+
+    public JpmFaceModel faceModel() {
+        return face;
+    }
+
+    public void animateFace(JpmEvalContext context) {
+        if (face != null) face.animate(context);
     }
 
     public void copyPose(PlayerEntityModel<?> live, PreparedModel prepared) {

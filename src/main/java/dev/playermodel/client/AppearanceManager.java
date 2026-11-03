@@ -1,6 +1,7 @@
 package dev.playermodel.client;
 
 import dev.playermodel.PlayerModelMod;
+import dev.playermodel.jpm.JpmEvalContext;
 import dev.playermodel.model.BoneKind;
 import dev.playermodel.runtime.Appearance;
 import dev.playermodel.runtime.BaseSkeleton;
@@ -143,6 +144,21 @@ public final class AppearanceManager {
             CustomModel custom = customModelFor(prepared);
             custom.copyPose(playerModel, prepared);
             physics.update(player, custom, System.nanoTime());
+            JpmEvalContext face = new JpmEvalContext();
+            face.age = player.age;
+            face.headYaw = net.minecraft.util.math.MathHelper.wrapDegrees(player.headYaw - player.bodyYaw);
+            face.headPitch = player.getPitch();
+            face.limbSpeed = player.limbAnimator.getSpeed();
+            face.limbSwing = player.limbAnimator.getPos();
+            face.hurt = player.hurtTime > 0;
+            face.hurtTime = player.hurtTime;
+            MinecraftClient client = MinecraftClient.getInstance();
+            if (client.gameRenderer != null && client.gameRenderer.getCamera() != null) {
+                face.distance = Math.sqrt(player.getPos().squaredDistanceTo(
+                        client.gameRenderer.getCamera().getPos()));
+            }
+            face.id = player.getUuid().hashCode() / (double) Integer.MAX_VALUE;
+            custom.animateFace(face);
             custom.model().render(matrices, vertices, light, overlay, color);
             return true;
         } catch (Throwable t) {
