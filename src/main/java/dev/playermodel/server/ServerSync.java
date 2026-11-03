@@ -93,7 +93,7 @@ public final class ServerSync {
         }
         String hash = payload.hash() == null ? "" : payload.hash().trim();
         if (!hash.isEmpty() && !validHash(hash)) {
-            PlayerModelMod.LOG.warn("Rejected invalid model hash from {}", player.getGameProfile().getName());
+            PlayerModelMod.LOG.warn("Rejected invalid model hash from {}", player.getGameProfile().name());
             return;
         }
         String name = sanitizeName(payload.name());
@@ -171,7 +171,7 @@ public final class ServerSync {
             sendUploadResult(player, payload.hash(), ok, ok ? "ok" : "rejected");
             if (ok && config.logUploads) {
                 PlayerModelMod.LOG.info("Stored player model {} ({} bytes) from {}",
-                        payload.hash().substring(0, 8), bytes.length, player.getGameProfile().getName());
+                        payload.hash().substring(0, 8), bytes.length, player.getGameProfile().name());
             }
             ServerStore.State state = store.state(player.getUuid());
             if (ok && state != null && payload.hash().equals(state.hash())) {

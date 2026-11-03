@@ -86,6 +86,19 @@ public final class PhysicsConfig {
         public Float gravity;
         public Float inertia;
         public Float maxAngle;
+        /** Optional model-space rotation-vector X/Y/Z bounds in degrees, 0..360; zero locks an axis.
+         * Null/non-finite values use the legacy effective maxAngle supplied by the runtime. */
+        public Float maxAngleX;
+        public Float maxAngleY;
+        public Float maxAngleZ;
+        /** Optional asymmetric model-space rotation ranges in degrees. Missing sides fall back to
+         * the legacy effective maxAngle (or the corresponding maxAngleX/Y/Z magnitude). */
+        public Float angleXMin;
+        public Float angleXMax;
+        public Float angleYMin;
+        public Float angleYMax;
+        public Float angleZMin;
+        public Float angleZMax;
         public Float wind;
         public Float drag;
         public Integer iterations;
@@ -159,6 +172,15 @@ public final class PhysicsConfig {
             s.gravity = gravity;
             s.inertia = inertia;
             s.maxAngle = maxAngle;
+            s.maxAngleX = maxAngleX;
+            s.maxAngleY = maxAngleY;
+            s.maxAngleZ = maxAngleZ;
+            s.angleXMin = angleXMin;
+            s.angleXMax = angleXMax;
+            s.angleYMin = angleYMin;
+            s.angleYMax = angleYMax;
+            s.angleZMin = angleZMin;
+            s.angleZMax = angleZMax;
             s.wind = wind;
             s.drag = drag;
             s.iterations = iterations;
@@ -230,6 +252,15 @@ public final class PhysicsConfig {
             if (o.maxAngle != null) {
                 maxAngle = o.maxAngle;
             }
+            if (o.maxAngleX != null) maxAngleX = o.maxAngleX;
+            if (o.maxAngleY != null) maxAngleY = o.maxAngleY;
+            if (o.maxAngleZ != null) maxAngleZ = o.maxAngleZ;
+            if (o.angleXMin != null) angleXMin = o.angleXMin;
+            if (o.angleXMax != null) angleXMax = o.angleXMax;
+            if (o.angleYMin != null) angleYMin = o.angleYMin;
+            if (o.angleYMax != null) angleYMax = o.angleYMax;
+            if (o.angleZMin != null) angleZMin = o.angleZMin;
+            if (o.angleZMax != null) angleZMax = o.angleZMax;
             if (o.wind != null) {
                 wind = o.wind;
             }
@@ -335,6 +366,41 @@ public final class PhysicsConfig {
 
         public float maxAngle(float fallback) {
             return maxAngle == null ? fallback : maxAngle;
+        }
+
+        public float maxAngleX(float fallback) { return bounded(maxAngleX, fallback, 70F, 0F, 360F); }
+        public float maxAngleY(float fallback) { return bounded(maxAngleY, fallback, 70F, 0F, 360F); }
+        public float maxAngleZ(float fallback) { return bounded(maxAngleZ, fallback, 70F, 0F, 360F); }
+
+        /** Degrees; signed bounds are intentionally asymmetric-capable. */
+        public float angleXMin(float fallback) { return signedBounded(angleXMin, fallback, -70F); }
+        public float angleXMax(float fallback) { return signedBounded(angleXMax, fallback, 70F); }
+        public float angleYMin(float fallback) { return signedBounded(angleYMin, fallback, -70F); }
+        public float angleYMax(float fallback) { return signedBounded(angleYMax, fallback, 70F); }
+        public float angleZMin(float fallback) { return signedBounded(angleZMin, fallback, -70F); }
+        public float angleZMax(float fallback) { return signedBounded(angleZMax, fallback, 70F); }
+
+        /** Any explicit per-axis bound (new range fields or legacy symmetric maxAngleX/Y/Z). */
+        public boolean hasAxisAngleRanges() {
+            return finite(maxAngleX) || finite(maxAngleY) || finite(maxAngleZ)
+                    || finite(angleXMin) || finite(angleXMax)
+                    || finite(angleYMin) || finite(angleYMax)
+                    || finite(angleZMin) || finite(angleZMax);
+        }
+
+        /** Backwards-compatible name used by older callers/tests. */
+        public boolean hasAxisAngleLimits() {
+            return hasAxisAngleRanges();
+        }
+
+        private static boolean finite(Float value) {
+            return value != null && Float.isFinite(value);
+        }
+
+        private static float signedBounded(Float value, float fallback, float defaultValue) {
+            float resolved = finite(value) ? value : fallback;
+            if (!Float.isFinite(resolved)) resolved = defaultValue;
+            return Math.max(-360F, Math.min(360F, resolved));
         }
 
         public float wind(float fallback) {

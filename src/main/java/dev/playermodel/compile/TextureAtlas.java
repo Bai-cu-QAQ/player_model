@@ -40,15 +40,14 @@ final class TextureAtlas {
 
     static TextureAtlas prepare(RawModel raw) throws ModelCompiler.CompileException {
         TreeSet<Integer> used = new TreeSet<>();
-        for (RawBone bone : raw.bones) {
-            for (RawElement element : bone.elements) {
-                if (element.faces.isEmpty()) {
-                    used.add(raw.selectedTextureIndex);
-                } else {
-                    for (RawFace face : element.faces.values()) {
-                        used.add(face.textureIndex());
-                    }
-                }
+        java.util.List<RawElement> elements = new java.util.ArrayList<>();
+        for (RawBone bone : raw.bones) elements.addAll(bone.elements);
+        for (var bone : raw.physicsBones) elements.addAll(bone.elements);
+        for (RawElement element : elements) {
+            if (element.faces.isEmpty()) {
+                used.add(raw.selectedTextureIndex);
+            } else {
+                for (RawFace face : element.faces.values()) used.add(face.textureIndex());
             }
         }
         if (used.isEmpty()) {
@@ -69,15 +68,14 @@ final class TextureAtlas {
         for (int index : used) {
             RawTexture texture = raw.textureAt(index);
             if (texture == null) {
-                throw new ModelCompiler.CompileException("模型引用了不存在的贴图 #" + index);
+                throw new ModelCompiler.CompileException("模型引用了不存在的贴图 #" + index)
+                        .at("texture #" + index);
             }
             BufferedImage image = decode(texture);
             int w = image.getWidth();
             int h = image.getHeight();
             width = Math.max(width, w);
-            int uvW = texture.uvWidth() > 0 ? texture.uvWidth() : w;
-            int uvH = texture.uvHeight() > 0 ? texture.uvHeight() : h;
-            placements.put(index, new Placement(image, PADDING, height, w, h, uvW, uvH));
+            placements.put(index, new Placement(image, PADDING, height, w, h));
             height += h + PADDING;
         }
         int atlasWidth = width + PADDING * 2;
@@ -112,7 +110,7 @@ final class TextureAtlas {
             return u;
         }
         Placement placement = placements.get(textureIndex);
-        return placement == null ? u : (placement.x + u * placement.uvWidth) / width;
+        return placement == null ? u : (placement.x + u * placement.width) / width;
     }
 
     float mapV(int textureIndex, float v) {
@@ -120,7 +118,7 @@ final class TextureAtlas {
             return v;
         }
         Placement placement = placements.get(textureIndex);
-        return placement == null ? v : (placement.y + v * placement.uvHeight) / height;
+        return placement == null ? v : (placement.y + v * placement.height) / height;
     }
 
     byte[] png() {
@@ -147,7 +145,6 @@ final class TextureAtlas {
         }
     }
 
-    private record Placement(BufferedImage image, int x, int y, int width, int height,
-                             int uvWidth, int uvHeight) {
+    private record Placement(BufferedImage image, int x, int y, int width, int height) {
     }
 }

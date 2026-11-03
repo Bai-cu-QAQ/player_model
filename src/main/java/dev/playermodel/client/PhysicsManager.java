@@ -18,7 +18,7 @@ public final class PhysicsManager {
 
     public void update(AbstractClientPlayerEntity player, CustomModel model, long now) {
         PlayerState state = players.computeIfAbsent(player.getUuid(), key -> new PlayerState());
-        Vec3d position = player.getPos();
+        Vec3d position = player.getEntityPos();
         boolean screen = MinecraftClient.getInstance().currentScreen != null
                 && player == MinecraftClient.getInstance().player;
         if (state.model != model || state.position == null
@@ -119,14 +119,40 @@ public final class PhysicsManager {
                     settings.verticalMotionScale(1), settings.verticalAccelerationScale(1)));
             desired.fma(settings.gravityGain(.04F) * legacy(settings.gravity, .8F),
                     SecondaryForces.torque(r, new Vector3f(0, 1, 0)));
-            float maxAngle = (float) Math.toRadians(Math.min(settings.maxAngleLimit(120), Math.max(1,
-                    legacy(settings.maxAngle, 70) * (cloth ? legacy(settings.clothMaxAngleScale, 1.25F) : 1))));
-            cap(desired, maxAngle);
+            float maxAngleDegrees = Math.min(settings.maxAngleLimit(120), Math.max(1,
+                    legacy(settings.maxAngle, 70) * (cloth ? legacy(settings.clothMaxAngleScale, 1.25F) : 1)));
+            float maxAngle = (float) Math.toRadians(maxAngleDegrees);
+            Vector3f axisMin = null;
+            Vector3f axisMax = null;
+            if (settings.hasAxisAngleRanges()) {
+                float hardLimit = settings.maxAngleLimit(120);
+                float legacyX = settings.maxAngleX(maxAngleDegrees);
+                float legacyY = settings.maxAngleY(maxAngleDegrees);
+                float legacyZ = settings.maxAngleZ(maxAngleDegrees);
+                float minX = settings.angleXMin(-legacyX);
+                float maxX = settings.angleXMax(legacyX);
+                float minY = settings.angleYMin(-legacyY);
+                float maxY = settings.angleYMax(legacyY);
+                float minZ = settings.angleZMin(-legacyZ);
+                float maxZ = settings.angleZMax(legacyZ);
+                axisMin = new Vector3f(
+                        (float) Math.toRadians(clamp(-hardLimit, hardLimit, Math.min(minX, maxX))),
+                        (float) Math.toRadians(clamp(-hardLimit, hardLimit, Math.min(minY, maxY))),
+                        (float) Math.toRadians(clamp(-hardLimit, hardLimit, Math.min(minZ, maxZ))));
+                axisMax = new Vector3f(
+                        (float) Math.toRadians(clamp(-hardLimit, hardLimit, Math.max(minX, maxX))),
+                        (float) Math.toRadians(clamp(-hardLimit, hardLimit, Math.max(minY, maxY))),
+                        (float) Math.toRadians(clamp(-hardLimit, hardLimit, Math.max(minZ, maxZ))));
+                clampAxes(desired, axisMin, axisMax);
+            } else {
+                cap(desired, maxAngle);
+            }
             b.filtered.lerp(desired, blend(settings.forceSmoothing(10), dt));
+            if (axisMin != null) clampAxes(b.filtered, axisMin, axisMax);
             float response = settings.restResponse(8) * (cloth ? settings.clothResponseScale(.8F) : 1);
             float air = settings.airResistance(legacy(settings.airDrag, 1.5F));
             b.motion.advance(b.filtered, response, settings.swingDamping(.9F), air,
-                    (float) Math.toRadians(settings.maxAngularSpeed(360)), maxAngle, dt,
+                    (float) Math.toRadians(settings.maxAngularSpeed(360)), maxAngle, axisMin, axisMax, dt,
                     Math.min(settings.maxSubsteps(32), Math.max(1, settings.substeps(8))));
         }
         // Convert the desired MODEL-space orientation back into each child's actual parent frame.
@@ -175,6 +201,14 @@ public final class PhysicsManager {
     private static float blend(float rate, float dt) { return -(float) Math.expm1(-rate * dt); }
     private static float legacy(Float value, float fallback) {
         return value == null || !Float.isFinite(value) ? fallback : Math.max(0, value);
+    }
+    private static void clampAxes(Vector3f v, Vector3f min, Vector3f max) {
+        v.set(clamp(min.x, max.x, v.x),
+                clamp(min.y, max.y, v.y),
+                clamp(min.z, max.z, v.z));
+    }
+    private static float clamp(float min, float max, float value) {
+        return Math.max(min, Math.min(max, value));
     }
     private static void cap(Vector3f v, float length) {
         float size = v.length();

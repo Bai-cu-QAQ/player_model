@@ -54,7 +54,12 @@ public final class ModelCompiler {
             }
             List<NormalizedCube> cubes = new ArrayList<>();
             for (RawElement element : rawBone.elements) {
-                NormalizedCube cube = compileCube(raw, element, atlas);
+                NormalizedCube cube;
+                try {
+                    cube = compileCube(raw, element, atlas);
+                } catch (CompileException e) {
+                    throw e.at("bone " + rawBone.kind.modelName() + " > " + cubeLocation(element));
+                }
                 if (cube != null) {
                     cubes.add(cube);
                 }
@@ -81,7 +86,12 @@ public final class ModelCompiler {
             }
             List<NormalizedCube> physicsCubes = new ArrayList<>();
             for (RawElement element : rawPhysics.elements) {
-                NormalizedCube cube = compileCube(raw, element, atlas);
+                NormalizedCube cube;
+                try {
+                    cube = compileCube(raw, element, atlas);
+                } catch (CompileException e) {
+                    throw e.at("physics bone " + rawPhysics.name + " > " + cubeLocation(element));
+                }
                 if (cube != null) {
                     physicsCubes.add(cube);
                 }
@@ -149,16 +159,6 @@ public final class ModelCompiler {
             float textureUvHeight = faceTexture != null && faceTexture.uvHeight() > 0
                     ? faceTexture.uvHeight() : raw.textureHeight;
             FaceVertex[] vertices = new FaceVertex[4];
-            float uMin = Float.POSITIVE_INFINITY;
-            float uMax = Float.NEGATIVE_INFINITY;
-            float vMin = Float.POSITIVE_INFINITY;
-            float vMax = Float.NEGATIVE_INFINITY;
-            for (ModelPart.Vertex vertex : quad.vertices) {
-                uMin = Math.min(uMin, vertex.u);
-                uMax = Math.max(uMax, vertex.u);
-                vMin = Math.min(vMin, vertex.v);
-                vMax = Math.max(vMax, vertex.v);
-            }
             float rotatedMinX = Float.POSITIVE_INFINITY;
             float rotatedMinY = Float.POSITIVE_INFINITY;
             float rotatedMinZ = Float.POSITIVE_INFINITY;
@@ -166,15 +166,15 @@ public final class ModelCompiler {
             float rotatedMaxY = Float.NEGATIVE_INFINITY;
             float rotatedMaxZ = Float.NEGATIVE_INFINITY;
             for (int i = 0; i < 4; i++) {
-                ModelPart.Vertex vertex = quad.vertices[i];
-                float uu = vertex.u;
-                float vv = vertex.v;
+                ModelPart.Vertex vertex = quad.vertices()[i];
+                float uu = vertex.u();
+                float vv = vertex.v();
                 if (!boxUv && rawFace != null) {
-                    float[] st = faceUv(dir, vertex.pos.x(), vertex.pos.y(), vertex.pos.z(),
+                    float[] st = faceUv(dir, vertex.x(), vertex.y(), vertex.z(),
                             cubeMinX, cubeMinY, cubeMinZ, cubeMaxX, cubeMaxY, cubeMaxZ);
                     float fu = st[0];
                     float fv = st[1];
-                    if (element.mirrorUv) fu = 1.0F - fu;
+                    // Explicit face endpoints already encode mirrors. mirror_uv is box-UV only.
                     float[] rotated = rotateUv(fu, fv, rawFace.rotation());
                     fu = rotated[0];
                     fv = rotated[1];
@@ -185,14 +185,14 @@ public final class ModelCompiler {
                     uu = atlas.mapU(textureIndex, uu);
                     vv = atlas.mapV(textureIndex, vv);
                 }
-                float[] rotated = rotatePoint(vertex.pos.x(), vertex.pos.y(), vertex.pos.z(),
+                float[] rotated = rotatePoint(vertex.x(), vertex.y(), vertex.z(),
                         element.origin, element.rotation);
                 float px = rotated[0];
                 float py = rotated[1];
                 float pz = rotated[2];
                 if (!Float.isFinite(px) || !Float.isFinite(py) || !Float.isFinite(pz)
                         || !Float.isFinite(uu) || !Float.isFinite(vv)) {
-                    throw new CompileException("模型包含 NaN/无限值");
+                    throw new CompileException("模型包含 NaN/无限值").at("faces." + dir);
                 }
                 rotatedMinX = Math.min(rotatedMinX, px);
                 rotatedMinY = Math.min(rotatedMinY, py);
@@ -251,8 +251,8 @@ public final class ModelCompiler {
         float v = (y - minY) / sy;
         float w = (z - minZ) / sz;
         return switch (dir) {
-            case NORTH -> new float[]{u, v};
-            case SOUTH -> new float[]{1F - u, v};
+            case NORTH -> new float[]{1F - u, v};
+            case SOUTH -> new float[]{u, v};
             case EAST -> new float[]{1F - w, v};
             case WEST -> new float[]{w, v};
             case UP -> new float[]{u, w};
@@ -261,9 +261,9 @@ public final class ModelCompiler {
     }
     private static float[] rotateUv(float u, float v, int degrees) {
         return switch (Math.floorMod(degrees, 360)) {
-            case 90 -> new float[]{1.0F - v, u};
+            case 90 -> new float[]{v, 1.0F - u};
             case 180 -> new float[]{1.0F - u, 1.0F - v};
-            case 270 -> new float[]{v, 1.0F - u};
+            case 270 -> new float[]{1.0F - v, u};
             default -> new float[]{u, v};
         };
     }
@@ -272,10 +272,10 @@ public final class ModelCompiler {
         float x = 0;
         float y = 0;
         float z = 0;
-        for (ModelPart.Vertex vertex : quad.vertices) {
-            x += vertex.pos.x();
-            y += vertex.pos.y();
-            z += vertex.pos.z();
+        for (ModelPart.Vertex vertex : quad.vertices()) {
+            x += vertex.x();
+            y += vertex.y();
+            z += vertex.z();
         }
         x = x / 4.0F - centerX;
         y = y / 4.0F - centerY;
@@ -290,7 +290,8 @@ public final class ModelCompiler {
             return x > 0 ? FaceDir.EAST : FaceDir.WEST;
         }
         if (ay >= ax && ay >= az) {
-            // Minecraft model space has +Y down: the top face has a negative Y offset.\n            return y > 0 ? FaceDir.DOWN : FaceDir.UP;
+            // Minecraft model space has +Y down: the top face has a negative Y offset.
+            return y > 0 ? FaceDir.DOWN : FaceDir.UP;
         }
         return z > 0 ? FaceDir.SOUTH : FaceDir.NORTH;
     }
@@ -307,9 +308,38 @@ public final class ModelCompiler {
     }
 
     public static final class CompileException extends Exception {
+        private final String detail;
+        private final String location;
+
         public CompileException(String message) {
-            super(message);
+            this(message, null);
         }
+
+        private CompileException(String detail, String location) {
+            super(detail);
+            this.detail = detail;
+            this.location = location;
+        }
+
+        public CompileException at(String outerLocation) {
+            if (outerLocation == null || outerLocation.isBlank()) {
+                return this;
+            }
+            String combined = location == null || location.isBlank()
+                    ? outerLocation : outerLocation + " > " + location;
+            return new CompileException(detail, combined);
+        }
+
+        @Override
+        public String getMessage() {
+            return location == null || location.isBlank() ? detail : location + ": " + detail;
+        }
+    }
+
+    private static String cubeLocation(RawElement element) {
+        String name = element.name == null || element.name.isBlank() ? "(unnamed)" : element.name;
+        String uuid = element.uuid == null || element.uuid.isBlank() ? "(no uuid)" : element.uuid;
+        return "cube \"" + name + "\" (uuid " + uuid + ")";
     }
 
     public static Map<BoneKind, RawBone> rawBones(RawModel model) {

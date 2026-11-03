@@ -1,12 +1,15 @@
-﻿{
+{
     "required":  true,
     "package":  "dev.playermodel.mixin",
     "compatibilityLevel":  "JAVA_21",
     "client":  [
                    "PlayerEntityModelMixin",
+                   "PlayerRenderPoseMixin",
                    "PlayerEntityRendererMixin",
                    "LivingEntityRendererMixin",
-                   "PlayerEntityModelAccessor",
+                   "CameraEyeHeightMixin",
+                   "CameraCrosshairMixin",
+                   "CameraPickEntityMixin",
                    "FeatureRendererMixin",
                    "ArmorScaleMixin",
                    "HeldItemScaleMixin",

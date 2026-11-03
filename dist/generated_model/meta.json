@@ -5,8 +5,8 @@
   "customAnchors": false,
   "doubleLayer": false,
   "slim": false,
-  "textureWidth": 64,
-  "textureHeight": 64,
+  "textureWidth": 128,
+  "textureHeight": 128,
   "anchors": {},
   "physics": {
     "defaultSettings": {

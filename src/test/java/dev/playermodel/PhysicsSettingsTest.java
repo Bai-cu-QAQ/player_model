@@ -21,6 +21,9 @@ class PhysicsSettingsTest {
     }
 
     private static final Parameter[] PARAMETERS = {
+            new Parameter("maxAngleX", 70F, 0F, 360F),
+            new Parameter("maxAngleY", 70F, 0F, 360F),
+            new Parameter("maxAngleZ", 70F, 0F, 360F),
             new Parameter("motionStrength", 1.0F, 0.0F, 10.0F),
             new Parameter("accelerationStrength", 0.12F, 0.0F, 10.0F),
             new Parameter("restResponse", 8.0F, 0.1F, 40.0F),
@@ -133,6 +136,52 @@ class PhysicsSettingsTest {
         hair.motionStrength = 9.0F;
         assertTrue(config.clothRequested("hair_physics"));
         assertEquals(1.4F, config.defaultSettings.motionStrength(1.0F));
+    }
+
+    @Test
+    void axisLimitsInheritIndependentlyAndZeroOverridesDefaults() {
+        PhysicsConfig config = new Gson().fromJson("""
+                {"defaultSettings":{"maxAngle":55,"maxAngleX":30,"maxAngleY":20},
+                 "bones":{"hair_physics":{"maxAngleX":0,"maxAngle":45},
+                          "other_physics":{"maxAngleZ":15}}}
+                """, PhysicsConfig.class);
+        Settings hair = config.resolved("HAIR_PHYSICS");
+        assertEquals(0, hair.maxAngleX(hair.maxAngle(70)));
+        assertEquals(20, hair.maxAngleY(hair.maxAngle(70)));
+        assertEquals(45, hair.maxAngleZ(hair.maxAngle(70)));
+        assertNull(hair.maxAngleZ);
+        assertTrue(hair.hasAxisAngleLimits());
+        assertEquals(30, config.resolved("other_physics").maxAngleX(70));
+        assertEquals(15, config.resolved("other_physics").maxAngleZ(70));
+        assertEquals(30F, config.defaultSettings.maxAngleX);
+        Settings legacy = new Settings();
+        assertFalse(legacy.hasAxisAngleLimits());
+        legacy.maxAngleX = Float.NaN;
+        legacy.maxAngleY = Float.POSITIVE_INFINITY;
+        assertFalse(legacy.hasAxisAngleLimits());
+        assertEquals(55, legacy.maxAngleX(55));
+        legacy.maxAngleZ = 0F;
+        assertTrue(legacy.hasAxisAngleLimits());
+    }
+
+    @Test
+    void asymmetricAngleRangeFieldsOverrideSymmetricFallback() {
+        Settings settings = new Settings();
+        settings.angleXMin = -30F;
+        settings.angleXMax = 45F;
+        settings.angleYMin = 10F;
+        settings.angleYMax = 20F;
+        assertEquals(-30, settings.angleXMin(-70));
+        assertEquals(45, settings.angleXMax(70));
+        assertEquals(10, settings.angleYMin(-70));
+        assertEquals(20, settings.angleYMax(70));
+        assertTrue(settings.hasAxisAngleRanges());
+        assertEquals(-70, settings.angleZMin(-70));
+        assertEquals(70, settings.angleZMax(70));
+        settings.angleXMin = Float.NaN;
+        settings.angleXMax = Float.POSITIVE_INFINITY;
+        assertEquals(-70, settings.angleXMin(-70));
+        assertEquals(70, settings.angleXMax(70));
     }
 
     @Test

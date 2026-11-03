@@ -30,18 +30,18 @@ final class UvCuboid extends ModelPart.Cuboid {
         Vector3f edgeB = new Vector3f();
         Vector3f localNormal = new Vector3f();
         for (ModelPart.Quad quad : this.sides) {
-            ModelPart.Vertex v0 = quad.vertices[0];
-            ModelPart.Vertex v1 = quad.vertices[1];
-            ModelPart.Vertex v2 = quad.vertices[2];
-            localNormal.set(v1.pos.x() - v0.pos.x(), v1.pos.y() - v0.pos.y(), v1.pos.z() - v0.pos.z());
-            edgeB.set(v2.pos.x() - v0.pos.x(), v2.pos.y() - v0.pos.y(), v2.pos.z() - v0.pos.z());
+            ModelPart.Vertex v0 = quad.vertices()[0];
+            ModelPart.Vertex v1 = quad.vertices()[1];
+            ModelPart.Vertex v2 = quad.vertices()[2];
+            localNormal.set(v1.x() - v0.x(), v1.y() - v0.y(), v1.z() - v0.z());
+            edgeB.set(v2.x() - v0.x(), v2.y() - v0.y(), v2.z() - v0.z());
             edgeA.set(localNormal);
             localNormal.set(edgeA).cross(edgeB);
             if (localNormal.lengthSquared() < 1e-8F) {
-                localNormal.set(quad.direction.x, quad.direction.y, quad.direction.z);
+                localNormal.set(quad.direction().x(), quad.direction().y(), quad.direction().z());
             } else {
                 localNormal.normalize();
-                if (localNormal.dot(quad.direction.x, quad.direction.y, quad.direction.z) < 0) {
+                if (localNormal.dot(quad.direction().x(), quad.direction().y(), quad.direction().z()) < 0) {
                     localNormal.negate();
                 }
             }
@@ -49,13 +49,13 @@ final class UvCuboid extends ModelPart.Cuboid {
             float nx = normal.x();
             float ny = normal.y();
             float nz = normal.z();
-            for (ModelPart.Vertex vertex : quad.vertices) {
-                float x = vertex.pos.x() / 16.0F;
-                float y = vertex.pos.y() / 16.0F;
-                float z = vertex.pos.z() / 16.0F;
+            for (ModelPart.Vertex vertex : quad.vertices()) {
+                float x = vertex.x() / 16.0F;
+                float y = vertex.y() / 16.0F;
+                float z = vertex.z() / 16.0F;
                 Vector3f position = matrix.transformPosition(x, y, z, transformedNormal);
                 consumer.vertex(position.x(), position.y(), position.z(), color,
-                        vertex.u, vertex.v, overlay, light, nx, ny, nz);
+                        vertex.u(), vertex.v(), overlay, light, nx, ny, nz);
             }
         }
     }

@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import dev.playermodel.PlayerModelMod;
 import dev.playermodel.compile.ModelCompiler;
 import dev.playermodel.importing.BbmodelParser;
+import dev.playermodel.importing.ImportException;
 import dev.playermodel.importing.PngUtils;
 import dev.playermodel.model.ModelBundle;
 import dev.playermodel.model.NormalizedModel;
@@ -95,10 +96,17 @@ public final class ModelRegistry {
             Path metaFile = folder.resolve("meta.json");
             Meta meta = new Meta();
             if (Files.isRegularFile(metaFile)) {
-                Meta parsed = GSON.fromJson(
-                        dev.playermodel.util.JsonComments.strip(Files.readString(metaFile)), Meta.class);
-                if (parsed != null) {
-                    meta = parsed;
+                try {
+                    Meta parsed = GSON.fromJson(
+                            dev.playermodel.util.JsonComments.strip(Files.readString(metaFile)), Meta.class);
+                    if (parsed != null) {
+                        meta = parsed;
+                    }
+                } catch (RuntimeException e) {
+                    String position = dev.playermodel.util.Diagnostics.jsonPosition(e);
+                    String where = position.isBlank() ? "" : "（" + position + "）";
+                    throw new IllegalArgumentException(metaFile + where + ": meta.json 内容无效: "
+                            + dev.playermodel.util.Diagnostics.jsonReason(e), e);
                 }
             }
             RawModel raw = BbmodelParser.parse(bbmodel, meta.displayName == null || meta.displayName.isBlank()
@@ -111,7 +119,12 @@ public final class ModelRegistry {
                     raw.warnings.add("检测到 texture.png，但该模型使用多张贴图；已忽略外部 texture.png，使用 bbmodel 内嵌贴图集");
                 } else {
                     byte[] external = Files.readAllBytes(textureFile);
-                    int[] size = PngUtils.readSize(external);
+                    int[] size;
+                    try {
+                        size = PngUtils.readSize(external);
+                    } catch (Exception e) {
+                        throw new IllegalArgumentException(textureFile + ": 外部贴图无效: " + e.getMessage(), e);
+                    }
                     int uvW = meta.textureWidth > 0 ? meta.textureWidth : raw.textureWidth;
                     int uvH = meta.textureHeight > 0 ? meta.textureHeight : raw.textureHeight;
                     RawTexture replacement = new RawTexture("texture.png", external, size[0], size[1], uvW, uvH);
@@ -125,7 +138,15 @@ public final class ModelRegistry {
             }
 
             String textureMode = meta.textureMode == null || meta.textureMode.isBlank() ? "model" : meta.textureMode;
+            if (!textureMode.equals("model") && !textureMode.equals("skin")) {
+                raw.warnings.add("meta.json: textureMode=\"" + textureMode + "\" 无效；已按 model 处理（可选 model/skin）");
+                textureMode = "model";
+            }
             String pivotMode = meta.pivotMode == null || meta.pivotMode.isBlank() ? "model" : meta.pivotMode;
+            if (!pivotMode.equals("model") && !pivotMode.equals("vanilla")) {
+                raw.warnings.add("meta.json: pivotMode=\"" + pivotMode + "\" 无效；已按 model 处理（可选 model/vanilla）");
+                pivotMode = "model";
+            }
             NormalizedModel model = ModelCompiler.compile(raw, textureMode, pivotMode);
             model.customAnchors = meta.customAnchors;
             if (meta.physics != null) {
@@ -145,7 +166,9 @@ public final class ModelRegistry {
                     folder, model, png, bundle, List.copyOf(raw.warnings));
             local.put(safeName, localModel);
         } catch (Exception e) {
-            String message = safeName + ": " + e.getMessage();
+            String message = e instanceof ImportException
+                    ? safeName + ": " + e.getMessage()
+                    : safeName + " (" + bbmodel + "): " + e.getMessage();
             lastErrors.add(message);
             PlayerModelMod.LOG.warn("Failed to load model folder {}", folder, e);
         }

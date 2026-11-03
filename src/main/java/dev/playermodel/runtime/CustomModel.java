@@ -5,7 +5,6 @@ import dev.playermodel.model.PhysicsConfig;
 import net.minecraft.client.model.Dilation;
 import net.minecraft.client.model.ModelPart;
 import net.minecraft.client.model.TexturedModelData;
-import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.entity.model.PlayerEntityModel;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -23,11 +22,10 @@ import java.util.Map;
  * animations keep working while the visible geometry is the imported one.
  */
 public final class CustomModel {
-    private final PlayerEntityModel<AbstractClientPlayerEntity> model;
+    private final PlayerEntityModel model;
     private final Map<BoneKind, ModelPart> parts = new EnumMap<>(BoneKind.class);
     private final Map<BoneKind, float[]> basePivots = new EnumMap<>(BoneKind.class);
     private final boolean modelPivots;
-    private final float rigScale;
     private final List<PhysicsBoneRuntime> physicsBones = new ArrayList<>();
     private final Map<BoneKind, Quaternionf> staticRotations = new EnumMap<>(BoneKind.class);
     private final Map<ModelPart, ModelPart> parents = new IdentityHashMap<>();
@@ -44,14 +42,12 @@ public final class CustomModel {
                 Dilation.NONE, prepared.slim()), 64, 64);
         ModelPart root = data.createModel();
         this.rootPart = root;
-        this.model = new PlayerEntityModel<>(root, prepared.slim());
-        this.rigScale = prepared.rigScale();
+        this.model = new PlayerEntityModel(root, prepared.slim());
         ModelPart[] array = ModelParts.of(model);
-        List<ModelPart.Cuboid> defaultCloak = array[BoneKind.CLOAK.ordinal()].cuboids;
-        List<ModelPart.Cuboid> defaultEar = array[BoneKind.EAR.ordinal()].cuboids;
+        buildParentMap(rootPart);
         for (BoneKind kind : BoneKind.VALUES) {
             parts.put(kind, array[kind.ordinal()]);
-            basePivots.put(kind, new float[]{array[kind.ordinal()].pivotX, array[kind.ordinal()].pivotY, array[kind.ordinal()].pivotZ});
+            basePivots.put(kind, restOrigin(array[kind.ordinal()], root));
         }
         this.modelPivots = prepared.usesModelPivots();
         for (BoneKind kind : BoneKind.VALUES) {
@@ -63,23 +59,43 @@ public final class CustomModel {
             // Empty for layer bones unless the bbmodel itself defines them. There is no automatic
             // extra skin layer in this version.
             part.cuboids = cubes.getOrDefault(kind, List.of());
-            if (part.cuboids.isEmpty() && kind == BoneKind.CLOAK) {
-                part.cuboids = defaultCloak;
-            }
-            if (part.cuboids.isEmpty() && kind == BoneKind.EAR) {
-                part.cuboids = defaultEar;
-            }
-            if (modelPivots) {
-                float[] pivot = prepared.pivot(kind);
-                if (pivot != null) {
-                    part.setPivot(pivot[0], pivot[1], pivot[2]);
-                }
-            }
+            float[] origin = localOrigin(prepared, kind);
+            part.setOrigin(origin[0], origin[1], origin[2]);
             part.visible = true;
             part.hidden = false;
         }
         attachPhysics(prepared, array);
         buildParentMap(rootPart);
+    }
+
+    private float[] restOrigin(ModelPart part, ModelPart root) {
+        float[] origin = new float[3];
+        for (ModelPart current = part; current != null && current != root; current = parents.get(current)) {
+            origin[0] += current.originX;
+            origin[1] += current.originY;
+            origin[2] += current.originZ;
+        }
+        return origin;
+    }
+
+    private float[] absoluteOrigin(PreparedModel prepared, BoneKind kind) {
+        float[] origin = modelPivots ? prepared.pivot(kind) : null;
+        return origin == null ? basePivots.get(kind).clone() : origin;
+    }
+
+    private float[] localOrigin(PreparedModel prepared, BoneKind kind) {
+        float[] origin = absoluteOrigin(prepared, kind);
+        ModelPart parent = parents.get(parts.get(kind));
+        for (BoneKind parentKind : BoneKind.VALUES) {
+            if (parts.get(parentKind) == parent) {
+                float[] parentOrigin = absoluteOrigin(prepared, parentKind);
+                origin[0] -= parentOrigin[0];
+                origin[1] -= parentOrigin[1];
+                origin[2] -= parentOrigin[2];
+                break;
+            }
+        }
+        return origin;
     }
 
     private void buildParentMap(ModelPart part) {
@@ -99,7 +115,7 @@ public final class CustomModel {
         for (ModelPart.Cuboid cube : physics.part().cuboids) {
             java.util.Set<Vector3f> corners = new java.util.HashSet<>();
             for (ModelPart.Quad face : cube.sides)
-                for (ModelPart.Vertex vertex : face.vertices) corners.add(new Vector3f(vertex.pos));
+                for (ModelPart.Vertex vertex : face.vertices()) corners.add(new Vector3f(vertex.x(), vertex.y(), vertex.z()));
             if (corners.isEmpty()) continue;
             Vector3f center = new Vector3f();
             Vector3f min = new Vector3f(Float.POSITIVE_INFINITY), max = new Vector3f(Float.NEGATIVE_INFINITY);
@@ -177,16 +193,12 @@ public final class CustomModel {
                 parentZ = parentPhysics.pivotZ();
             } else {
                 parent = coreParts[physics.parentBone().ordinal()];
-                float[] pivot = modelPivots ? prepared.pivot(physics.parentBone())
-                        : basePivots.get(physics.parentBone());
-                if (pivot == null) {
-                    pivot = new float[]{0, 0, 0};
-                }
+                float[] pivot = absoluteOrigin(prepared, physics.parentBone());
                 parentX = pivot[0];
                 parentY = pivot[1];
                 parentZ = pivot[2];
             }
-            part.setPivot(physics.pivotX() - parentX, physics.pivotY() - parentY,
+            part.setOrigin(physics.pivotX() - parentX, physics.pivotY() - parentY,
                     physics.pivotZ() - parentZ);
             Map<String, ModelPart> children = parent.children;
             if (children == null) {
@@ -211,7 +223,8 @@ public final class CustomModel {
         return List.copyOf(physicsBones);
     }
 
-    public void copyPose(PlayerEntityModel<?> live, PreparedModel prepared) {
+    public void copyPose(PlayerEntityModel live, PreparedModel prepared) {
+        rootPart.setTransform(live.getRootPart().getTransform());
         ModelPart[] source = ModelParts.of(live);
         float scale = prepared.rigScale();
         for (BoneKind kind : BoneKind.VALUES) {
@@ -239,21 +252,18 @@ public final class CustomModel {
             to.yScale = baseScale[1] == 0 ? 1.0F : from.yScale / baseScale[1];
             to.zScale = baseScale[2] == 0 ? 1.0F : from.zScale / baseScale[2];
             float[] base = BaseSkeleton.basePivot(from);
-            float[] target = modelPivots ? prepared.pivot(kind) : basePivots.get(kind);
+            float[] target = localOrigin(prepared, kind);
             if (target != null) {
-                to.pivotX = target[0] + (from.pivotX - base[0]) * scale;
-                to.pivotY = target[1] + (from.pivotY - base[1]) * scale;
-                to.pivotZ = target[2] + (from.pivotZ - base[2]) * scale;
+                to.originX = target[0] + (from.originX - base[0]) * scale;
+                to.originY = target[1] + (from.originY - base[1]) * scale;
+                to.originZ = target[2] + (from.originZ - base[2]) * scale;
             }
             to.visible = true;
             to.hidden = false;
         }
-        this.model.handSwingProgress = live.handSwingProgress;
-        this.model.riding = live.riding;
-        this.model.child = live.child;
     }
 
-    public PlayerEntityModel<AbstractClientPlayerEntity> model() {
+    public PlayerEntityModel model() {
         return model;
     }
 
@@ -261,33 +271,20 @@ public final class CustomModel {
      * Temporarily installs the custom cubes/pivots on the live model for the base body render and
      * all feature layers (armor, held items, cape). Restore with {@link Installed#restore()}.
      */
-    public Installed install(PlayerEntityModel<?> live) {
+    public Installed install(PlayerEntityModel live) {
         ModelPart[] target = ModelParts.of(live);
         ModelPart[] source = ModelParts.of(model);
         List<PartState> states = new java.util.ArrayList<>();
         for (BoneKind kind : BoneKind.VALUES) {
-            if (kind == BoneKind.EAR) {
-                continue;
-            }
             ModelPart to = target[kind.ordinal()];
             ModelPart from = source[kind.ordinal()];
-            states.add(new PartState(to, to.cuboids, to.pivotX, to.pivotY, to.pivotZ,
+            states.add(new PartState(to, to.cuboids, to.originX, to.originY, to.originZ,
                     to.xScale, to.yScale, to.zScale));
-            if (kind == BoneKind.CLOAK) {
-                // Keep the vanilla/EMF cloak geometry but scale it around the custom body back.
-                ModelPart body = source[BoneKind.BODY.ordinal()];
-                to.pivotX = body.pivotX;
-                to.pivotY = body.pivotY;
-                to.pivotZ = body.pivotZ - 2.5F * rigScale;
-                to.xScale = rigScale;
-                to.yScale = rigScale;
-                to.zScale = rigScale;
-                continue;
-            }
+
             to.cuboids = from.cuboids;
-            to.pivotX = from.pivotX;
-            to.pivotY = from.pivotY;
-            to.pivotZ = from.pivotZ;
+            to.originX = from.originX;
+            to.originY = from.originY;
+            to.originZ = from.originZ;
             to.xScale = from.xScale;
             to.yScale = from.yScale;
             to.zScale = from.zScale;
@@ -307,9 +304,9 @@ public final class CustomModel {
                              float sx, float sy, float sz) {
         void restore() {
             part.cuboids = cuboids;
-            part.pivotX = x;
-            part.pivotY = y;
-            part.pivotZ = z;
+            part.originX = x;
+            part.originY = y;
+            part.originZ = z;
             part.xScale = sx;
             part.yScale = sy;
             part.zScale = sz;

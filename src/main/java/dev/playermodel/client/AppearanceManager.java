@@ -11,10 +11,8 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.model.ModelPart;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.RenderLayer;
-import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.entity.model.EntityModel;
 import net.minecraft.client.render.entity.model.PlayerEntityModel;
-import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.util.Identifier;
 
@@ -115,42 +113,81 @@ public final class AppearanceManager {
     }
 
     /** Captures the live model's rest pivots before any animation; used to scale pose offsets. */
-    public void captureBase(LivingEntity entity, PlayerEntityModel<?> model) {
+    public void captureBase(LivingEntity entity, PlayerEntityModel model) {
         if (!(entity instanceof AbstractClientPlayerEntity) || !config.viewEnabled) {
             return;
         }
         BaseSkeleton.capture(ModelParts.of(model));
     }
 
-    /**
-     * Called from the LivingEntityRenderer model-render redirect. Returns true when the custom model
-     * was rendered instead of the live model.
-     */
-    public boolean renderCustom(EntityModel<?> live, MatrixStack matrices, VertexConsumer vertices,
-                                int light, int overlay, int color, LivingEntity entity) {
-        if (!(entity instanceof AbstractClientPlayerEntity player) || !config.viewEnabled) {
-            return false;
-        }
-        if (!(live instanceof PlayerEntityModel<?> playerModel)) {
-            return false;
-        }
+    /** State-local pose: never retain the cached, mutable CustomModel in a deferred command. */
+    public record RenderPose(PlayerEntityModel model, PreparedModel prepared) {}
+
+    private final ThreadLocal<java.util.List<RenderPose>> renderPoses =
+            ThreadLocal.withInitial(java.util.ArrayList::new);
+
+    public void pushPose(RenderPose pose) { renderPoses.get().add(pose); }
+    public void popPose() {
+        var poses = renderPoses.get();
+        if (!poses.isEmpty()) poses.remove(poses.size() - 1);
+        if (poses.isEmpty()) renderPoses.remove();
+    }
+    public RenderPose activePose() {
+        var poses = renderPoses.get();
+        return poses.isEmpty() ? null : poses.get(poses.size() - 1);
+    }
+
+    public interface PoseState {
+        RenderPose playermodel$getPose();
+        void playermodel$setPose(RenderPose pose);
+    }
+
+    public static RenderPose pose(net.minecraft.client.render.entity.state.EntityRenderState state) {
+        return state instanceof PoseState holder ? holder.playermodel$getPose() : null;
+    }
+
+    public RenderPose capturePose(PlayerEntityModel live,
+                                  net.minecraft.client.render.entity.state.PlayerEntityRenderState state) {
+        AbstractClientPlayerEntity player = PlayerModelClient.playerFor(state);
+        if (player == null || !config.viewEnabled) return null;
         PreparedModel prepared = preparedFor(player.getUuid());
-        if (prepared == null) {
-            return false;
-        }
+        if (prepared == null) return null;
         try {
+            captureBase(player, live);
+            live.setAngles(state);
             EmfAnimationBridge.animate(live);
             CustomModel custom = customModelFor(prepared);
-            custom.copyPose(playerModel, prepared);
+            custom.copyPose(live, prepared);
             physics.update(player, custom, System.nanoTime());
-            custom.model().render(matrices, vertices, light, overlay, color);
-            return true;
+            return new RenderPose(new PlayerEntityModel(copyPart(custom.model().getRootPart()), prepared.slim()), prepared);
         } catch (Throwable t) {
-            if (config.debug) {
-                PlayerModelMod.LOG.warn("Failed to render custom player model", t);
-            }
-            return false;
+            if (config.debug) PlayerModelMod.LOG.warn("Failed to capture custom player pose", t);
+            return null;
         }
+    }
+
+    /** Deep-copy the transform tree; immutable cuboid geometry can be shared. */
+    public static ModelPart copyPart(ModelPart source) {
+        Map<String, ModelPart> children = new HashMap<>();
+        source.children.forEach((name, child) -> children.put(name, copyPart(child)));
+        ModelPart copy = new ModelPart(java.util.List.copyOf(source.cuboids), children);
+        copy.setTransform(source.getTransform());
+        // getTransform() omits live scale in 1.21.11; copy it explicitly.
+        copy.xScale = source.xScale;
+        copy.yScale = source.yScale;
+        copy.zScale = source.zScale;
+        copy.setDefaultTransform(source.getDefaultTransform());
+        copy.visible = source.visible;
+        copy.hidden = source.hidden;
+        return copy;
+    }
+
+    /** Queue playback calls setAngles again: this model deliberately keeps the captured pose. */
+    public static EntityModel<net.minecraft.client.render.entity.state.EntityRenderState> frozenModel(ModelPart root) {
+        return new EntityModel<net.minecraft.client.render.entity.state.EntityRenderState>(copyPart(root)) {
+            @Override
+            public void setAngles(net.minecraft.client.render.entity.state.EntityRenderState ignored) {}
+        };
     }
 
     private CustomModel customModelFor(PreparedModel prepared) {
@@ -174,16 +211,11 @@ public final class AppearanceManager {
     /** Render layer for the base player body; null means use the renderer's normal layer. */
     public RenderLayer renderLayer(AbstractClientPlayerEntity player) {
         Identifier texture = textureFor(player);
-        return texture == null ? null : RenderLayer.getEntityTranslucentCull(texture);
+        return texture == null ? null : net.minecraft.client.render.RenderLayers.entityTranslucent(texture);
     }
 
     /** Texture to use for the player model, or null to keep the vanilla skin. */
     public Identifier textureFor(AbstractClientPlayerEntity player) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (player == client.player && client.options.getPerspective().isFirstPerson()) {
-            // First-person arm keeps the vanilla skin texture.
-            return null;
-        }
         if (!config.viewEnabled) {
             return null;
         }

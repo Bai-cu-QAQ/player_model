@@ -10,10 +10,35 @@ public final class AngularMotion {
 
     public void advance(Vector3f target, float response, float dampingRatio, float air,
                         float maxRate, float maxAngle, float seconds, int subdivisions) {
+        advance(target, response, dampingRatio, air, maxRate, maxAngle, null, null, seconds, subdivisions);
+    }
+
+    /** Legacy symmetric component limits. Null keeps the spherical magnitude limit. */
+    public void advance(Vector3f target, float response, float dampingRatio, float air,
+                        float maxRate, float maxAngle, Vector3f axisLimits, float seconds, int subdivisions) {
+        if (axisLimits == null) {
+            advance(target, response, dampingRatio, air, maxRate, maxAngle, null, null, seconds, subdivisions);
+        } else {
+            advance(target, response, dampingRatio, air, maxRate, maxAngle,
+                    new Vector3f(axisLimits).negate(), axisLimits, seconds, subdivisions);
+        }
+    }
+
+    /** Axis ranges are rotation-vector components in the same model-space frame as angle (radians).
+     * Asymmetric [min,max] ranges are supported; null min/max retains the legacy spherical limit. */
+    public void advance(Vector3f target, float response, float dampingRatio, float air,
+                        float maxRate, float maxAngle, Vector3f axisMin, Vector3f axisMax,
+                        float seconds, int subdivisions) {
         if (!target.isFinite() || !Float.isFinite(seconds) || seconds <= 0) return;
+        if ((axisMin == null) != (axisMax == null)) return;
+        if (axisMin != null && (!axisMin.isFinite() || !axisMax.isFinite()
+                || axisMin.x > axisMax.x || axisMin.y > axisMax.y || axisMin.z > axisMax.z)) {
+            return;
+        }
         int count = Math.max(Math.max(1, subdivisions), (int) Math.ceil(seconds / (1F / 240F)));
         count = Math.min(256, count);
         float dt = seconds / count;
+        if (axisMin != null) constrainAxes(axisMin, axisMax);
         for (int i = 0; i < count; i++) {
             Vector3f acceleration = new Vector3f(target).sub(angle).mul(response * response);
             float drag = 2 * dampingRatio * response + air;
@@ -22,15 +47,40 @@ public final class AngularMotion {
             float rate = velocity.length();
             if (rate > maxRate) velocity.mul(maxRate / rate);
             angle.fma(dt, velocity);
-            float magnitude = angle.length();
-            if (magnitude > maxAngle && magnitude > 1e-7F) {
-                Vector3f normal = new Vector3f(angle).div(magnitude);
-                angle.set(normal).mul(maxAngle);
-                float outward = velocity.dot(normal);
-                if (outward > 0) velocity.fma(-outward, normal);
+            if (axisMin != null) {
+                constrainAxes(axisMin, axisMax);
+            } else {
+                float magnitude = angle.length();
+                if (magnitude > maxAngle && magnitude > 1e-7F) {
+                    Vector3f normal = new Vector3f(angle).div(magnitude);
+                    angle.set(normal).mul(maxAngle);
+                    float outward = velocity.dot(normal);
+                    if (outward > 0) velocity.fma(-outward, normal);
+                }
             }
         }
         if (!angle.isFinite() || !velocity.isFinite()) { angle.zero(); velocity.zero(); }
+    }
+
+    private void constrainAxes(Vector3f min, Vector3f max) {
+        for (int axis = 0; axis < 3; axis++) {
+            float low = min.get(axis);
+            float high = max.get(axis);
+            if (low == high) {
+                // Normalize -0.0 to +0.0; a locked asymmetric range still pins the component.
+                angle.setComponent(axis, high == 0 ? 0 : high);
+                velocity.setComponent(axis, 0);
+                continue;
+            }
+            float position = Math.max(low, Math.min(high, angle.get(axis)));
+            float speed = velocity.get(axis);
+            angle.setComponent(axis, position);
+            // At other bounds only outward velocity is removed, so reversing direction responds
+            // immediately instead of sticking to the stop.
+            if (position >= high && speed > 0 || position <= low && speed < 0) {
+                velocity.setComponent(axis, 0);
+            }
+        }
     }
 
     /** Coordinate conjugation for a model-space rotation applied after the animated rest frame. */

@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonSyntaxException;
 import dev.playermodel.model.BoneKind;
 import dev.playermodel.model.Anchor;
 import dev.playermodel.model.FaceDir;
@@ -15,6 +16,7 @@ import dev.playermodel.model.RawModel;
 import dev.playermodel.model.RawPhysicsBone;
 import dev.playermodel.model.RawTexture;
 import dev.playermodel.model.PhysicsBoneName;
+import dev.playermodel.util.Diagnostics;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -67,11 +69,17 @@ public final class BbmodelParser {
             BbmodelParser parser = new BbmodelParser(file, parsed.getAsJsonObject());
             return parser.parseInternal(displayName);
         } catch (ImportException e) {
-            throw e;
+            throw e.from(file);
+        } catch (JsonSyntaxException e) {
+            String position = Diagnostics.jsonPosition(e);
+            String prefix = position.isBlank() ? "JSON 语法错误" : "JSON 语法错误（" + position + "）";
+            throw new ImportException(prefix + ": " + Diagnostics.jsonReason(e), e).from(file);
         } catch (IOException e) {
-            throw new ImportException("读取模型文件失败: " + e.getMessage(), e);
+            throw new ImportException("读取模型文件失败: " + e.getMessage(), e).from(file);
         } catch (RuntimeException e) {
-            throw new ImportException("解析模型失败: " + e.getMessage(), e);
+            String position = Diagnostics.jsonPosition(e);
+            String suffix = position.isBlank() ? "" : "（" + position + "）";
+            throw new ImportException("解析模型失败" + suffix + ": " + Diagnostics.jsonReason(e), e).from(file);
         }
     }
 
@@ -81,19 +89,25 @@ public final class BbmodelParser {
 
         JsonArray elementArray = array(root, "elements");
         if (elementArray == null || elementArray.isEmpty()) {
-            throw new ImportException("模型里没有方块（elements 为空）");
+            throw new ImportException("模型里没有方块（elements 为空）").at("field elements");
         }
         if (elementArray.size() > MAX_ELEMENTS) {
-            throw new ImportException("方块数量过多: " + elementArray.size());
+            throw new ImportException("方块数量过多: " + elementArray.size()).at("field elements");
         }
 
-        for (JsonElement element : elementArray) {
+        for (int i = 0; i < elementArray.size(); i++) {
+            JsonElement element = elementArray.get(i);
             if (!element.isJsonObject()) {
                 continue;
             }
-            RawElement parsed = parseElement(element.getAsJsonObject());
-            if (parsed != null) {
-                elementsByUuid.put(parsed.uuid, parsed);
+            JsonObject object = element.getAsJsonObject();
+            try {
+                RawElement parsed = parseElement(object);
+                if (parsed != null) {
+                    elementsByUuid.put(parsed.uuid, parsed);
+                }
+            } catch (ImportException e) {
+                throw e.at(elementLocation(object, i));
             }
         }
         if (elementsByUuid.isEmpty()) {
@@ -223,33 +237,44 @@ public final class BbmodelParser {
         if (array.size() > MAX_TEXTURES) {
             throw new ImportException("贴图数量过多: " + array.size());
         }
-        for (JsonElement element : array) {
+        for (int i = 0; i < array.size(); i++) {
+            JsonElement element = array.get(i);
             if (!element.isJsonObject()) {
                 continue;
             }
             JsonObject obj = element.getAsJsonObject();
-            String source = string(obj, "source", null);
-            if (source == null || source.isBlank()) {
-                continue;
-            }
-            byte[] png;
-            if (source.startsWith("data:")) {
-                png = PngUtils.decodeDataUri(source);
-            } else {
-                Path relative = sourceFile.getParent() == null ? Path.of(source) : sourceFile.getParent().resolve(source);
-                if (!Files.isRegularFile(relative)) {
-                    throw new ImportException("找不到贴图文件: " + source);
+            try {
+                String source = string(obj, "source", null);
+                if (source == null || source.isBlank()) {
+                    throw new ImportException("贴图缺少 source（内嵌 data URI 或相对文件路径）").at("field source");
                 }
+                byte[] png;
+                if (source.startsWith("data:")) {
+                    png = PngUtils.decodeDataUri(source);
+                } else {
+                    Path relative = sourceFile.getParent() == null ? Path.of(source) : sourceFile.getParent().resolve(source);
+                    if (!Files.isRegularFile(relative)) {
+                        throw new ImportException("找不到贴图文件: " + source).at("field source");
+                    }
+                    try {
+                        png = Files.readAllBytes(relative);
+                    } catch (IOException e) {
+                        throw new ImportException("读取贴图文件失败: " + source, e).at("field source");
+                    }
+                }
+                int[] size;
                 try {
-                    png = Files.readAllBytes(relative);
-                } catch (IOException e) {
-                    throw new ImportException("读取贴图文件失败: " + source, e);
+                    size = PngUtils.readSize(png);
+                } catch (ImportException e) {
+                    throw e.at("PNG 数据");
                 }
+                int[] projectUv = resolution();
+                int uvW = number(obj, "uv_width", projectUv[0]);
+                int uvH = number(obj, "uv_height", projectUv[1]);
+                result.add(new RawTexture(string(obj, "name", "texture"), png, size[0], size[1], uvW, uvH));
+            } catch (ImportException e) {
+                throw e.at("textures[" + i + "]");
             }
-            int[] size = PngUtils.readSize(png);
-            int uvW = number(obj, "uv_width", size[0]);
-            int uvH = number(obj, "uv_height", size[1]);
-            result.add(new RawTexture(string(obj, "name", "texture"), png, size[0], size[1], uvW, uvH));
         }
         cachedTextures = result;
         return result;
@@ -265,7 +290,8 @@ public final class BbmodelParser {
     private RawElement parseElement(JsonObject obj) throws ImportException {
         String type = string(obj, "type", "");
         if ("mesh".equalsIgnoreCase(type) || obj.has("vertices")) {
-            throw new ImportException("模型包含网格(mesh)方块；本 mod 只支持方块模型，请在 Blockbench 中删除 mesh 或转换为方块");
+            throw new ImportException("模型包含网格(mesh)方块；本 mod 只支持方块模型，请在 Blockbench 中删除 mesh 或转换为方块")
+                    .at("field type");
         }
         if (obj.has("visibility") && !obj.get("visibility").getAsBoolean()) {
             return null;
@@ -279,13 +305,14 @@ public final class BbmodelParser {
         element.from = floats(obj, "from", 3, null);
         element.to = floats(obj, "to", 3, null);
         if (element.from == null || element.to == null) {
-            throw new ImportException("方块缺少 from/to 坐标: " + element.name);
+            throw new ImportException("方块缺少 from/to 坐标: " + element.name).at("field from/to");
         }
         element.origin = floats(obj, "origin", 3, new float[]{0, 0, 0});
         element.rotation = floats(obj, "rotation", 3, new float[]{0, 0, 0});
         for (float angle : element.rotation) {
             if (!Float.isFinite(angle)) {
-                throw new ImportException("方块 '" + safeName(element) + "' 的旋转不是有限数值");
+                throw new ImportException("方块 '" + safeName(element) + "' 的旋转不是有限数值")
+                        .at("field rotation");
             }
         }
         element.inflate = number(obj, "inflate", 0.0F);
@@ -312,38 +339,52 @@ public final class BbmodelParser {
                 continue;
             }
             JsonObject faceObj = value.getAsJsonObject();
-            float[] uv = floats(faceObj, "uv", 4, null);
-            if (uv == null) {
-                continue;
+            try {
+                float[] uv = floats(faceObj, "uv", 4, null);
+                if (uv == null) {
+                    throw new ImportException("面缺少 uv 数组").at("field uv");
+                }
+                int rotation = Math.floorMod(number(faceObj, "rotation", 0), 360);
+                if (rotation % 90 != 0) {
+                    throw new ImportException("面 UV 旋转必须是 90 的倍数，发现: " + rotation)
+                            .at("field rotation");
+                }
+                int texture = number(faceObj, "texture", 0);
+                faces.put(dir, new RawFace(uv[0], uv[1], uv[2], uv[3], rotation, texture));
+            } catch (ImportException e) {
+                throw e.at("faces." + key);
             }
-            int rotation = Math.floorMod(number(faceObj, "rotation", 0), 360);
-            if (rotation % 90 != 0) {
-                throw new ImportException("面 UV 旋转必须是 90 的倍数，发现: " + rotation);
-            }
-            int texture = number(faceObj, "texture", 0);
-            faces.put(dir, new RawFace(uv[0], uv[1], uv[2], uv[3], rotation, texture));
         }
         return faces;
     }
 
     private void parseOutliner(JsonArray array, RawGroup parent) throws ImportException {
-        for (JsonElement element : array) {
-            if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
-                attachElement(parent, element.getAsString());
-            } else if (element.isJsonObject()) {
-                JsonObject obj = element.getAsJsonObject();
-                if (obj.has("children")) {
-                    RawGroup group = parseGroup(obj);
-                    if (group != null) {
-                        parent.children.add(group);
+        for (int i = 0; i < array.size(); i++) {
+            JsonElement element = array.get(i);
+            try {
+                if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
+                    String uuid = element.getAsString();
+                    if (!attachElement(parent, uuid)) {
+                        throw new ImportException("outliner 引用了不存在的方块 UUID: " + uuid)
+                                .at("field uuid");
                     }
-                } else if (obj.has("from")) {
-                    RawElement parsed = parseElement(obj);
-                    if (parsed != null) {
-                        elementsByUuid.put(parsed.uuid, parsed);
-                        parent.elements.add(parsed);
+                } else if (element.isJsonObject()) {
+                    JsonObject obj = element.getAsJsonObject();
+                    if (obj.has("children")) {
+                        RawGroup group = parseGroup(obj);
+                        if (group != null) {
+                            parent.children.add(group);
+                        }
+                    } else if (obj.has("from")) {
+                        RawElement parsed = parseElement(obj);
+                        if (parsed != null) {
+                            elementsByUuid.put(parsed.uuid, parsed);
+                            parent.elements.add(parsed);
+                        }
                     }
                 }
+            } catch (ImportException e) {
+                throw e.at("outliner[" + i + "]" + groupSuffix(element));
             }
         }
     }
@@ -351,34 +392,70 @@ public final class BbmodelParser {
     private RawGroup parseGroup(JsonObject node) throws ImportException {
         String uuid = string(node, "uuid", null);
         JsonObject data = uuid != null && groupDataByUuid.containsKey(uuid) ? groupDataByUuid.get(uuid) : node;
-        if (bool(data, "visibility", true) == false || bool(node, "visibility", true) == false) {
-            return null;
-        }
-        RawGroup group = new RawGroup();
-        group.name = string(data, "name", string(node, "name", ""));
-        group.origin = floats(data, "origin", 3, new float[]{0, 0, 0});
-        group.rotation = floats(data, "rotation", 3, new float[]{0, 0, 0});
-        if (data.has("scale")) {
-            float[] scale = floats(data, "scale", 3, null);
-            if (scale != null && (Math.abs(scale[0] - 1) > 1e-3 || Math.abs(scale[1] - 1) > 1e-3 || Math.abs(scale[2] - 1) > 1e-3)) {
-                throw new ImportException("骨骼分组 '" + safeName(group) + "' 带有缩放；请在 Blockbench 中应用缩放（Ctrl+A）后再导入");
+        try {
+            if (bool(data, "visibility", true) == false || bool(node, "visibility", true) == false) {
+                // Hidden groups (often invisible anchor markers) are intentionally excluded.
+                // Mark their whole subtree as handled, otherwise their cubes become root orphans.
+                ignoreHiddenGroup(node);
+                return null;
             }
+            RawGroup group = new RawGroup();
+            group.name = string(data, "name", string(node, "name", ""));
+            group.origin = floats(data, "origin", 3, new float[]{0, 0, 0});
+            group.rotation = floats(data, "rotation", 3, new float[]{0, 0, 0});
+            if (data.has("scale")) {
+                float[] scale = floats(data, "scale", 3, null);
+                if (scale != null && (Math.abs(scale[0] - 1) > 1e-3 || Math.abs(scale[1] - 1) > 1e-3 || Math.abs(scale[2] - 1) > 1e-3)) {
+                    throw new ImportException("骨骼分组 '" + safeName(group) + "' 带有缩放；请在 Blockbench 中应用缩放（Ctrl+A）后再导入")
+                            .at("field scale");
+                }
+            }
+            group.scale = floats(data, "scale", 3, new float[]{1, 1, 1});
+            group.anchorScale = number(data, "cem_scale", number(data, "anchor_scale", 0.0F));
+            JsonArray children = array(node, "children");
+            if (children != null) {
+                parseOutliner(children, group);
+            }
+            return group;
+        } catch (ImportException e) {
+            throw e.at(groupLocation(groupName(data, node), uuid));
         }
-        group.scale = floats(data, "scale", 3, new float[]{1, 1, 1});
-        group.anchorScale = number(data, "cem_scale", number(data, "anchor_scale", 0.0F));
-        JsonArray children = array(node, "children");
-        if (children != null) {
-            parseOutliner(children, group);
-        }
-        return group;
     }
 
-    private void attachElement(RawGroup group, String uuid) {
-        RawElement element = elementsByUuid.get(uuid);
-        if (element != null) {
-            referenced.add(uuid);
-            group.elements.add(element);
+    /**
+     * A hidden Blockbench group is not imported, but all cube UUIDs below it must still be marked
+     * as handled. Otherwise parseInternal treats those cubes as ungrouped root elements.
+     */
+    private void ignoreHiddenGroup(JsonObject group) {
+        JsonArray children = array(group, "children");
+        if (children == null) {
+            return;
         }
+        for (JsonElement child : children) {
+            if (child.isJsonPrimitive() && child.getAsJsonPrimitive().isString()) {
+                referenced.add(child.getAsString());
+            } else if (child.isJsonObject()) {
+                JsonObject object = child.getAsJsonObject();
+                if (object.has("children")) {
+                    ignoreHiddenGroup(object);
+                } else {
+                    String uuid = string(object, "uuid", null);
+                    if (uuid != null) {
+                        referenced.add(uuid);
+                    }
+                }
+            }
+        }
+    }
+
+    private boolean attachElement(RawGroup group, String uuid) {
+        RawElement element = elementsByUuid.get(uuid);
+        if (element == null) {
+            return false;
+        }
+        referenced.add(uuid);
+        group.elements.add(element);
+        return true;
     }
 
     private ModelSpace detectSpace(String format) {
@@ -449,6 +526,14 @@ public final class BbmodelParser {
     }
 
     private void assignBones(RawGroup group, BoneKind current, RawPhysicsBone currentPhysics) throws ImportException {
+        try {
+            assignBonesInner(group, current, currentPhysics);
+        } catch (ImportException e) {
+            throw e.at("root".equals(group.name) ? "outliner/groups" : groupLocation(group.name, null));
+        }
+    }
+
+    private void assignBonesInner(RawGroup group, BoneKind current, RawPhysicsBone currentPhysics) throws ImportException {
         if (group.anchor) {
             return;
         }
@@ -606,12 +691,69 @@ public final class BbmodelParser {
         }
         if (!missing.isEmpty()) {
             throw new ImportException("缺少玩家核心骨骼: " + String.join(", ", missing)
-                    + "。请使用模板，并把方块放进这些命名的分组里");
+                    + "。请使用模板，并把方块放进这些命名的分组里").at("outliner/groups");
         }
     }
 
     private static String safeName(RawElement element) {
         return element.name == null || element.name.isBlank() ? element.uuid : element.name;
+    }
+
+    private static String elementLocation(JsonObject object, int index) {
+        String name = jsonString(object, "name");
+        String uuid = jsonString(object, "uuid");
+        StringBuilder result = new StringBuilder("elements[").append(index).append(']');
+        if (!name.isBlank()) {
+            result.append(" \"").append(name).append('"');
+        }
+        if (!uuid.isBlank()) {
+            result.append(" (uuid ").append(uuid).append(')');
+        }
+        return result.toString();
+    }
+
+    private static String groupSuffix(JsonElement element) {
+        if (element == null || !element.isJsonObject()) {
+            return "";
+        }
+        JsonObject object = element.getAsJsonObject();
+        String name = jsonString(object, "name");
+        String uuid = jsonString(object, "uuid");
+        StringBuilder result = new StringBuilder();
+        if (!name.isBlank()) {
+            result.append(" group \"").append(name).append('"');
+        }
+        if (!uuid.isBlank()) {
+            result.append(" (uuid ").append(uuid).append(')');
+        }
+        return result.toString();
+    }
+
+    private static String groupName(JsonObject data, JsonObject node) {
+        String name = jsonString(data, "name");
+        return name.isBlank() ? jsonString(node, "name") : name;
+    }
+
+    private static String groupLocation(String name, String uuid) {
+        StringBuilder result = new StringBuilder("group");
+        if (name != null && !name.isBlank()) {
+            result.append(" \"").append(name).append('"');
+        }
+        if (uuid != null && !uuid.isBlank()) {
+            result.append(" (uuid ").append(uuid).append(')');
+        }
+        return result.toString();
+    }
+
+    private static String jsonString(JsonObject object, String key) {
+        if (object == null || !object.has(key) || !object.get(key).isJsonPrimitive()) {
+            return "";
+        }
+        try {
+            return object.get(key).getAsString();
+        } catch (RuntimeException ignored) {
+            return "";
+        }
     }
 
     private static String safeName(RawGroup group) {

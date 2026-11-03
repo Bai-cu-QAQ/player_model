@@ -42,6 +42,15 @@ public final class PlayerModelClient implements net.fabricmc.api.ClientModInitia
         renderingPlayer = player;
     }
 
+    public static net.minecraft.client.network.AbstractClientPlayerEntity playerFor(
+            net.minecraft.client.render.entity.state.EntityRenderState state) {
+        if (!(state instanceof net.minecraft.client.render.entity.state.PlayerEntityRenderState playerState)) return null;
+        var client = MinecraftClient.getInstance();
+        if (client.world == null) return null;
+        var entity = client.world.getEntityById(playerState.id);
+        return entity instanceof net.minecraft.client.network.AbstractClientPlayerEntity player ? player : null;
+    }
+
     public static net.minecraft.client.network.AbstractClientPlayerEntity renderingPlayer() {
         return renderingPlayer;
     }
@@ -122,7 +131,7 @@ public final class PlayerModelClient implements net.fabricmc.api.ClientModInitia
 
     private void registerKeybind() {
         toggleViewKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.playermodel.toggle_view", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_F6, "category.playermodel"));
+                "key.playermodel.toggle_view", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_F6, KeyBinding.Category.create(Identifier.of("playermodel", "controls"))));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (!texturePrimed && client.getWindow() != null && !config.activeHash.isBlank()) {
                 texturePrimed = true;

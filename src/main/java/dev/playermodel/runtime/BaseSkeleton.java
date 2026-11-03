@@ -19,7 +19,7 @@ public final class BaseSkeleton {
 
     public static void capture(ModelPart[] parts) {
         for (ModelPart part : parts) {
-            BASE.computeIfAbsent(part, p -> new BasePart(p.cuboids, p.pivotX, p.pivotY, p.pivotZ,
+            BASE.computeIfAbsent(part, p -> new BasePart(p.cuboids, p.originX, p.originY, p.originZ,
                     p.xScale, p.yScale, p.zScale, p.visible, p.hidden));
         }
     }
@@ -30,9 +30,9 @@ public final class BaseSkeleton {
             return;
         }
         part.cuboids = base.cuboids;
-        part.pivotX = base.pivotX;
-        part.pivotY = base.pivotY;
-        part.pivotZ = base.pivotZ;
+        part.originX = base.pivotX;
+        part.originY = base.pivotY;
+        part.originZ = base.pivotZ;
     }
 
     public static void restore(ModelPart[] parts) {
@@ -47,7 +47,7 @@ public final class BaseSkeleton {
 
     public static float[] basePivot(ModelPart part) {
         BasePart base = BASE.get(part);
-        return base == null ? new float[]{part.pivotX, part.pivotY, part.pivotZ}
+        return base == null ? new float[]{part.originX, part.originY, part.originZ}
                 : new float[]{base.pivotX, base.pivotY, base.pivotZ};
     }
 

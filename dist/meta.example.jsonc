@@ -51,8 +51,22 @@
       // 角加速度输入上限，0..300，单位 rad/s²。
       "maxAngularAcceleration": 40.0,
       "gravity": 0.8,
-      // 单轴最大角度，单位度。
+      // 旧版总旋转向量长度上限（度）；不设置 X/Y/Z 时保留球形限幅。
       "maxAngle": 70,
+      // 可选模型空间旋转向量的每轴角度范围（度），不是骨骼局部欧拉角。
+      // 每轴独立设置最小/最大值；省略一侧时回退到 maxAngle（cloth 包含 clothMaxAngleScale）。
+      // 旧字段 maxAngleX/Y/Z 仍兼容，会解释为 [-maxAngleX, +maxAngleX]。
+      // 范围受 maxAngleLimit 限制；min == max 锁定该轴。
+      "angleXMin": null,
+      "angleXMax": null,
+      "angleYMin": null,
+      "angleYMax": null,
+      "angleZMin": null,
+      "angleZMax": null,
+      // 兼容旧配置的对称上限；新配置请优先使用上面的 angleXMin/Max。
+      "maxAngleX": null,
+      "maxAngleY": null,
+      "maxAngleZ": null,
       "wind": 0.0,
       "substeps": 8,
       // 基础拖尾、加速度、动画和重力力矩增益。

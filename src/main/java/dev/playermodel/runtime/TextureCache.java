@@ -25,7 +25,7 @@ public final class TextureCache {
     public static synchronized Identifier ensure(String hash, byte[] png) {
         Identifier existing = REGISTERED.get(hash);
         if (existing != null) {
-            var current = MinecraftClient.getInstance().getTextureManager().getOrDefault(existing, null);
+            var current = MinecraftClient.getInstance().getTextureManager().getTexture(existing);
             if (current instanceof NativeImageBackedTexture nativeTexture
                     && nativeTexture.getImage() != null
                     && !current.getClass().getName().contains("MissingSprite")) {
@@ -40,12 +40,11 @@ public final class TextureCache {
         try {
             TextureManager manager = MinecraftClient.getInstance().getTextureManager();
             NativeImage image = NativeImage.read(new ByteArrayInputStream(png));
-            NativeImageBackedTexture texture = new NativeImageBackedTexture(image);
+            NativeImageBackedTexture texture = new NativeImageBackedTexture(() -> "playermodel:" + hash, image);
             Identifier id = id(hash);
             manager.registerTexture(id, texture);
-            texture.setFilter(false, false);
             REGISTERED.put(hash, id);
-            var stored = manager.getOrDefault(id, null);
+            var stored = manager.getTexture(id);
             PlayerModelMod.LOG.info("Registered model texture {} -> {} (stored={}, image={})", hash.substring(0, 8), id,
                     stored == null ? "null" : stored.getClass().getSimpleName(),
                     stored instanceof NativeImageBackedTexture t ? (t.getImage() != null) : false);

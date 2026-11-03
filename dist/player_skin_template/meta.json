@@ -1,0 +1,10 @@
+{
+  "displayName": "Classic Player Skin Template",
+  "textureMode": "skin",
+  "pivotMode": "model",
+  "doubleLayer": false,
+  "slim": false,
+  "textureWidth": 64,
+  "textureHeight": 64,
+  "customAnchors": false
+}
