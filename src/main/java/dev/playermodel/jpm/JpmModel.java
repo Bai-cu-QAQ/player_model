@@ -35,6 +35,19 @@ public final class JpmModel {
     }
 
     public void animate(JpmEvalContext context) {
+        for (JpmPart part : flatten()) {
+            JpmEvalContext.PartState state = context.part(part.id);
+            state.tx = part.translate[0];
+            state.ty = part.translate[1];
+            state.tz = part.translate[2];
+            state.rx = part.rotate[0];
+            state.ry = part.rotate[1];
+            state.rz = part.rotate[2];
+            state.sx = part.scale;
+            state.sy = part.scale;
+            state.sz = part.scale;
+            state.visible = true;
+        }
         for (JpmAnimation animation : animations) {
             for (var entry : animation.expressions.entrySet()) {
                 String key = entry.getKey();

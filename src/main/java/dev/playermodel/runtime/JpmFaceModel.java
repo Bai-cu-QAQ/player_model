@@ -23,7 +23,6 @@ public final class JpmFaceModel {
     private final JpmModel data;
     private final ModelPart root;
     private final Map<String, ModelPart> parts = new HashMap<>();
-    private final Map<String, float[]> origins = new HashMap<>();
 
     public JpmFaceModel(JpmModel data) {
         this.data = data;
@@ -48,19 +47,16 @@ public final class JpmFaceModel {
             ModelPart target = parts.get(part.id);
             if (target == null) continue;
             JpmEvalContext.PartState state = context.parts.get(part.id);
-            float[] base = origins.get(part.id);
-            if (base == null) base = new float[3];
-            if (state != null) {
-                target.setPivot(base[0] + (float) state.tx, base[1] + (float) state.ty,
-                        base[2] + (float) state.tz);
-                target.pitch = (float) state.rx;
-                target.yaw = (float) state.ry;
-                target.roll = (float) state.rz;
-                target.xScale = (float) state.sx;
-                target.yScale = (float) state.sy;
-                target.zScale = (float) state.sz;
-                target.visible = state.visible;
-            }
+            if (state == null) continue;
+            // JPM properties are absolute pivot/rotation/scale writes, not offsets.
+            target.setPivot((float) state.tx, (float) state.ty, (float) state.tz);
+            target.pitch = (float) state.rx;
+            target.yaw = (float) state.ry;
+            target.roll = (float) state.rz;
+            target.xScale = (float) state.sx;
+            target.yScale = (float) state.sy;
+            target.zScale = (float) state.sz;
+            target.visible = state.visible;
         }
     }
 
@@ -84,7 +80,6 @@ public final class JpmFaceModel {
         modelPart.yScale = part.scale;
         modelPart.zScale = part.scale;
         parts.put(part.id, modelPart);
-        origins.put(part.id, part.translate.clone());
         return modelPart;
     }
 

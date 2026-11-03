@@ -83,6 +83,35 @@ class JpmInlineTest {
     }
 
     @Test
+    void jpmTranslationPropertiesAreAbsolute() throws Exception {
+        String json = """
+                {"id":"pose","textureSize":[64,64],"animations":[
+                  {"pupil.tx":"0.1","pupil.ty":"0.2"}
+                ],"submodels":[
+                  {"id":"eye_white","translate":[0.5,1,0],"boxes":[{"coordinates":[-1,-1,-1,2,2,1],"uvNorth":[0,0,2,2]}]},
+                  {"id":"pupil","translate":[0.5,0.5,0],"boxes":[{"coordinates":[-1,-1,-1,2,2,1],"uvNorth":[0,0,2,2]}]}
+                ]}
+                """;
+        JpmFaceModel face = new JpmFaceModel(JpmParser.parseText(json));
+        JpmEvalContext context = new JpmEvalContext();
+        face.animate(context);
+        assertEquals(0.1F, find(face.root(), "pupil").pivotX, 1e-5F);
+        assertEquals(0.2F, find(face.root(), "pupil").pivotY, 1e-5F);
+        assertEquals(0.5F, find(face.root(), "eye_white").pivotX, 1e-5F);
+        assertEquals(1.0F, find(face.root(), "eye_white").pivotY, 1e-5F);
+    }
+
+    private static ModelPart find(ModelPart part, String id) {
+        ModelPart direct = part.children.get(id);
+        if (direct != null) return direct;
+        for (ModelPart child : part.children.values()) {
+            ModelPart found = find(child, id);
+            if (found != null) return found;
+        }
+        return null;
+    }
+
+    @Test
     void sizeAddPlacesPupilInFrontOfEyeWhite() throws Exception {
         String json = """
                 {"id":"layers","textureSize":[64,64],"submodels":[
