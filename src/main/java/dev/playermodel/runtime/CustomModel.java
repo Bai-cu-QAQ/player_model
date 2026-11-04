@@ -280,6 +280,13 @@ public final class CustomModel {
         if (face != null) face.animate(context);
         for (JpmFaceModel base : jemBaseFaces) {
             base.animate(context);
+            // The base head is a child of the custom head, so the JPM head rotation must only be
+            // applied once at the custom-head level, not again on this child tree.
+            for (ModelPart root : base.root().children.values()) {
+                root.pitch = 0;
+                root.yaw = 0;
+                root.roll = 0;
+            }
         }
         applyJpmHeadAnimation(context);
     }
