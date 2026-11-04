@@ -330,6 +330,8 @@ public final class CustomModel {
             wrapper.xScale = head.xScale;
             wrapper.yScale = head.yScale;
             wrapper.zScale = head.zScale;
+            wrapper.visible = head.visible;
+            wrapper.hidden = head.hidden;
         }
         return wrapper;
     }
