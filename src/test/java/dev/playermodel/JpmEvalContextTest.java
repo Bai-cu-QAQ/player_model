@@ -120,6 +120,15 @@ class JpmEvalContextTest {
     }
 
     @Test
+    void resolvesHierarchicalPartSelectors() throws Exception {
+        JpmEvalContext context = new JpmEvalContext();
+        context.part("r_eye_white1").ty = 2.5;
+        assertEquals(2.5, eval(context, "part.head.eyes.r_eye_white1.ty"), 1e-9);
+        context.part("part.head.eyes.r_eye_white1").ty = 3.5;
+        assertEquals(3.5, context.part("r_eye_white1").ty, 1e-9);
+    }
+
+    @Test
     void randomStaysStablePerSeed() throws Exception {
         JpmEvalContext context = new JpmEvalContext();
         context.id = 3;

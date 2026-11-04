@@ -38,7 +38,24 @@ public final class JpmEvalContext {
     private final Map<Long, Double> randomCache = new LinkedHashMap<>();
 
     public PartState part(String name) {
+        PartState resolved = resolvePart(name);
+        if (resolved != null) return resolved;
         return parts.computeIfAbsent(name, ignored -> new PartState());
+    }
+
+    /** EMF ids can be hierarchical (head.eyes.r_eye1); fall back to the unique leaf id. */
+    private PartState resolvePart(String name) {
+        if (name == null || name.isEmpty()) return null;
+        PartState exact = parts.get(name);
+        if (exact != null) return exact;
+        if (name.indexOf('.') < 0) return null;
+        String leaf = name.substring(name.lastIndexOf('.') + 1);
+        PartState match = parts.get(leaf);
+        if (match != null) return match;
+        for (var entry : parts.entrySet()) {
+            if (entry.getKey().endsWith("." + leaf)) return entry.getValue();
+        }
+        return null;
     }
 
     public double value(String name) {
@@ -102,7 +119,7 @@ public final class JpmEvalContext {
     }
 
     private double partValue(String partId, String property) {
-        PartState state = parts.get(partId);
+        PartState state = resolvePart(partId);
         return state == null ? 0 : state.value(property);
     }
 
