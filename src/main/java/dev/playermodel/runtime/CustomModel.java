@@ -83,7 +83,8 @@ public final class CustomModel {
             children.put("pm_jem_base_" + i, jemBaseFaces.get(i).root());
         }
         if (face != null) {
-            JpmAnchorTransform.apply(prepared, face.root());
+            float[] headAbsolute = absoluteOrigin(prepared, BoneKind.HEAD);
+            JpmAnchorTransform.apply(prepared, face.root(), headAbsolute);
             if (prepared.faceTexturePng() == null) {
                 children.put("pm_face", face.root());
             }

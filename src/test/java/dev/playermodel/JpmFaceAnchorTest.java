@@ -29,7 +29,7 @@ class JpmFaceAnchorTest {
                 hx + 1, hy + 2, hz + 3, 0.75F));
         PreparedModel prepared = new PreparedModel(model);
         ModelPart face = new ModelPart(List.of(), Map.of());
-        JpmAnchorTransform.apply(prepared, face);
+        JpmAnchorTransform.apply(prepared, face, prepared.pivot(BoneKind.HEAD));
         assertEquals(1, face.originX, 1e-6);
         assertEquals(2, face.originY, 1e-6);
         assertEquals(3, face.originZ, 1e-6);
@@ -44,7 +44,7 @@ class JpmFaceAnchorTest {
         model.anchors = List.of();
         PreparedModel prepared = new PreparedModel(model);
         ModelPart face = new ModelPart(List.of(), Map.of());
-        JpmAnchorTransform.apply(prepared, face);
+        JpmAnchorTransform.apply(prepared, face, prepared.pivot(BoneKind.HEAD));
         assertEquals(0, face.originX + face.originY + face.originZ, 1e-6);
         assertEquals(1, face.xScale, 1e-6);
         assertEquals(1, face.yScale, 1e-6);
