@@ -281,6 +281,18 @@ public final class CustomModel {
         for (JpmFaceModel base : jemBaseFaces) {
             base.animate(context);
         }
+        applyJpmHeadAnimation(context);
+    }
+
+    /** JustExpressions drives an extra head yaw/pitch in the JEM/JPM head animation block. */
+    private void applyJpmHeadAnimation(JpmEvalContext context) {
+        JpmEvalContext.PartState state = context.parts.get("head");
+        if (state == null) return;
+        ModelPart head = parts.get(BoneKind.HEAD);
+        if (head == null) return;
+        head.pitch += (float) state.rx;
+        head.yaw += (float) state.ry;
+        head.roll += (float) state.rz;
     }
 
     public void copyPose(PlayerEntityModel<?> live, PreparedModel prepared) {
