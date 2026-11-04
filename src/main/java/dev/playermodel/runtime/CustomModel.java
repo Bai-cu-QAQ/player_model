@@ -96,21 +96,21 @@ public final class CustomModel {
         this.face = prepared.face() == null ? null
                 : new JpmFaceModel(prepared.face(), headSize[0], headSize[1],
                 faceUvOffset, faceUvOffset);
-        ModelPart syntheticBase = face == null ? null : BaseFaceModel.build(prepared);
+        ModelPart syntheticBase = null;
         this.jemBaseFaces = buildJemBaseFaces(prepared);
         this.baseFaceRoot = jemBaseFaces.isEmpty() ? syntheticBase : null;
         if (face != null && prepared.faceTexturePng() == null) {
             ModelPart head = parts.get(BoneKind.HEAD);
             Map<String, ModelPart> children = head.children == null
-                    ? new HashMap<>() : new HashMap<>(head.children);
-            face.root().setPivot(0, 0, -0.01F);
-            children.put("pm_face", face.root());
+                    ? new java.util.LinkedHashMap<>() : new java.util.LinkedHashMap<>(head.children);
             if (baseFaceRoot != null) {
                 children.put("pm_base_face", baseFaceRoot);
             }
             for (int i = 0; i < jemBaseFaces.size(); i++) {
                 children.put("pm_jem_base_" + i, jemBaseFaces.get(i).root());
             }
+            face.root().setPivot(0, 0, -0.01F);
+            children.put("pm_face", face.root());
             head.children = children;
             this.separateFaceRoot = null;
         } else if (face != null) {
@@ -119,14 +119,14 @@ public final class CustomModel {
             faceChildren.put("pm_face", face.root());
             ModelPart faceAnchor = new ModelPart(List.of(), faceChildren);
             faceAnchor.setPivot(0, 0, -0.01F);
-            Map<String, ModelPart> children = new HashMap<>();
-            children.put("pm_face_anchor", faceAnchor);
+            Map<String, ModelPart> children = new java.util.LinkedHashMap<>();
             if (baseFaceRoot != null) {
                 children.put("pm_base_face", baseFaceRoot);
             }
             for (int i = 0; i < jemBaseFaces.size(); i++) {
                 children.put("pm_jem_base_" + i, jemBaseFaces.get(i).root());
             }
+            children.put("pm_face_anchor", faceAnchor);
             this.separateFaceRoot = new ModelPart(List.of(), children);
         } else {
             this.separateFaceRoot = null;
