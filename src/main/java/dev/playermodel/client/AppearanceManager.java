@@ -128,12 +128,21 @@ public final class AppearanceManager {
 
     private final ThreadLocal<java.util.List<RenderPose>> renderPoses =
             ThreadLocal.withInitial(java.util.ArrayList::new);
+    private final ThreadLocal<java.util.IdentityHashMap<RenderPose, Boolean>> faceClaims =
+            ThreadLocal.withInitial(java.util.IdentityHashMap::new);
 
     public void pushPose(RenderPose pose) { renderPoses.get().add(pose); }
     public void popPose() {
         var poses = renderPoses.get();
         if (!poses.isEmpty()) poses.remove(poses.size() - 1);
-        if (poses.isEmpty()) renderPoses.remove();
+        if (poses.isEmpty()) {
+            renderPoses.remove();
+            faceClaims.get().clear();
+        }
+    }
+    /** The separate face command must be enqueued once per pose, not once per original submit. */
+    public boolean claimFace(RenderPose pose) {
+        return pose != null && faceClaims.get().putIfAbsent(pose, Boolean.TRUE) == null;
     }
     public RenderPose activePose() {
         var poses = renderPoses.get();
@@ -241,6 +250,11 @@ public final class AppearanceManager {
 
     /** Texture to use for the player model, or null to keep the vanilla skin. */
     public Identifier textureFor(AbstractClientPlayerEntity player) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (player == client.player && client.options.getPerspective().isFirstPerson()) {
+            // First-person arm keeps the vanilla skin texture.
+            return null;
+        }
         if (!config.viewEnabled) {
             return null;
         }

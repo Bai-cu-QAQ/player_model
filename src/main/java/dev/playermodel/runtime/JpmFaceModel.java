@@ -110,7 +110,14 @@ public final class JpmFaceModel {
         for (FaceDir dir : FaceDir.values()) {
             float[] uv = box.uv(dir);
             if (uv == null) continue;
-            faces.add(new CubeFace(dir, 0, vertices(dir, minXp, minYp, minZp, maxXp, maxYp, maxZp,
+            // EMF explicit per-face UV names (uvWest/uvEast) address the opposite geometric side
+            // of auto-UV layout; auto UV does the reverse swap. Mirror 1.21.1 parity rules.
+            boolean explicit = box.textureOffset.length != 2;
+            FaceDir oppositeX = dir == FaceDir.WEST ? FaceDir.EAST
+                    : dir == FaceDir.EAST ? FaceDir.WEST : dir;
+            FaceDir normal = explicit ? oppositeX : dir;
+            FaceDir geometry = explicit ? dir : oppositeX;
+            faces.add(new CubeFace(normal, 0, vertices(geometry, minXp, minYp, minZp, maxXp, maxYp, maxZp,
                     uv[0] / data.textureWidth, uv[1] / data.textureHeight,
                     uv[2] / data.textureWidth, uv[3] / data.textureHeight)));
         }

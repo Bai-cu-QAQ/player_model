@@ -29,6 +29,22 @@ class JpmLocalGeometryTest {
         assertEquals(7f / 64, quad.vertices()[0].v(), 1e-6);
     }
 
+    @Test
+    void explicitWestUvDrawsOnTheEastFacingPlane() throws Exception {
+        JpmFaceModel face = new JpmFaceModel(JpmParser.parseText("""
+                {"textureSize":[64,64],"submodels":[
+                  {"id":"box","boxes":[
+                    {"coordinates":[0,0,0,2,1,0.002],"uvWest":[0,0,2,1]}]}
+                ]}
+                """));
+        ModelPart box = face.root().children.get("box");
+        var quad = box.cuboids.get(0).sides[0];
+        assertEquals(1, quad.direction().x(), 1e-6, "explicit uvWest must draw the +X face");
+        for (var vertex : quad.vertices()) {
+            assertEquals(2, vertex.x(), 1e-6, "the +X face must sit on the max X plane");
+        }
+    }
+
     private static float minY(ModelPart part) {
         float value = Float.POSITIVE_INFINITY;
         for (var box : part.cuboids) for (var face : box.sides)

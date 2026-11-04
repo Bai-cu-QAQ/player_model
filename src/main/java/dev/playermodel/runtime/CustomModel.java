@@ -337,10 +337,29 @@ public final class CustomModel {
         if (face != null) face.animate(context);
         for (JpmFaceModel base : jemBaseFaces) {
             base.animate(context);
+            // The JEM base head is a child of the custom head; carry the JPM head rotation once
+            // at the custom-head level and keep this child tree unrotated.
+            for (ModelPart root : base.root().children.values()) {
+                root.pitch = 0;
+                root.yaw = 0;
+                root.roll = 0;
+            }
         }
         for (JemBody body : jemBodies) {
             body.model().animate(context);
         }
+        applyJpmHeadAnimation(context);
+    }
+
+    /** JustExpressions drives an extra head yaw/pitch in the JEM/JPM head animation block. */
+    private void applyJpmHeadAnimation(JpmEvalContext context) {
+        JpmEvalContext.PartState state = context.parts.get("head");
+        if (state == null) return;
+        ModelPart head = parts.get(BoneKind.HEAD);
+        if (head == null) return;
+        head.pitch += (float) state.rx;
+        head.yaw += (float) state.ry;
+        head.roll += (float) state.rz;
     }
 
     public void copyPose(PlayerEntityModel live, PreparedModel prepared) {

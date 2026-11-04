@@ -52,7 +52,8 @@ public abstract class LivingEntityRendererMixin {
         var pose = PlayerModelClient.appearanceManager().activePose();
         Model submitted = pose == null ? model : AppearanceManager.frozenModel(pose.model().getRootPart());
         queue.submitModel(submitted, state, matrices, layer, light, overlay, color, sprite, outline, crumbling);
-        if (pose != null && pose.faceRoot() != null && pose.faceTexture() != null) {
+        if (pose != null && pose.faceRoot() != null && pose.faceTexture() != null
+                && PlayerModelClient.appearanceManager().claimFace(pose)) {
             Model face = AppearanceManager.frozenModel(pose.faceRoot());
             RenderLayer faceLayer = net.minecraft.client.render.RenderLayers.entityTranslucent(pose.faceTexture());
             queue.submitModel(face, state, matrices, faceLayer, light, overlay, color, sprite, outline,
