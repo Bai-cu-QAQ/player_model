@@ -112,6 +112,25 @@ class JpmInlineTest {
     }
 
     @Test
+    void visibleBoxesHidesOnlyThePartCuboids() throws Exception {
+        String json = """
+                {"id":"layers","textureSize":[64,64],"animations":[{"parent.visible_boxes":"0"}],
+                 "submodels":[
+                  {"id":"parent","boxes":[{"coordinates":[-1,0,-1,2,2,2],"uvNorth":[0,0,2,2]}],
+                   "submodels":[{"id":"child","translate":[0,0,0.5],
+                                 "boxes":[{"coordinates":[-0.5,0,-0.5,1,1,1],"uvNorth":[0,0,1,1]}]}]}
+                ]}
+                """;
+        JpmFaceModel face = new JpmFaceModel(JpmParser.parseText(json));
+        face.animate(new JpmEvalContext());
+        ModelPart parent = face.root().children.get("parent");
+        assertNotNull(parent);
+        assertTrue(parent.cuboids.isEmpty(), "visible_boxes=0 must hide only the parent boxes");
+        assertTrue(parent.visible, "the part and its children stay visible");
+        assertEquals(1, parent.children.get("child").cuboids.size());
+    }
+
+    @Test
     void sizeAddPlacesPupilInFrontOfEyeWhite() throws Exception {
         String json = """
                 {"id":"layers","textureSize":[64,64],"submodels":[

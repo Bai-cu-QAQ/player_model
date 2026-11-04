@@ -29,6 +29,7 @@ public final class JpmFaceModel {
     private final float headWidth;
     private final float headHeight;
     private final Map<String, ModelPart> parts = new HashMap<>();
+    private final Map<String, List<ModelPart.Cuboid>> baseCuboids = new HashMap<>();
 
     public JpmFaceModel(JpmModel data) {
         this(data, 8.0F, 8.0F);
@@ -67,8 +68,9 @@ public final class JpmFaceModel {
             target.xScale = (float) state.sx;
             target.yScale = (float) state.sy;
             target.zScale = (float) state.sz;
-            target.visible = state.visible && state.visibleBoxes
-                    && visibleVariant(part.id, context.distance);
+            target.visible = state.visible && visibleVariant(part.id, context.distance);
+            target.cuboids = state.visibleBoxes
+                    ? baseCuboids.getOrDefault(part.id, target.cuboids) : List.of();
         }
     }
 
@@ -106,6 +108,7 @@ public final class JpmFaceModel {
         modelPart.yScale = part.scale;
         modelPart.zScale = part.scale;
         modelPart.visible = visibleVariant(part.id, 0);
+        baseCuboids.put(part.id, cuboids);
         parts.put(part.id, modelPart);
         return modelPart;
     }
