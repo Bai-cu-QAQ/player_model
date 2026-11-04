@@ -72,6 +72,7 @@ public final class CustomModel {
             ModelPart head = parts.get(BoneKind.HEAD);
             Map<String, ModelPart> children = new HashMap<>();
             if (head.children != null) children.putAll(head.children);
+            JpmAnchorTransform.apply(prepared, face.root());
             children.put("pm_face", face.root());
             head.children = children;
         }

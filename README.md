@@ -44,6 +44,29 @@ config/playermodel/models/
 
 `textureMode`：`model` / `skin`。`pivotMode`：`model`（小体型）/ `vanilla`。
 
+### 2.1 JPM 面部
+
+模型目录可放：
+
+```text
+player_face.jpm
+```
+
+- `player_face.jpm` 自动加载，也可用 `"face": "player_face.jpm"` 指定。
+- JPM 使用模型的 `textureMode` 贴图（`model` 或 `skin`）。
+- JPM 方块使用骨骼局部坐标，动画表达式直接写绝对分组变换。
+- 面部整体可绑定到模型里的锚点：
+
+```text
+head
+  anchor_jpm
+    anchor_jpm_size
+```
+
+- `anchor_jpm` 的 pivot 决定面部位置。
+- `anchor_jpm_size` 标记方块缩放整个面部。
+- 没有锚点时使用零偏移、1× 缩放。
+
 ## 3. 模板
 
 `/pmodel template` 生成：

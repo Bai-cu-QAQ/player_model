@@ -657,6 +657,10 @@ public final class BbmodelParser {
                 canonical = Anchor.CAPE;
                 bone = BoneKind.CLOAK;
             }
+            case "jpm", "face", "jpm_face", "face_jpm", "animation", "jpm_animation" -> {
+                canonical = Anchor.JPM;
+                bone = BoneKind.HEAD;
+            }
             default -> {
                 return null;
             }
