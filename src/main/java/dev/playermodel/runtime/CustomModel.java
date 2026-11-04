@@ -92,8 +92,10 @@ public final class CustomModel {
         }
         attachPhysics(prepared, array);
         float[] headSize = faceSize(prepared);
+        float faceUvOffset = prepared.faceTexturePng() != null ? 5.0F : 0;
         this.face = prepared.face() == null ? null
-                : new JpmFaceModel(prepared.face(), headSize[0], headSize[1]);
+                : new JpmFaceModel(prepared.face(), headSize[0], headSize[1],
+                faceUvOffset, faceUvOffset);
         ModelPart syntheticBase = face == null ? null : BaseFaceModel.build(prepared);
         this.jemBaseFaces = buildJemBaseFaces(prepared);
         this.baseFaceRoot = jemBaseFaces.isEmpty() ? syntheticBase : null;

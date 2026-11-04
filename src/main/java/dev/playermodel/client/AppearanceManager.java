@@ -144,6 +144,11 @@ public final class AppearanceManager {
         try {
             EmfAnimationBridge.animate(live);
             CustomModel custom = customModelFor(prepared);
+            if (debugLogged.add(player.getUuid())) {
+                PlayerModelMod.LOG.info("PlayerModel render debug: entity={}, faceJpm={}, faceTexture={}, separateFace={}",
+                        player.getUuid(), prepared.face() != null,
+                        prepared.faceTexturePng() != null, custom.hasSeparateFaceTexture());
+            }
             custom.copyPose(playerModel, prepared);
             physics.update(player, custom, System.nanoTime());
             JpmEvalContext face = new JpmEvalContext();

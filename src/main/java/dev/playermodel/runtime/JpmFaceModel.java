@@ -28,17 +28,26 @@ public final class JpmFaceModel {
     private final ModelPart root;
     private final float headWidth;
     private final float headHeight;
+    private final float uvOffsetU;
+    private final float uvOffsetV;
     private final Map<String, ModelPart> parts = new HashMap<>();
     private final Map<String, List<ModelPart.Cuboid>> baseCuboids = new HashMap<>();
 
     public JpmFaceModel(JpmModel data) {
-        this(data, 8.0F, 8.0F);
+        this(data, 8.0F, 8.0F, 0, 0);
     }
 
     public JpmFaceModel(JpmModel data, float headWidth, float headHeight) {
+        this(data, headWidth, headHeight, 0, 0);
+    }
+
+    public JpmFaceModel(JpmModel data, float headWidth, float headHeight,
+                        float uvOffsetU, float uvOffsetV) {
         this.data = data;
         this.headWidth = headWidth;
         this.headHeight = headHeight;
+        this.uvOffsetU = uvOffsetU;
+        this.uvOffsetV = uvOffsetV;
         Map<String, ModelPart> children = new HashMap<>();
         for (JpmPart part : data.roots) {
             children.put(part.id, build(part));
@@ -91,7 +100,7 @@ public final class JpmFaceModel {
     private ModelPart build(JpmPart part) {
         List<NormalizedCube> cubes = new ArrayList<>();
         for (JpmBox box : part.boxes) {
-            cubes.add(toCube(box));
+            cubes.add(toCube(box, part.id));
         }
         List<ModelPart.Cuboid> cuboids = PreparedModel.buildCuboids(cubes,
                 part.translate[0], part.translate[1], part.translate[2]);
@@ -113,7 +122,7 @@ public final class JpmFaceModel {
         return modelPart;
     }
 
-    private NormalizedCube toCube(JpmBox box) {
+    private NormalizedCube toCube(JpmBox box, String partId) {
         float minX = box.x();
         float minY = box.y();
         float minZ = box.z();
@@ -133,9 +142,11 @@ public final class JpmFaceModel {
         for (FaceDir dir : FaceDir.values()) {
             float[] uv = box.uv(dir);
             if (uv == null) continue;
+            float uo = partId.matches("[rl]_(eye_white|pupil|eyelid|blink)\\d+") ? uvOffsetU : 0;
+            float vo = partId.matches("[rl]_(eye_white|pupil|eyelid|blink)\\d+") ? uvOffsetV : 0;
             faces.add(new CubeFace(dir, 0, vertices(dir, minXp, minYp, minZp, maxXp, maxYp, maxZp,
-                    uv[0] / data.textureWidth, uv[1] / data.textureHeight,
-                    uv[2] / data.textureWidth, uv[3] / data.textureHeight)));
+                    (uv[0] + uo) / data.textureWidth, (uv[1] + vo) / data.textureHeight,
+                    (uv[2] + uo) / data.textureWidth, (uv[3] + vo) / data.textureHeight)));
         }
         return new NormalizedCube(minXp, minYp, minZp, maxXp, maxYp, maxZp, faces);
     }
