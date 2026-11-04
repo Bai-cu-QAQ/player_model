@@ -105,7 +105,7 @@ public final class CustomModel {
             for (int i = 0; i < jemBaseFaces.size(); i++) {
                 children.put("pm_jem_base_" + i, jemBaseFaces.get(i).root());
             }
-            face.root().setPivot(0, 0, 0);
+            JpmAnchorTransform.apply(prepared, face.root());
             children.put("pm_face", face.root());
             head.children = children;
             this.separateFaceRoot = null;
@@ -113,6 +113,7 @@ public final class CustomModel {
             // A separate PNG needs its own render layer; keep this tree out of the body pass.
             Map<String, ModelPart> faceChildren = new HashMap<>();
             faceChildren.put("pm_face", face.root());
+            JpmAnchorTransform.apply(prepared, face.root());
             ModelPart faceAnchor = new ModelPart(List.of(), faceChildren);
             faceAnchor.setPivot(0, 0, 0);
             Map<String, ModelPart> children = new java.util.LinkedHashMap<>();

@@ -12,6 +12,6 @@ public record Anchor(String name, BoneKind bone, float x, float y, float z, floa
     public static final String RIGHT_HAND = "right_hand";
     public static final String LEFT_HAND = "left_hand";
     public static final String CAPE = "cape";
-    /** Legacy JPM face anchor; recognized for compatibility, not applied by the current renderer. */
+    /** JPM face anchor: pivot positions the face, size marker scales the whole face. */
     public static final String JPM = "jpm";
 }

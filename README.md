@@ -38,7 +38,23 @@ config/playermodel/models/
 - `meta.jemMode` 为 `"full"` 时还会接入 JEM 的 body/arms/legs 等 inline 模型；`attach=false` 的部件会替换对应自定义几何。
 - 支持 EMF 常用变量、`this`/`part.*`/`render.*` 选择器和 `visible_boxes` 属性。JustExpressions 的所有眼睛组均按资源包渲染与动画，贴图各区域的 alpha 决定可见样式；不按头部尺寸或距离硬切换组。
 - 多贴图自动合并图集；`texture.png` 只用于单贴图覆盖。
-- `meta.json`：
+
+### 2.1 JPM 面部锚点
+
+JPM 面部（含独立贴图渲染层）可以整体绑定到模型里的锚点分组：
+
+```text
+head
+  anchor_jpm
+    anchor_jpm_size
+```
+
+- `anchor_jpm` 的分组 pivot 决定面部整体位置，按头部局部坐标计算，会跟随头部旋转。
+- `anchor_jpm_size` 是 4×4×4 标记方块；缩放它按比例改变整个 JPM 面部大小。
+- 锚点是 JPM 树外的外层变换，不会改写眼白、瞳孔、眼皮各自的动画。
+- 没有 `anchor_jpm` 时保持原来的零偏移、1× 缩放。
+
+`meta.json`：
 
 ```json
 {
