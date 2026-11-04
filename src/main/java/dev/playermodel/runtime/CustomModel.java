@@ -347,7 +347,9 @@ public final class CustomModel {
                 + " cuboids=" + cuboids
                 + " headVisible=" + (head != null && head.visible)
                 + " white=" + (white != null && white.visible) + "/" + (white == null ? -1 : white.cuboids.size())
+                + " whiteY=" + (white == null ? "?" : white.pivotY) + " whiteSY=" + (white == null ? "?" : white.yScale)
                 + " pupil=" + (pupil != null && pupil.visible) + "/" + (pupil == null ? -1 : pupil.cuboids.size())
+                + " pupilY=" + (pupil == null ? "?" : pupil.pivotY)
                 + " z=" + face.root().pivotZ;
     }
 
