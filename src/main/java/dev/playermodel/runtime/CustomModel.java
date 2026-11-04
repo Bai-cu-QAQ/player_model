@@ -103,7 +103,7 @@ public final class CustomModel {
             ModelPart head = parts.get(BoneKind.HEAD);
             Map<String, ModelPart> children = head.children == null
                     ? new HashMap<>() : new HashMap<>(head.children);
-            face.root().setPivot(0, 0, 0);
+            face.root().setPivot(0, 0, -0.01F);
             children.put("pm_face", face.root());
             if (baseFaceRoot != null) {
                 children.put("pm_base_face", baseFaceRoot);
@@ -118,7 +118,7 @@ public final class CustomModel {
             Map<String, ModelPart> faceChildren = new HashMap<>();
             faceChildren.put("pm_face", face.root());
             ModelPart faceAnchor = new ModelPart(List.of(), faceChildren);
-            faceAnchor.setPivot(0, 0, 0);
+            faceAnchor.setPivot(0, 0, -0.01F);
             Map<String, ModelPart> children = new HashMap<>();
             children.put("pm_face_anchor", faceAnchor);
             if (baseFaceRoot != null) {

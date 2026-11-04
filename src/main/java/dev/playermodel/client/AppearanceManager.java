@@ -36,6 +36,7 @@ public final class AppearanceManager {
     private final Map<String, CustomModel> customModels = new HashMap<>();
     private final PhysicsManager physics = new PhysicsManager();
     private final java.util.Set<UUID> debugLogged = new java.util.HashSet<>();
+    private final java.util.Set<UUID> faceLogged = new java.util.HashSet<>();
     private boolean serverSyncAvailable;
 
     public AppearanceManager(ClientConfig config, ModelRegistry registry) {
@@ -184,6 +185,9 @@ public final class AppearanceManager {
                 String faceHash = "face-" + Integer.toHexString(System.identityHashCode(prepared));
                 Identifier faceTexture = TextureCache.ensure(faceHash, prepared.faceTexturePng());
                 if (faceTexture != null) {
+                    if (faceLogged.add(player.getUuid())) {
+                        PlayerModelMod.LOG.info("PlayerModel face render: texture={}", faceTexture);
+                    }
                     RenderLayer faceLayer = RenderLayer.getEntityTranslucent(faceTexture);
                     custom.renderSeparateFace(matrices, provider.getBuffer(faceLayer), light, overlay, color);
                 }
