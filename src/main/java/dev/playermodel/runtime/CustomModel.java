@@ -38,7 +38,11 @@ public final class CustomModel {
     private final JpmFaceModel face;
     private final ModelPart baseFaceRoot;
     private final List<JpmFaceModel> jemBaseFaces;
+    private final List<JemBody> jemBodies;
     private final ModelPart separateFaceRoot;
+
+    private record JemBody(BoneKind kind, JpmFaceModel model, boolean attach) {
+    }
 
     public record PhysicsBoneRuntime(String name, ModelPart part, ModelPart parent,
                                      BoneKind parentBone, String parentPhysics,
@@ -123,6 +127,27 @@ public final class CustomModel {
             this.separateFaceRoot = new ModelPart(List.of(), children);
         } else {
             this.separateFaceRoot = null;
+        }
+        this.jemBodies = buildJemBodies(prepared);
+        if (!jemBodies.isEmpty()) {
+            for (JemBody body : jemBodies) {
+                ModelPart target = parts.get(body.kind());
+                if (target == null) continue;
+                Map<String, ModelPart> children = target.children == null
+                        ? new HashMap<>() : new HashMap<>(target.children);
+                body.model().root().setPivot(0, 0, 0);
+                children.put("pm_jem_" + body.kind().name(), body.model().root());
+                target.children = children;
+                if (!body.attach()) {
+                    target.cuboids = List.of();
+                }
+            }
+            if (!jemBaseFaces.isEmpty()) {
+                ModelPart head = parts.get(BoneKind.HEAD);
+                if (head != null) head.cuboids = List.of();
+                ModelPart hat = parts.get(BoneKind.HAT);
+                if (hat != null) hat.cuboids = List.of();
+            }
         }
         buildParentMap(rootPart);
     }
@@ -288,6 +313,9 @@ public final class CustomModel {
                 root.roll = 0;
             }
         }
+        for (JemBody body : jemBodies) {
+            body.model().animate(context);
+        }
         applyJpmHeadAnimation(context);
     }
 
@@ -384,6 +412,30 @@ public final class CustomModel {
             to.zScale = from.zScale;
         }
         return new Installed(states);
+    }
+
+    private static List<JemBody> buildJemBodies(PreparedModel prepared) {
+        if (prepared == null || prepared.data() == null
+                || prepared.data().jem == null || prepared.data().jem.isBlank()
+                || !"full".equalsIgnoreCase(prepared.data().jemMode)) {
+            return List.of();
+        }
+        try {
+            java.nio.file.Path base = prepared.data().jemDirectory == null
+                    ? java.nio.file.Path.of("") : java.nio.file.Path.of(prepared.data().jemDirectory);
+            var jem = dev.playermodel.jpm.JemParser.parse(prepared.data().jem, base);
+            List<JemBody> result = new ArrayList<>();
+            for (var entry : jem.attachments()) {
+                BoneKind kind = BoneKind.byName(entry.part());
+                if (kind == null || kind == BoneKind.HEAD || kind == BoneKind.HAT) continue;
+                var inline = entry.inline();
+                if (inline == null) continue;
+                result.add(new JemBody(kind, new JpmFaceModel(inline), entry.attach()));
+            }
+            return result;
+        } catch (dev.playermodel.jpm.JpmException | RuntimeException e) {
+            return List.of();
+        }
     }
 
     private static List<JpmFaceModel> buildJemBaseFaces(PreparedModel prepared) {

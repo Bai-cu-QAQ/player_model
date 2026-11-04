@@ -25,6 +25,8 @@ public final class RawModel {
     public String jem;
     /** Directory used to resolve JEM referenced models. */
     public String jemDirectory;
+    /** JEM integration mode: "head" (default) or "full". */
+    public String jemMode;
 
     public RawTexture textureAt(int index) {
         if (index >= 0 && index < textures.size()) {

@@ -19,6 +19,9 @@
   // 可选 JEM 描述文件路径；省略时自动查找同目录 player.jem。
   // JEM 的 head/headwear inline 模型会作为可见基础头部层渲染在 JPM 覆盖层下方。
   "jem": "",
+  // JEM 接入模式："head" 只接入头部基础层；"full" 同时接入 body/arms/legs 等 JEM inline 模型，
+  // 且 attach=false 的部件会替换导入模型的自定义几何。
+  "jemMode": "head",
   // 贴图 UV 尺寸；0 表示从 bbmodel 自动读取。
   "textureWidth": 64,
   "textureHeight": 64,

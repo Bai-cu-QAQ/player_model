@@ -19,6 +19,8 @@ public final class NormalizedModel {
     public String jem;
     /** Directory used to resolve JEM referenced models. */
     public String jemDirectory;
+    /** JEM integration mode: "head" (default) or "full". */
+    public String jemMode;
     public int textureWidth = 64;
     public int textureHeight = 64;
     public transient byte[] texturePng;

@@ -35,6 +35,7 @@ config/playermodel/models/
 - `player_face.png` 是 JPM 独立贴图；省略时读取 JPM 的 `texture` 字段，否则尝试同目录 `player_face.png`。也可用 `"faceTexture": "..."` 指定。
 - JPM 的 UV 默认按 `textureSize` 解析；使用独立贴图时按 JPM 的 64×64 坐标系映射。
 - JPM 面部模型直接按 JPM 声明的 `translate`/`rotate`/`scale`、per-face UV 和动画表达式构建；基础头部层优先使用同目录 `player.jem` / `meta.jem` 中的 `head`、`headwear` inline 模型，没有 JEM 时合成皮肤脸部 UV 层。
+- `meta.jemMode` 为 `"full"` 时还会接入 JEM 的 body/arms/legs 等 inline 模型；`attach=false` 的部件会替换对应自定义几何。
 - 支持 EMF 常用变量、`this`/`part.*`/`render.*` 选择器、`visible_boxes` 属性，以及 2by1/2by2/2by3/simple/farset 眼睛 LOD 变体选择。
 - 多贴图自动合并图集；`texture.png` 只用于单贴图覆盖。
 - `meta.json`：

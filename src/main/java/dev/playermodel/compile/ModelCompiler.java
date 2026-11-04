@@ -45,6 +45,7 @@ public final class ModelCompiler {
         model.faceTexturePng = raw.faceTexturePng;
         model.jem = raw.jem;
         model.jemDirectory = raw.jemDirectory;
+        model.jemMode = raw.jemMode;
         model.textureWidth = atlas.textureWidth();
         model.textureHeight = atlas.textureHeight();
         model.texturePng = atlas.png();

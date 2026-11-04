@@ -138,6 +138,7 @@ public final class ModelRegistry {
             if (Files.isRegularFile(jemFile) && jemFile.startsWith(folder.normalize())) {
                 raw.jem = Files.readString(jemFile);
                 raw.jemDirectory = folder.toAbsolutePath().normalize().toString();
+                raw.jemMode = meta.jemMode;
             }
 
             Path textureFile = folder.resolve("texture.png");
@@ -375,6 +376,8 @@ public final class ModelRegistry {
         public String faceTexture;
         /** Optional JEM descriptor for the vanilla-part base layer. */
         public String jem;
+        /** JEM integration mode: "head" (default) or "full". */
+        public String jemMode;
         public java.util.Map<String, AnchorMeta> anchors = new java.util.LinkedHashMap<>();
         public int textureWidth;
         public int textureHeight;
