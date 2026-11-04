@@ -42,8 +42,9 @@ public final class BaseFaceModel {
         float v1 = 8 / height;
         float u2 = 16 / width;
         float v2 = 16 / height;
-        // Slight in-front offset: the JPM overlay owns the surface, this quad only fills its gaps.
-        float z = minZ - 0.011F;
+        // Just in front of the imported head surface, but behind the JPM overlay (which sits at
+        // roughly z - 0.002). Putting this plane in front would cover the animated eyes.
+        float z = minZ - 0.001F;
         FaceVertex[] vertices = {
                 new FaceVertex(minX, minY, z, u1, v1),
                 new FaceVertex(maxX, minY, z, u2, v1),

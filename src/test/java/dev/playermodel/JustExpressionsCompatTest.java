@@ -26,6 +26,35 @@ class JustExpressionsCompatTest {
     }
 
     @Test
+    void parsesInlineJemAnimations() throws Exception {
+        String json = """
+                {
+                  "textureSize": [64, 64],
+                  "models": [
+                    {
+                      "part": "head",
+                      "id": "head",
+                      "animations": [
+                        {"head.ty": "2"}
+                      ],
+                      "boxes": [
+                        {"coordinates": [-4, 24, -4, 8, 8, 8], "textureOffset": [0, 0]}
+                      ]
+                    }
+                  ]
+                }
+                """;
+        var parsed = JemParser.parse(json, Path.of(".tmp"));
+        JpmModel head = parsed.inlineForVanillaPart("head");
+        assertNotNull(head);
+        var face = new dev.playermodel.runtime.JpmFaceModel(head);
+        face.animate(new dev.playermodel.jpm.JpmEvalContext());
+        var part = face.root().children.get("head");
+        assertNotNull(part);
+        assertTrue(Math.abs(part.pivotY - 2.0F) < 1e-5F);
+    }
+
+    @Test
     void parsesInlineJemFromString() throws Exception {
         String json = """
                 {

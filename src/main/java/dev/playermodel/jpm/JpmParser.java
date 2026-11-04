@@ -96,7 +96,7 @@ public final class JpmParser {
         return new JpmModel(id, texture[0], texture[1], textureName, parts, animations);
     }
 
-    private List<JpmAnimation> parseAnimations(JsonArray array) throws JpmException {
+    public static List<JpmAnimation> parseAnimations(JsonArray array) throws JpmException {
         List<JpmAnimation> result = new ArrayList<>();
         if (array == null) return result;
         if (array.size() > MAX_ANIMATIONS) {

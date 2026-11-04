@@ -37,7 +37,7 @@ public final class CustomModel {
     private final ModelPart rootPart;
     private final JpmFaceModel face;
     private final ModelPart baseFaceRoot;
-    private final List<ModelPart> jemBaseHeads;
+    private final List<JpmFaceModel> jemBaseFaces;
     private final ModelPart separateFaceRoot;
 
     public record PhysicsBoneRuntime(String name, ModelPart part, ModelPart parent,
@@ -90,8 +90,8 @@ public final class CustomModel {
         this.face = prepared.face() == null ? null
                 : new JpmFaceModel(prepared.face(), headSize[0], headSize[1]);
         ModelPart syntheticBase = face == null ? null : BaseFaceModel.build(prepared);
-        this.jemBaseHeads = buildJemBaseHeads(prepared);
-        this.baseFaceRoot = jemBaseHeads.isEmpty() ? syntheticBase : null;
+        this.jemBaseFaces = buildJemBaseFaces(prepared);
+        this.baseFaceRoot = jemBaseFaces.isEmpty() ? syntheticBase : null;
         if (face != null && prepared.faceTexturePng() == null) {
             ModelPart head = parts.get(BoneKind.HEAD);
             Map<String, ModelPart> children = head.children == null
@@ -101,8 +101,8 @@ public final class CustomModel {
             if (baseFaceRoot != null) {
                 children.put("pm_base_face", baseFaceRoot);
             }
-            for (int i = 0; i < jemBaseHeads.size(); i++) {
-                children.put("pm_jem_base_" + i, jemBaseHeads.get(i));
+            for (int i = 0; i < jemBaseFaces.size(); i++) {
+                children.put("pm_jem_base_" + i, jemBaseFaces.get(i).root());
             }
             head.children = children;
             this.separateFaceRoot = null;
@@ -117,8 +117,8 @@ public final class CustomModel {
             if (baseFaceRoot != null) {
                 children.put("pm_base_face", baseFaceRoot);
             }
-            for (int i = 0; i < jemBaseHeads.size(); i++) {
-                children.put("pm_jem_base_" + i, jemBaseHeads.get(i));
+            for (int i = 0; i < jemBaseFaces.size(); i++) {
+                children.put("pm_jem_base_" + i, jemBaseFaces.get(i).root());
             }
             this.separateFaceRoot = new ModelPart(List.of(), children);
         } else {
@@ -278,6 +278,9 @@ public final class CustomModel {
 
     public void animateFace(JpmEvalContext context) {
         if (face != null) face.animate(context);
+        for (JpmFaceModel base : jemBaseFaces) {
+            base.animate(context);
+        }
     }
 
     public void copyPose(PlayerEntityModel<?> live, PreparedModel prepared) {
@@ -364,7 +367,7 @@ public final class CustomModel {
         return new Installed(states);
     }
 
-    private static List<ModelPart> buildJemBaseHeads(PreparedModel prepared) {
+    private static List<JpmFaceModel> buildJemBaseFaces(PreparedModel prepared) {
         if (prepared == null || prepared.data() == null
                 || prepared.data().jem == null || prepared.data().jem.isBlank()) {
             return List.of();
@@ -373,13 +376,13 @@ public final class CustomModel {
             java.nio.file.Path base = prepared.data().jemDirectory == null
                     ? java.nio.file.Path.of("") : java.nio.file.Path.of(prepared.data().jemDirectory);
             var jem = dev.playermodel.jpm.JemParser.parse(prepared.data().jem, base);
-            List<ModelPart> result = new ArrayList<>();
+            List<JpmFaceModel> result = new ArrayList<>();
             for (String part : new String[]{"head", "headwear"}) {
                 var inline = jem.inlineForVanillaPart(part);
                 if (inline == null) continue;
-                ModelPart root = new JpmFaceModel(inline).root();
-                root.setPivot(0, 0, 0);
-                result.add(root);
+                JpmFaceModel model = new JpmFaceModel(inline);
+                model.root().setPivot(0, 0, 0);
+                result.add(model);
             }
             return result;
         } catch (dev.playermodel.jpm.JpmException | RuntimeException e) {
@@ -387,7 +390,8 @@ public final class CustomModel {
         }
     }
 
-    private static float[] faceSize(PreparedModel prepared) {        if (prepared == null || prepared.data() == null) return new float[]{8, 8};
+    private static float[] faceSize(PreparedModel prepared) {
+        if (prepared == null || prepared.data() == null) return new float[]{8, 8};
         var head = prepared.data().bone(BoneKind.HEAD);
         if (head == null || head.cubes().isEmpty()) return new float[]{8, 8};
         float minX = Float.POSITIVE_INFINITY;

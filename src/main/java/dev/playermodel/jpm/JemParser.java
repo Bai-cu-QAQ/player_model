@@ -63,6 +63,7 @@ public final class JemParser {
             int[] textureSize = ints(root, "textureSize", new int[]{64, 64});
             if (textureSize[0] <= 0 || textureSize[1] <= 0) throw new JpmException("JEM textureSize 无效");
             String rootTexture = string(root, "texture", "");
+            JsonArray rootAnimations = array(root, "animations");
             JsonArray models = array(root, "models");
             if (models == null) throw new JpmException("JEM 缺少 models");
             if (models.size() > MAX_MODELS) throw new JpmException("JEM 模型数量过多");
@@ -83,7 +84,8 @@ public final class JemParser {
                     jpm = parseReferenced(baseDir, model);
                 }
                 JpmModel inline = parseInline(object, id, texture, entryTexture, limits,
-                        "models[" + i + "]");
+                        "models[" + i + "]", array(object, "animations") == null
+                                ? rootAnimations : array(object, "animations"));
                 result.add(new JemPart(part, id, model, jpm, attach, texture,
                         entryTexture[0], entryTexture[1], inline));
             }
@@ -109,10 +111,11 @@ public final class JemParser {
     }
 
     private static JpmModel parseInline(JsonObject entry, String id, String texture, int[] textureSize,
-                                        Limits limits, String path) throws JpmException {
+                                        Limits limits, String path, JsonArray animations) throws JpmException {
         if (!entry.has("boxes") && !entry.has("submodels")) return null;
         JpmPart root = parsePart(entry, id, 0, path, limits);
-        return new JpmModel(id, textureSize[0], textureSize[1], texture, List.of(root), List.of());
+        return new JpmModel(id, textureSize[0], textureSize[1], texture, List.of(root),
+                animations == null ? List.of() : JpmParser.parseAnimations(animations));
     }
 
     private static JpmPart parsePart(JsonObject object, String forcedId, int depth, String path,
