@@ -81,8 +81,8 @@ public final class JpmFaceModel {
         if (!matcher.matches()) return true;
         int variant = Integer.parseInt(matcher.group(2));
         if (distance > 24) return variant == 16;
-        if (headHeight >= 11) return variant == 9;
-        if (headHeight >= 9) return variant >= 5 && variant <= 8;
+        // Head bounds include inflated/custom geometry, so they are not a reliable LOD selector.
+        // The standard 2by1 group is the safe default for player faces.
         return variant >= 1 && variant <= 4;
     }
 
