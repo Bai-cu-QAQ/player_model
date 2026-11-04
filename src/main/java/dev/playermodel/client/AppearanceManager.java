@@ -33,6 +33,7 @@ public final class AppearanceManager {
     private final Map<String, CustomModel> customModels = new HashMap<>();
     private final PhysicsManager physics = new PhysicsManager();
     private final java.util.Set<UUID> debugLogged = new java.util.HashSet<>();
+    private final java.util.Set<UUID> faceStateLogged = new java.util.HashSet<>();
     private boolean serverSyncAvailable;
 
     public AppearanceManager(ClientConfig config, ModelRegistry registry) {
@@ -182,6 +183,11 @@ public final class AppearanceManager {
             face.distance = Math.sqrt(state.squaredDistanceToCamera);
             face.id = player.getUuid().hashCode() / (double) Integer.MAX_VALUE;
             custom.animateFace(face);
+            if (faceStateLogged.add(player.getUuid())) {
+                PlayerModelMod.LOG.info("PlayerModel face state: faceJpm={}, faceTexture={}, jem={}",
+                        prepared.face() != null, prepared.faceTexturePng() != null,
+                        prepared.data().jem != null);
+            }
             Identifier faceTexture = null;
             ModelPart faceRoot = null;
             byte[] facePng = prepared.faceTexturePng();
