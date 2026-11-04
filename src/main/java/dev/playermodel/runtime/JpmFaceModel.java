@@ -21,34 +21,14 @@ import java.util.Map;
  * preserved, and the animation expressions are evaluated as absolute writes.
  */
 public final class JpmFaceModel {
-    private static final java.util.regex.Pattern EYE_VARIANT = java.util.regex.Pattern
-            .compile("[rl]_(eye_white|pupil|eyelid|blink)(\\d+)$");
-
     private final JpmModel data;
     private final ModelPart root;
-    private final float headWidth;
-    private final float headHeight;
-    private final float uvOffsetU;
-    private final float uvOffsetV;
     private final Map<String, ModelPart> parts = new HashMap<>();
     private final Map<String, List<ModelPart.Cuboid>> baseCuboids = new HashMap<>();
 
     public JpmFaceModel(JpmModel data) {
-        this(data, 8.0F, 8.0F, 0, 0);
-    }
-
-    public JpmFaceModel(JpmModel data, float headWidth, float headHeight) {
-        this(data, headWidth, headHeight, 0, 0);
-    }
-
-    public JpmFaceModel(JpmModel data, float headWidth, float headHeight,
-                        float uvOffsetU, float uvOffsetV) {
         this.data = data;
-        this.headWidth = headWidth;
-        this.headHeight = headHeight;
-        this.uvOffsetU = uvOffsetU;
-        this.uvOffsetV = uvOffsetV;
-        Map<String, ModelPart> children = new HashMap<>();
+        Map<String, ModelPart> children = new java.util.LinkedHashMap<>();
         for (JpmPart part : data.roots) {
             children.put(part.id, build(part));
         }
@@ -77,34 +57,21 @@ public final class JpmFaceModel {
             target.xScale = (float) state.sx;
             target.yScale = (float) state.sy;
             target.zScale = (float) state.sz;
-            target.visible = state.visible && visibleVariant(part.id, context.distance);
+            target.visible = state.visible;
             target.cuboids = state.visibleBoxes
                     ? baseCuboids.getOrDefault(part.id, target.cuboids) : List.of();
         }
     }
 
-    /**
-     * Selects the eye LOD group from the imported head dimensions. JustExpressions ships separate
-     * 2by1/2by2/2by3/simple/farset variants; EMF shows one group for a given face size.
-     */
-    private boolean visibleVariant(String id, double distance) {
-        java.util.regex.Matcher matcher = EYE_VARIANT.matcher(id);
-        if (!matcher.matches()) return true;
-        int variant = Integer.parseInt(matcher.group(2));
-        if (distance > 24) return variant == 16;
-        // Head bounds include inflated/custom geometry, so they are not a reliable LOD selector.
-        // The standard 2by1 group is the safe default for player faces.
-        return variant >= 1 && variant <= 4;
-    }
-
     private ModelPart build(JpmPart part) {
         List<NormalizedCube> cubes = new ArrayList<>();
         for (JpmBox box : part.boxes) {
-            cubes.add(toCube(box, part.id));
+            cubes.add(toCube(box));
         }
-        List<ModelPart.Cuboid> cuboids = PreparedModel.buildCuboids(cubes,
-                part.translate[0], part.translate[1], part.translate[2]);
-        Map<String, ModelPart> children = new HashMap<>();
+        // JPM boxes are already local to their part (unlike imported bbmodel cubes).
+        // Subtracting the pivot here cancels translate and breaks nested animated scales.
+        List<ModelPart.Cuboid> cuboids = PreparedModel.buildCuboids(cubes, 0, 0, 0);
+        Map<String, ModelPart> children = new java.util.LinkedHashMap<>();
         for (JpmPart child : part.children) {
             children.put(child.id, build(child));
         }
@@ -116,13 +83,13 @@ public final class JpmFaceModel {
         modelPart.xScale = part.scale;
         modelPart.yScale = part.scale;
         modelPart.zScale = part.scale;
-        modelPart.visible = visibleVariant(part.id, 0);
+        modelPart.visible = true;
         baseCuboids.put(part.id, cuboids);
         parts.put(part.id, modelPart);
         return modelPart;
     }
 
-    private NormalizedCube toCube(JpmBox box, String partId) {
+    private NormalizedCube toCube(JpmBox box) {
         float minX = box.x();
         float minY = box.y();
         float minZ = box.z();
@@ -142,11 +109,14 @@ public final class JpmFaceModel {
         for (FaceDir dir : FaceDir.values()) {
             float[] uv = box.uv(dir);
             if (uv == null) continue;
-            float uo = partId.matches("[rl]_(eye_white|pupil|eyelid|blink)\\d+") ? uvOffsetU : 0;
-            float vo = partId.matches("[rl]_(eye_white|pupil|eyelid|blink)\\d+") ? uvOffsetV : 0;
-            faces.add(new CubeFace(dir, 0, vertices(dir, minXp, minYp, minZp, maxXp, maxYp, maxZp,
-                    (uv[0] + uo) / data.textureWidth, (uv[1] + vo) / data.textureHeight,
-                    (uv[2] + uo) / data.textureWidth, (uv[3] + vo) / data.textureHeight)));
+            boolean explicit = box.textureOffset.length != 2;
+            FaceDir oppositeX = dir == FaceDir.WEST ? FaceDir.EAST
+                    : dir == FaceDir.EAST ? FaceDir.WEST : dir;
+            FaceDir normal = explicit ? oppositeX : dir;
+            FaceDir geometry = explicit ? dir : oppositeX;
+            faces.add(new CubeFace(normal, 0, vertices(geometry, minXp, minYp, minZp, maxXp, maxYp, maxZp,
+                    uv[0] / data.textureWidth, uv[1] / data.textureHeight,
+                    uv[2] / data.textureWidth, uv[3] / data.textureHeight)));
         }
         return new NormalizedCube(minXp, minYp, minZp, maxXp, maxYp, maxZp, faces);
     }
@@ -155,14 +125,16 @@ public final class JpmFaceModel {
                                          float maxX, float maxY, float maxZ,
                                          float u1, float v1, float u2, float v2) {
         float[][] positions = switch (dir) {
-            case NORTH -> new float[][]{{minX, minY, minZ}, {maxX, minY, minZ}, {maxX, maxY, minZ}, {minX, maxY, minZ}};
-            case SOUTH -> new float[][]{{maxX, minY, maxZ}, {minX, minY, maxZ}, {minX, maxY, maxZ}, {maxX, maxY, maxZ}};
-            case EAST -> new float[][]{{maxX, minY, maxZ}, {maxX, minY, minZ}, {maxX, maxY, minZ}, {maxX, maxY, maxZ}};
-            case WEST -> new float[][]{{minX, minY, minZ}, {minX, minY, maxZ}, {minX, maxY, maxZ}, {minX, maxY, minZ}};
+            case NORTH -> new float[][]{{maxX, minY, minZ}, {minX, minY, minZ}, {minX, maxY, minZ}, {maxX, maxY, minZ}};
+            case SOUTH -> new float[][]{{minX, minY, maxZ}, {maxX, minY, maxZ}, {maxX, maxY, maxZ}, {minX, maxY, maxZ}};
+            // EMF explicit per-face UV names use WEST for the +X face and EAST for -X.
+            case WEST -> new float[][]{{maxX, minY, maxZ}, {maxX, minY, minZ}, {maxX, maxY, minZ}, {maxX, maxY, maxZ}};
+            case EAST -> new float[][]{{minX, minY, minZ}, {minX, minY, maxZ}, {minX, maxY, maxZ}, {minX, maxY, minZ}};
             case UP -> new float[][]{{minX, minY, minZ}, {maxX, minY, minZ}, {maxX, minY, maxZ}, {minX, minY, maxZ}};
             case DOWN -> new float[][]{{minX, maxY, maxZ}, {maxX, maxY, maxZ}, {maxX, maxY, minZ}, {minX, maxY, minZ}};
         };
-        float[][] uvs = {{u1, v1}, {u2, v1}, {u2, v2}, {u1, v2}};
+        // Vanilla ModelPart.Quad assigns the rectangle's (u2,v1) to its first vertex.
+        float[][] uvs = {{u2, v1}, {u1, v1}, {u1, v2}, {u2, v2}};
         FaceVertex[] result = new FaceVertex[4];
         for (int i = 0; i < 4; i++) {
             result[i] = new FaceVertex(positions[i][0], positions[i][1], positions[i][2],

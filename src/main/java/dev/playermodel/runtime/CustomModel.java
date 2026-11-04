@@ -91,11 +91,7 @@ public final class CustomModel {
             part.hidden = false;
         }
         attachPhysics(prepared, array);
-        float[] headSize = faceSize(prepared);
-        float faceUvOffset = prepared.faceTexturePng() != null ? 5.0F : 0;
-        this.face = prepared.face() == null ? null
-                : new JpmFaceModel(prepared.face(), headSize[0], headSize[1],
-                faceUvOffset, faceUvOffset);
+        this.face = prepared.face() == null ? null : new JpmFaceModel(prepared.face());
         ModelPart syntheticBase = null;
         this.jemBaseFaces = buildJemBaseFaces(prepared);
         this.baseFaceRoot = jemBaseFaces.isEmpty() ? syntheticBase : null;
@@ -109,7 +105,7 @@ public final class CustomModel {
             for (int i = 0; i < jemBaseFaces.size(); i++) {
                 children.put("pm_jem_base_" + i, jemBaseFaces.get(i).root());
             }
-            face.root().setPivot(0, 0, -0.01F);
+            face.root().setPivot(0, 0, 0);
             children.put("pm_face", face.root());
             head.children = children;
             this.separateFaceRoot = null;
@@ -118,7 +114,7 @@ public final class CustomModel {
             Map<String, ModelPart> faceChildren = new HashMap<>();
             faceChildren.put("pm_face", face.root());
             ModelPart faceAnchor = new ModelPart(List.of(), faceChildren);
-            faceAnchor.setPivot(0, 0, -0.01F);
+            faceAnchor.setPivot(0, 0, 0);
             Map<String, ModelPart> children = new java.util.LinkedHashMap<>();
             if (baseFaceRoot != null) {
                 children.put("pm_base_face", baseFaceRoot);

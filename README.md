@@ -33,10 +33,10 @@ config/playermodel/models/
 - 启动时扫描；修改后 `/pmodel reload`。
 - `player_face.jpm` 可选，放在模型目录会自动加载；也可在 `meta.json` 用 `"face": "player_face.jpm"` 指定。
 - `player_face.png` 是 JPM 独立贴图；省略时读取 JPM 的 `texture` 字段，否则尝试同目录 `player_face.png`。也可用 `"faceTexture": "..."` 指定。
-- JPM 的 UV 默认按 `textureSize` 解析；使用独立贴图时按 JPM 的 64×64 坐标系映射。
-- JPM 面部模型直接按 JPM 声明的 `translate`/`rotate`/`scale`、per-face UV 和动画表达式构建；基础头部层优先使用同目录 `player.jem` / `meta.jem` 中的 `head`、`headwear` inline 模型，没有 JEM 时合成皮肤脸部 UV 层。
+- JPM 的 UV 按自身 `textureSize` 解析，独立贴图同样使用原始 UV，不自动平移到皮肤眼睛区域。
+- JPM 方块坐标属于各自分组的局部空间；`translate`/`rotate`/`scale` 及动画表达式直接作用于分组，不再使用 bbmodel 的全局方块减 pivot 规则。不会额外合成基础脸平面。
 - `meta.jemMode` 为 `"full"` 时还会接入 JEM 的 body/arms/legs 等 inline 模型；`attach=false` 的部件会替换对应自定义几何。
-- 支持 EMF 常用变量、`this`/`part.*`/`render.*` 选择器、`visible_boxes` 属性，以及 2by1/2by2/2by3/simple/farset 眼睛 LOD 变体选择。
+- 支持 EMF 常用变量、`this`/`part.*`/`render.*` 选择器和 `visible_boxes` 属性。JustExpressions 的所有眼睛组均按资源包渲染与动画，贴图各区域的 alpha 决定可见样式；不按头部尺寸或距离硬切换组。
 - 多贴图自动合并图集；`texture.png` 只用于单贴图覆盖。
 - `meta.json`：
 

@@ -47,6 +47,7 @@ public final class JpmModel {
             state.sy = part.scale;
             state.sz = part.scale;
             state.visible = true;
+            state.visibleBoxes = true;
         }
         for (JpmAnimation animation : animations) {
             for (var entry : animation.expressions.entrySet()) {
