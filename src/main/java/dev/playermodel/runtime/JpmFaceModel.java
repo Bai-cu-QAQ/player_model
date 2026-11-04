@@ -81,7 +81,6 @@ public final class JpmFaceModel {
         if (!matcher.matches()) return true;
         int variant = Integer.parseInt(matcher.group(2));
         if (distance > 24) return variant == 16;
-        if (headWidth <= 5) return variant >= 12 && variant <= 15;
         if (headHeight >= 11) return variant == 9;
         if (headHeight >= 9) return variant >= 5 && variant <= 8;
         return variant >= 1 && variant <= 4;
