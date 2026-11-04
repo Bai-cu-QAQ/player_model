@@ -312,27 +312,33 @@ public final class CustomModel {
     }
 
     /**
-     * Face-only tree for the separate-texture render pass. The wrapper carries the current head
-     * transform, so the face follows head rotation without duplicating the whole player model.
+     * Face-only tree for the separate-texture render pass. The wrapper chain reproduces every
+     * transform from the model root down to the head, so the face inherits exactly the same
+     * ancestor/root rotation and translation as the inline face.
      */
     public ModelPart faceSnapshot() {
         if (face == null) return null;
-        Map<String, ModelPart> children = new LinkedHashMap<>();
-        children.put("pm_face", dev.playermodel.client.AppearanceManager.copyPart(face.root()));
-        ModelPart wrapper = new ModelPart(List.of(), children);
+        ModelPart current = dev.playermodel.client.AppearanceManager.copyPart(face.root());
         ModelPart head = parts.get(BoneKind.HEAD);
-        if (head != null) {
-            float[] origin = restOrigin(head, rootPart);
-            wrapper.setOrigin(origin[0], origin[1], origin[2]);
-            wrapper.pitch = head.pitch;
-            wrapper.yaw = head.yaw;
-            wrapper.roll = head.roll;
-            wrapper.xScale = head.xScale;
-            wrapper.yScale = head.yScale;
-            wrapper.zScale = head.zScale;
-            wrapper.visible = head.visible;
-            wrapper.hidden = head.hidden;
+        ModelPart node = head;
+        while (node != null) {
+            current = wrapTransform(node, current);
+            if (node == rootPart) break;
+            node = parents.get(node);
         }
+        return current;
+    }
+
+    static ModelPart wrapTransform(ModelPart source, ModelPart child) {
+        Map<String, ModelPart> children = new LinkedHashMap<>();
+        children.put("pm_face_child", child);
+        ModelPart wrapper = new ModelPart(List.of(), children);
+        wrapper.setTransform(source.getTransform());
+        wrapper.xScale = source.xScale;
+        wrapper.yScale = source.yScale;
+        wrapper.zScale = source.zScale;
+        wrapper.visible = source.visible;
+        wrapper.hidden = source.hidden;
         return wrapper;
     }
 
