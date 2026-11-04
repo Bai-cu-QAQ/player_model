@@ -329,6 +329,49 @@ public final class CustomModel {
         applyJpmHeadAnimation(context);
     }
 
+    /** Runtime summary used to diagnose invisible JPM face layers. */
+    public String faceDebugSummary(JpmEvalContext context) {
+        if (face == null) return "face=null";
+        int cuboids = 0;
+        int visibleParts = 0;
+        for (ModelPart part : collectParts(face.root())) {
+            if (part.visible) visibleParts++;
+            cuboids += part.cuboids.size();
+        }
+        ModelPart white = findPart(face.root(), "r_eye_white1");
+        ModelPart pupil = findPart(face.root(), "r_pupil1");
+        ModelPart head = parts.get(BoneKind.HEAD);
+        return "distance=" + context.distance
+                + " faceVisible=" + face.root().visible
+                + " parts=" + visibleParts
+                + " cuboids=" + cuboids
+                + " headVisible=" + (head != null && head.visible)
+                + " white=" + (white != null && white.visible) + "/" + (white == null ? -1 : white.cuboids.size())
+                + " pupil=" + (pupil != null && pupil.visible) + "/" + (pupil == null ? -1 : pupil.cuboids.size())
+                + " z=" + face.root().pivotZ;
+    }
+
+    private static List<ModelPart> collectParts(ModelPart root) {
+        List<ModelPart> result = new ArrayList<>();
+        collectParts(root, result);
+        return result;
+    }
+
+    private static void collectParts(ModelPart part, List<ModelPart> result) {
+        result.add(part);
+        for (ModelPart child : part.children.values()) collectParts(child, result);
+    }
+
+    private static ModelPart findPart(ModelPart part, String id) {
+        ModelPart direct = part.children.get(id);
+        if (direct != null) return direct;
+        for (ModelPart child : part.children.values()) {
+            ModelPart found = findPart(child, id);
+            if (found != null) return found;
+        }
+        return null;
+    }
+
     /** JustExpressions drives an extra head yaw/pitch in the JEM/JPM head animation block. */
     private void applyJpmHeadAnimation(JpmEvalContext context) {
         JpmEvalContext.PartState state = context.parts.get("head");

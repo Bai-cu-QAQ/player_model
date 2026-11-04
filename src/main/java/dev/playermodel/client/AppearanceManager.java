@@ -37,6 +37,7 @@ public final class AppearanceManager {
     private final PhysicsManager physics = new PhysicsManager();
     private final java.util.Set<UUID> debugLogged = new java.util.HashSet<>();
     private final java.util.Set<UUID> faceLogged = new java.util.HashSet<>();
+    private final java.util.Set<UUID> faceStateLogged = new java.util.HashSet<>();
     private boolean serverSyncAvailable;
 
     public AppearanceManager(ClientConfig config, ModelRegistry registry) {
@@ -180,6 +181,9 @@ public final class AppearanceManager {
             face.frame = face.age;
             face.camera = face.distance;
             custom.animateFace(face);
+            if (faceStateLogged.add(player.getUuid())) {
+                PlayerModelMod.LOG.info("PlayerModel face state: {}", custom.faceDebugSummary(face));
+            }
             custom.model().render(matrices, vertices, light, overlay, color);
             if (custom.hasSeparateFaceTexture() && provider != null) {
                 String faceHash = "face-" + Integer.toHexString(System.identityHashCode(prepared));
