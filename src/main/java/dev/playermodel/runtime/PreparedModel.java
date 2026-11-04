@@ -89,6 +89,10 @@ public final class PreparedModel {
         return face;
     }
 
+    public byte[] faceTexturePng() {
+        return data.faceTexturePng;
+    }
+
     public boolean usesModelPivots() {
         return !"vanilla".equalsIgnoreCase(data.pivotMode);
     }

@@ -122,7 +122,9 @@ public final class AppearanceManager {
     }
 
     /** State-local pose: never retain the cached, mutable CustomModel in a deferred command. */
-    public record RenderPose(PlayerEntityModel model, PreparedModel prepared) {}
+    public record RenderPose(PlayerEntityModel model, PreparedModel prepared,
+                             ModelPart faceRoot, Identifier faceTexture) {
+    }
 
     private final ThreadLocal<java.util.List<RenderPose>> renderPoses =
             ThreadLocal.withInitial(java.util.ArrayList::new);
@@ -171,7 +173,18 @@ public final class AppearanceManager {
             face.distance = Math.sqrt(state.squaredDistanceToCamera);
             face.id = player.getUuid().hashCode() / (double) Integer.MAX_VALUE;
             custom.animateFace(face);
-            return new RenderPose(new PlayerEntityModel(copyPart(custom.model().getRootPart()), prepared.slim()), prepared);
+            Identifier faceTexture = null;
+            ModelPart faceRoot = null;
+            byte[] facePng = prepared.faceTexturePng();
+            if (facePng != null) {
+                String faceHash = "face-" + Integer.toHexString(System.identityHashCode(prepared));
+                faceTexture = dev.playermodel.runtime.TextureCache.ensure(faceHash, facePng);
+                if (faceTexture != null) {
+                    faceRoot = custom.faceSnapshot();
+                }
+            }
+            return new RenderPose(new PlayerEntityModel(copyPart(custom.model().getRootPart()), prepared.slim()),
+                    prepared, faceRoot, faceTexture);
         } catch (Throwable t) {
             if (config.debug) PlayerModelMod.LOG.warn("Failed to capture custom player pose", t);
             return null;

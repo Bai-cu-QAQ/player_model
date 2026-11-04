@@ -19,6 +19,14 @@ public final class RawModel {
     public boolean slim;
     /** Optional OptiFine/EMF JPM face overlay source, relative to the model folder. */
     public String faceJpm;
+    /** Optional independent PNG for the JPM face overlay. */
+    public byte[] faceTexturePng;
+    /** Optional JEM document used for the vanilla-part base layer. */
+    public String jem;
+    /** Directory used to resolve JEM referenced models. */
+    public String jemDirectory;
+    /** JEM integration mode: "head" (default) or "full". */
+    public String jemMode;
 
     public RawTexture textureAt(int index) {
         if (index >= 0 && index < textures.size()) {

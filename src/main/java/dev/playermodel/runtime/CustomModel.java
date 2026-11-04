@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -32,6 +33,11 @@ public final class CustomModel {
     private final Map<ModelPart, ModelPart> parents = new IdentityHashMap<>();
     private final ModelPart rootPart;
     private final JpmFaceModel face;
+    private final List<JpmFaceModel> jemBaseFaces;
+    private final List<JemBody> jemBodies;
+
+    private record JemBody(BoneKind kind, JpmFaceModel model, boolean attach) {
+    }
 
     public record PhysicsBoneRuntime(String name, ModelPart part, ModelPart parent,
                                      BoneKind parentBone, String parentPhysics,
@@ -67,16 +73,82 @@ public final class CustomModel {
             part.hidden = false;
         }
         attachPhysics(prepared, array);
+        this.jemBaseFaces = buildJemBaseFaces(prepared);
+        this.jemBodies = buildJemBodies(prepared);
         this.face = prepared.face() == null ? null : new JpmFaceModel(prepared.face());
+        ModelPart head = parts.get(BoneKind.HEAD);
+        Map<String, ModelPart> children = new LinkedHashMap<>();
+        if (head.children != null) children.putAll(head.children);
+        for (int i = 0; i < jemBaseFaces.size(); i++) {
+            children.put("pm_jem_base_" + i, jemBaseFaces.get(i).root());
+        }
         if (face != null) {
-            ModelPart head = parts.get(BoneKind.HEAD);
-            Map<String, ModelPart> children = new HashMap<>();
-            if (head.children != null) children.putAll(head.children);
             JpmAnchorTransform.apply(prepared, face.root());
-            children.put("pm_face", face.root());
-            head.children = children;
+            if (prepared.faceTexturePng() == null) {
+                children.put("pm_face", face.root());
+            }
+        }
+        head.children = children;
+        if (!jemBaseFaces.isEmpty()) {
+            head.cuboids = List.of();
+            ModelPart hat = parts.get(BoneKind.HAT);
+            if (hat != null) hat.cuboids = List.of();
+        }
+        for (JemBody body : jemBodies) {
+            ModelPart target = parts.get(body.kind());
+            if (target == null) continue;
+            Map<String, ModelPart> bodyChildren = target.children == null
+                    ? new LinkedHashMap<>() : new LinkedHashMap<>(target.children);
+            bodyChildren.put("pm_jem_" + body.kind().name(), body.model().root());
+            target.children = bodyChildren;
+            if (!body.attach()) target.cuboids = List.of();
         }
         buildParentMap(rootPart);
+    }
+
+    private static List<JpmFaceModel> buildJemBaseFaces(PreparedModel prepared) {
+        if (prepared == null || prepared.data() == null
+                || prepared.data().jem == null || prepared.data().jem.isBlank()) {
+            return List.of();
+        }
+        try {
+            java.nio.file.Path base = prepared.data().jemDirectory == null
+                    ? java.nio.file.Path.of("") : java.nio.file.Path.of(prepared.data().jemDirectory);
+            var jem = dev.playermodel.jpm.JemParser.parse(prepared.data().jem, base);
+            List<JpmFaceModel> result = new ArrayList<>();
+            for (String part : new String[]{"head", "headwear"}) {
+                var inline = jem.inlineForVanillaPart(part);
+                if (inline == null) continue;
+                result.add(new JpmFaceModel(inline));
+            }
+            return result;
+        } catch (dev.playermodel.jpm.JpmException | RuntimeException e) {
+            return List.of();
+        }
+    }
+
+    private static List<JemBody> buildJemBodies(PreparedModel prepared) {
+        if (prepared == null || prepared.data() == null
+                || prepared.data().jem == null || prepared.data().jem.isBlank()
+                || !"full".equalsIgnoreCase(prepared.data().jemMode)) {
+            return List.of();
+        }
+        try {
+            java.nio.file.Path base = prepared.data().jemDirectory == null
+                    ? java.nio.file.Path.of("") : java.nio.file.Path.of(prepared.data().jemDirectory);
+            var jem = dev.playermodel.jpm.JemParser.parse(prepared.data().jem, base);
+            List<JemBody> result = new ArrayList<>();
+            for (var entry : jem.attachments()) {
+                BoneKind kind = BoneKind.byName(entry.part());
+                if (kind == null || kind == BoneKind.HEAD || kind == BoneKind.HAT) continue;
+                var inline = entry.inline();
+                if (inline == null) continue;
+                result.add(new JemBody(kind, new JpmFaceModel(inline), entry.attach()));
+            }
+            return result;
+        } catch (dev.playermodel.jpm.JpmException | RuntimeException e) {
+            return List.of();
+        }
     }
 
     private float[] restOrigin(ModelPart part, ModelPart root) {
@@ -238,8 +310,37 @@ public final class CustomModel {
         return face;
     }
 
+    /**
+     * Face-only tree for the separate-texture render pass. The wrapper carries the current head
+     * transform, so the face follows head rotation without duplicating the whole player model.
+     */
+    public ModelPart faceSnapshot() {
+        if (face == null) return null;
+        Map<String, ModelPart> children = new LinkedHashMap<>();
+        children.put("pm_face", dev.playermodel.client.AppearanceManager.copyPart(face.root()));
+        ModelPart wrapper = new ModelPart(List.of(), children);
+        ModelPart head = parts.get(BoneKind.HEAD);
+        if (head != null) {
+            float[] origin = restOrigin(head, rootPart);
+            wrapper.setOrigin(origin[0], origin[1], origin[2]);
+            wrapper.pitch = head.pitch;
+            wrapper.yaw = head.yaw;
+            wrapper.roll = head.roll;
+            wrapper.xScale = head.xScale;
+            wrapper.yScale = head.yScale;
+            wrapper.zScale = head.zScale;
+        }
+        return wrapper;
+    }
+
     public void animateFace(JpmEvalContext context) {
         if (face != null) face.animate(context);
+        for (JpmFaceModel base : jemBaseFaces) {
+            base.animate(context);
+        }
+        for (JemBody body : jemBodies) {
+            body.model().animate(context);
+        }
     }
 
     public void copyPose(PlayerEntityModel live, PreparedModel prepared) {

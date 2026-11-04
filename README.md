@@ -50,10 +50,13 @@ config/playermodel/models/
 
 ```text
 player_face.jpm
+player_face.png
+player.jem
 ```
 
 - `player_face.jpm` 自动加载，也可用 `"face": "player_face.jpm"` 指定。
-- JPM 使用模型的 `textureMode` 贴图（`model` 或 `skin`）。
+- `player_face.png` 是 JPM 独立面部贴图，用 `"faceTexture": "player_face.png"` 指定；会作为单独的渲染命令提交。
+- `player.jem` 可选；`"jemMode": "head"` 接入 head/headwear 基础层，`"full"` 同时接入身体/四肢 inline 模型。
 - JPM 方块使用骨骼局部坐标，动画表达式直接写绝对分组变换。
 - 面部整体可绑定到模型里的锚点：
 

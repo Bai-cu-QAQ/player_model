@@ -13,6 +13,14 @@ public final class NormalizedModel {
     public boolean slim;
     /** Serialized JPM face overlay, if this model uses one. */
     public String faceJpm;
+    /** Independent PNG for the JPM face overlay; null means use the model texture. */
+    public byte[] faceTexturePng;
+    /** Optional JEM document used for the vanilla-part base layer. */
+    public String jem;
+    /** Directory used to resolve JEM referenced models. */
+    public String jemDirectory;
+    /** JEM integration mode: "head" (default) or "full". */
+    public String jemMode;
     public int textureWidth = 64;
     public int textureHeight = 64;
     public transient byte[] texturePng;

@@ -115,6 +115,21 @@ public final class ModelRegistry {
                     ? folder.resolve("player_face.jpm") : folder.resolve(meta.face).normalize();
             if (Files.isRegularFile(faceFile) && faceFile.startsWith(folder.normalize())) {
                 raw.faceJpm = Files.readString(faceFile);
+                String faceTextureName = meta.faceTexture == null || meta.faceTexture.isBlank()
+                        ? "player_face.png" : meta.faceTexture;
+                Path faceTextureFile = folder.resolve(faceTextureName).normalize();
+                if (Files.isRegularFile(faceTextureFile)
+                        && faceTextureFile.startsWith(folder.normalize())) {
+                    raw.faceTexturePng = Files.readAllBytes(faceTextureFile);
+                }
+            }
+
+            Path jemFile = meta.jem == null || meta.jem.isBlank()
+                    ? folder.resolve("player.jem") : folder.resolve(meta.jem).normalize();
+            if (Files.isRegularFile(jemFile) && jemFile.startsWith(folder.normalize())) {
+                raw.jem = Files.readString(jemFile);
+                raw.jemDirectory = folder.toAbsolutePath().normalize().toString();
+                raw.jemMode = meta.jemMode;
             }
 
             Path textureFile = folder.resolve("texture.png");
@@ -363,6 +378,12 @@ public final class ModelRegistry {
         public boolean slim;
         /** Optional JPM face overlay path relative to the model folder. */
         public String face;
+        /** Optional independent PNG for the JPM face overlay. */
+        public String faceTexture;
+        /** Optional JEM descriptor for the vanilla-part base layer. */
+        public String jem;
+        /** JEM integration mode: "head" (default) or "full". */
+        public String jemMode;
         public java.util.Map<String, AnchorMeta> anchors = new java.util.LinkedHashMap<>();
         public int textureWidth;
         public int textureHeight;
