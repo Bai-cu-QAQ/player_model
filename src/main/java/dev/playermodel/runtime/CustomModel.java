@@ -1,6 +1,7 @@
 package dev.playermodel.runtime;
 
 import dev.playermodel.jpm.JpmEvalContext;
+import dev.playermodel.PlayerModelMod;
 import dev.playermodel.model.BoneKind;
 import dev.playermodel.model.PhysicsConfig;
 import net.minecraft.client.model.Dilation;
@@ -150,6 +151,13 @@ public final class CustomModel {
             }
         }
         buildParentMap(rootPart);
+        PlayerModelMod.LOG.info("PlayerModel face debug: faceJpm={}, faceModel={}, texturePng={}, separate={}, jemBases={}, jemBodies={}",
+                prepared.face() != null,
+                face != null,
+                prepared.faceTexturePng() != null,
+                separateFaceRoot != null,
+                jemBaseFaces.size(),
+                jemBodies.size());
     }
 
     private void buildParentMap(ModelPart part) {
