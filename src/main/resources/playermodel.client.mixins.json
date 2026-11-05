@@ -7,6 +7,8 @@
                    "PlayerEntityRendererMixin",
                    "LivingEntityRendererMixin",
                    "CameraEyeHeightMixin",
+                   "CameraCrosshairMixin",
+                   "CameraPickEntityMixin",
                    "PlayerEntityModelAccessor",
                    "FeatureRendererMixin",
                    "ArmorScaleMixin",
