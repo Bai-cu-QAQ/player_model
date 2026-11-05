@@ -105,8 +105,7 @@ public final class ModelRegistry {
             }
             RawModel raw = BbmodelParser.parse(bbmodel, meta.displayName == null || meta.displayName.isBlank()
                     ? safeName : meta.displayName);
-            raw.mirrorLimbPositions();
-            raw.mirrorCenteredUvs();
+            raw.invertXAxis();
             Path faceFile = meta.face == null || meta.face.isBlank()
                     ? folder.resolve("player_face.jpm") : folder.resolve(meta.face).normalize();
             if (Files.isRegularFile(faceFile) && faceFile.startsWith(folder.normalize())) {
