@@ -44,6 +44,47 @@ public final class RawModel {
         return null;
     }
 
+    /**
+     * Reflects the authored model across the X=0 plane at the source-data level. This is not a
+     * render scale: every bone pivot, cube, Euler rotation, East/West UV pair and anchor is
+     * rewritten so ordinary animations and physics keep working in the mirrored space.
+     */
+    public void invertXAxis() {
+        for (RawBone bone : bones) {
+            bone.pivot[0] = -bone.pivot[0];
+            bone.rotation[1] = -bone.rotation[1];
+            bone.rotation[2] = -bone.rotation[2];
+            for (RawElement element : bone.elements) {
+                invertElement(element);
+            }
+        }
+        for (RawPhysicsBone bone : physicsBones) {
+            bone.pivot[0] = -bone.pivot[0];
+            bone.rotation[1] = -bone.rotation[1];
+            bone.rotation[2] = -bone.rotation[2];
+            for (RawElement element : bone.elements) {
+                invertElement(element);
+            }
+        }
+        for (int i = 0; i < anchors.size(); i++) {
+            Anchor anchor = anchors.get(i);
+            anchors.set(i, new Anchor(anchor.name(), anchor.bone(), -anchor.x(), anchor.y(),
+                    anchor.z(), anchor.scale()));
+        }
+    }
+
+    private static void invertElement(RawElement element) {
+        float fromX = -element.from[0];
+        float toX = -element.to[0];
+        element.from[0] = Math.min(fromX, toX);
+        element.to[0] = Math.max(fromX, toX);
+        element.origin[0] = -element.origin[0];
+        // Euler angles about Y/Z change sign under an X reflection; X rotation stays.
+        element.rotation[1] = -element.rotation[1];
+        element.rotation[2] = -element.rotation[2];
+        swapEastWest(element);
+    }
+
     /** Mirrors authored left/right limb positions across the model center. */
     public void mirrorLimbPositions() {
         mirrorBone(BoneKind.LEFT_ARM);
