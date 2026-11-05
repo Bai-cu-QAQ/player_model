@@ -184,26 +184,17 @@ public final class AppearanceManager {
             if (faceStateLogged.add(player.getUuid())) {
                 PlayerModelMod.LOG.info("PlayerModel face state: {}", custom.faceDebugSummary(face));
             }
-            // The imported model is authored on the opposite X axis; mirror the original model
-            // render itself around the player center. Non-culling layers are required because the
-            // negative scale reverses quad winding.
-            matrices.push();
-            matrices.scale(-1.0F, 1.0F, 1.0F);
-            try {
-                custom.model().render(matrices, vertices, light, overlay, color);
-                if (custom.hasSeparateFaceTexture() && provider != null) {
-                    String faceHash = "face-" + Integer.toHexString(System.identityHashCode(prepared));
-                    Identifier faceTexture = TextureCache.ensure(faceHash, prepared.faceTexturePng());
-                    if (faceTexture != null) {
-                        if (faceLogged.add(player.getUuid())) {
-                            PlayerModelMod.LOG.info("PlayerModel face render: texture={}", faceTexture);
-                        }
-                        RenderLayer faceLayer = RenderLayer.getEntityTranslucent(faceTexture);
-                        custom.renderSeparateFace(matrices, provider.getBuffer(faceLayer), light, overlay, color);
+            custom.model().render(matrices, vertices, light, overlay, color);
+            if (custom.hasSeparateFaceTexture() && provider != null) {
+                String faceHash = "face-" + Integer.toHexString(System.identityHashCode(prepared));
+                Identifier faceTexture = TextureCache.ensure(faceHash, prepared.faceTexturePng());
+                if (faceTexture != null) {
+                    if (faceLogged.add(player.getUuid())) {
+                        PlayerModelMod.LOG.info("PlayerModel face render: texture={}", faceTexture);
                     }
+                    RenderLayer faceLayer = RenderLayer.getEntityTranslucent(faceTexture);
+                    custom.renderSeparateFace(matrices, provider.getBuffer(faceLayer), light, overlay, color);
                 }
-            } finally {
-                matrices.pop();
             }
             return true;
         } catch (Throwable t) {
@@ -235,8 +226,7 @@ public final class AppearanceManager {
     /** Render layer for the base player body; null means use the renderer's normal layer. */
     public RenderLayer renderLayer(AbstractClientPlayerEntity player) {
         Identifier texture = textureFor(player);
-        // The custom model render is mirrored on X, which reverses winding; do not cull.
-        return texture == null ? null : RenderLayer.getEntityTranslucent(texture);
+        return texture == null ? null : RenderLayer.getEntityTranslucentCull(texture);
     }
 
     /** Texture to use for the player model, or null to keep the vanilla skin. */
