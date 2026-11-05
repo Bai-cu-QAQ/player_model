@@ -135,6 +135,32 @@ public final class PreparedModel {
         return pivot == null ? null : pivot.clone();
     }
 
+    /**
+     * Estimated camera eye height from the imported head geometry, in blocks above the feet.
+     * Minecraft model space uses 16 pixels per block and feet at y=24.
+     */
+    public float eyeHeight() {
+        NormalizedBone head = data.bone(BoneKind.HEAD);
+        if (head == null || head.cubes().isEmpty()) {
+            return 1.62F;
+        }
+        NormalizedCube largest = null;
+        float largestVolume = -1.0F;
+        for (NormalizedCube cube : head.cubes()) {
+            float volume = Math.max(0.001F, (cube.maxX() - cube.minX())
+                    * (cube.maxY() - cube.minY()) * (cube.maxZ() - cube.minZ()));
+            if (volume > largestVolume) {
+                largestVolume = volume;
+                largest = cube;
+            }
+        }
+        if (largest == null) {
+            return 1.62F;
+        }
+        float centerY = (largest.minY() + largest.maxY()) * 0.5F;
+        return Math.max(0.3F, Math.min(2.5F, (24.0F - centerY) / 16.0F));
+    }
+
     /** Approximate uniform rig scale, derived from the leg pivot height above the feet. */
     public float rigScale() {
         float[] leg = modelPivots.get(BoneKind.RIGHT_LEG);
