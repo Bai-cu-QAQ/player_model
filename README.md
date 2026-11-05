@@ -69,6 +69,8 @@ head
 
 `textureMode`：`model` / `skin`。`pivotMode`：`model`（小体型）/ `vanilla`。
 
+`mirrorX`：为 `true` 时整个渲染模型在玩家 X 轴上镜像，并自动使用不剔除背面的渲染层。
+
 ## 3. 模板
 
 `/pmodel template` 生成：

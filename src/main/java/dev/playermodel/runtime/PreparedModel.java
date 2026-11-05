@@ -93,6 +93,10 @@ public final class PreparedModel {
         return data.faceTexturePng;
     }
 
+    public boolean mirrorX() {
+        return data.mirrorX;
+    }
+
     public boolean usesModelPivots() {
         return !"vanilla".equalsIgnoreCase(data.pivotMode);
     }

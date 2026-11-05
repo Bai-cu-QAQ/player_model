@@ -140,6 +140,7 @@ public final class ModelRegistry {
                 raw.jemDirectory = folder.toAbsolutePath().normalize().toString();
                 raw.jemMode = meta.jemMode;
             }
+            raw.mirrorX = meta.mirrorX;
 
             Path textureFile = folder.resolve("texture.png");
             byte[] png = raw.texture.png();
@@ -378,6 +379,8 @@ public final class ModelRegistry {
         public String jem;
         /** JEM integration mode: "head" (default) or "full". */
         public String jemMode;
+        /** Mirror the rendered model across the player X axis. */
+        public boolean mirrorX;
         public java.util.Map<String, AnchorMeta> anchors = new java.util.LinkedHashMap<>();
         public int textureWidth;
         public int textureHeight;

@@ -21,6 +21,8 @@ public final class NormalizedModel {
     public String jemDirectory;
     /** JEM integration mode: "head" (default) or "full". */
     public String jemMode;
+    /** Mirror the rendered model across the player X axis. */
+    public boolean mirrorX;
     public int textureWidth = 64;
     public int textureHeight = 64;
     public transient byte[] texturePng;

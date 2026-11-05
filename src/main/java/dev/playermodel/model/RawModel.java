@@ -27,6 +27,8 @@ public final class RawModel {
     public String jemDirectory;
     /** JEM integration mode: "head" (default) or "full". */
     public String jemMode;
+    /** Mirror the rendered model across the player X axis. */
+    public boolean mirrorX;
 
     public RawTexture textureAt(int index) {
         if (index >= 0 && index < textures.size()) {

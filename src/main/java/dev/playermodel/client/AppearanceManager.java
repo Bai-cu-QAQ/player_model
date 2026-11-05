@@ -184,16 +184,27 @@ public final class AppearanceManager {
             if (faceStateLogged.add(player.getUuid())) {
                 PlayerModelMod.LOG.info("PlayerModel face state: {}", custom.faceDebugSummary(face));
             }
-            custom.model().render(matrices, vertices, light, overlay, color);
-            if (custom.hasSeparateFaceTexture() && provider != null) {
-                String faceHash = "face-" + Integer.toHexString(System.identityHashCode(prepared));
-                Identifier faceTexture = TextureCache.ensure(faceHash, prepared.faceTexturePng());
-                if (faceTexture != null) {
-                    if (faceLogged.add(player.getUuid())) {
-                        PlayerModelMod.LOG.info("PlayerModel face render: texture={}", faceTexture);
+            boolean mirrorX = prepared.mirrorX();
+            if (mirrorX) {
+                matrices.push();
+                matrices.scale(-1.0F, 1.0F, 1.0F);
+            }
+            try {
+                custom.model().render(matrices, vertices, light, overlay, color);
+                if (custom.hasSeparateFaceTexture() && provider != null) {
+                    String faceHash = "face-" + Integer.toHexString(System.identityHashCode(prepared));
+                    Identifier faceTexture = TextureCache.ensure(faceHash, prepared.faceTexturePng());
+                    if (faceTexture != null) {
+                        if (faceLogged.add(player.getUuid())) {
+                            PlayerModelMod.LOG.info("PlayerModel face render: texture={}", faceTexture);
+                        }
+                        RenderLayer faceLayer = RenderLayer.getEntityTranslucent(faceTexture);
+                        custom.renderSeparateFace(matrices, provider.getBuffer(faceLayer), light, overlay, color);
                     }
-                    RenderLayer faceLayer = RenderLayer.getEntityTranslucent(faceTexture);
-                    custom.renderSeparateFace(matrices, provider.getBuffer(faceLayer), light, overlay, color);
+                }
+            } finally {
+                if (mirrorX) {
+                    matrices.pop();
                 }
             }
             return true;
@@ -226,7 +237,14 @@ public final class AppearanceManager {
     /** Render layer for the base player body; null means use the renderer's normal layer. */
     public RenderLayer renderLayer(AbstractClientPlayerEntity player) {
         Identifier texture = textureFor(player);
-        return texture == null ? null : RenderLayer.getEntityTranslucentCull(texture);
+        if (texture == null) return null;
+        String hash = hashFor(player.getUuid());
+        PreparedModel prepared = hash == null ? null : registry.prepared(hash);
+        // Negative X scale reverses winding; use the non-culling layer to keep the mirrored
+        // model visible.
+        return prepared != null && prepared.mirrorX()
+                ? RenderLayer.getEntityTranslucent(texture)
+                : RenderLayer.getEntityTranslucentCull(texture);
     }
 
     /** Texture to use for the player model, or null to keep the vanilla skin. */
