@@ -229,21 +229,8 @@ public final class AppearanceManager {
         return texture == null ? null : RenderLayer.getEntityTranslucentCull(texture);
     }
 
-    /** Only the in-world first-person arm should fall back to the vanilla player skin. */
-    public static boolean usesVanillaFirstPersonTexture(boolean localPlayer, boolean firstPerson,
-                                                        boolean screenOpen) {
-        return localPlayer && firstPerson && !screenOpen;
-    }
-
     /** Texture to use for the player model, or null to keep the vanilla skin. */
     public Identifier textureFor(AbstractClientPlayerEntity player) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        boolean localPlayer = player == client.player;
-        boolean firstPerson = client.options.getPerspective().isFirstPerson();
-        boolean screenOpen = client.currentScreen != null;
-        if (usesVanillaFirstPersonTexture(localPlayer, firstPerson, screenOpen)) {
-            return null;
-        }
         if (!config.viewEnabled) {
             return null;
         }
