@@ -2,6 +2,8 @@
 
 Minecraft **1.21.1 / Fabric** 的玩家模型替换模组：文件夹加载 Blockbench 玩家模型，保留原版 14 骨骼与动作包动画。
 
+`main` 为 1.21.1 主版本；Minecraft 1.21.11 请使用 `1.21.11` 分支。分支职责与验证步骤见 [仓库维护说明](REPOSITORY.md)。
+
 ## 0. 版本兼容提醒
 
 目标实例里的 Iris `1.8.14-beta.1` 与 Sodium `0.8.13` 在 1.21.1 + Fabric Loader 0.20 下会崩溃：

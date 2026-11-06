@@ -72,14 +72,7 @@ public final class RawModel {
         bone.rotation[1] = -bone.rotation[1];
         bone.rotation[2] = -bone.rotation[2];
         for (RawElement element : bone.elements) {
-            float fromX = -element.from[0];
-            float toX = -element.to[0];
-            element.from[0] = Math.min(fromX, toX);
-            element.to[0] = Math.max(fromX, toX);
-            element.origin[0] = -element.origin[0];
-            element.rotation[1] = -element.rotation[1];
-            element.rotation[2] = -element.rotation[2];
-            swapEastWest(element);
+            invertElement(element);
         }
     }
 
