@@ -35,7 +35,6 @@ public final class PlayerModelClient implements net.fabricmc.api.ClientModInitia
     private static AppearanceManager appearanceManager;
     private static KeyBinding toggleViewKey;
     private static boolean texturePrimed;
-    private static dev.playermodel.runtime.CustomModel.Installed liveRestore;
     private static net.minecraft.client.network.AbstractClientPlayerEntity renderingPlayer;
 
     public static void setRenderingPlayer(net.minecraft.client.network.AbstractClientPlayerEntity player) {
@@ -53,17 +52,6 @@ public final class PlayerModelClient implements net.fabricmc.api.ClientModInitia
 
     public static net.minecraft.client.network.AbstractClientPlayerEntity renderingPlayer() {
         return renderingPlayer;
-    }
-
-    public static void setLiveRestore(dev.playermodel.runtime.CustomModel.Installed restore) {
-        liveRestore = restore;
-    }
-
-    public static void restoreLive() {
-        if (liveRestore != null) {
-            liveRestore.restore();
-            liveRestore = null;
-        }
     }
 
     public static ClientConfig config() {

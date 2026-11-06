@@ -415,49 +415,4 @@ public final class CustomModel {
         return model;
     }
 
-    /**
-     * Temporarily installs the custom cubes/pivots on the live model for the base body render and
-     * all feature layers (armor, held items, cape). Restore with {@link Installed#restore()}.
-     */
-    public Installed install(PlayerEntityModel live) {
-        ModelPart[] target = ModelParts.of(live);
-        ModelPart[] source = ModelParts.of(model);
-        List<PartState> states = new java.util.ArrayList<>();
-        for (BoneKind kind : BoneKind.VALUES) {
-            ModelPart to = target[kind.ordinal()];
-            ModelPart from = source[kind.ordinal()];
-            states.add(new PartState(to, to.cuboids, to.originX, to.originY, to.originZ,
-                    to.xScale, to.yScale, to.zScale));
-
-            to.cuboids = from.cuboids;
-            to.originX = from.originX;
-            to.originY = from.originY;
-            to.originZ = from.originZ;
-            to.xScale = from.xScale;
-            to.yScale = from.yScale;
-            to.zScale = from.zScale;
-        }
-        return new Installed(states);
-    }
-
-    public record Installed(List<PartState> states) {
-        public void restore() {
-            for (PartState state : states) {
-                state.restore();
-            }
-        }
-    }
-
-    private record PartState(ModelPart part, List<ModelPart.Cuboid> cuboids, float x, float y, float z,
-                             float sx, float sy, float sz) {
-        void restore() {
-            part.cuboids = cuboids;
-            part.originX = x;
-            part.originY = y;
-            part.originZ = z;
-            part.xScale = sx;
-            part.yScale = sy;
-            part.zScale = sz;
-        }
-    }
 }

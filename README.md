@@ -1,20 +1,16 @@
 # Player Model Importer（玩家模型工坊）
 
-Minecraft **1.21.1 / Fabric** 的玩家模型替换模组：文件夹加载 Blockbench 玩家模型，保留原版 14 骨骼与动作包动画。
+Minecraft **1.21.11 / Fabric** 的玩家模型替换模组：文件夹加载 Blockbench 玩家模型，保留原版 14 骨骼与动作包动画。
+
+本分支使用 1.21.11 的延迟渲染 API；1.21.1 主版本请使用 `main`。分支职责与验证步骤见 [仓库维护说明](REPOSITORY.md)。
 
 ## 0. 版本兼容提醒
 
-目标实例里的 Iris `1.8.14-beta.1` 与 Sodium `0.8.13` 在 1.21.1 + Fabric Loader 0.20 下会崩溃：
-
-- Iris：`MixinLevelRenderer` 的 `@ModifyArg` 反混淆 `desc is null`；
-- Sodium：区块构建时 `BakedModel is null`。
-
-建议使用 `dist/compat` 里的 Sodium 0.6.9 + Iris 1.8.8。  
-`DetailedAnimationsReworked V1.15` 过旧，建议禁用；Fresh Moves 与 FA+Player 都是玩家 CEM 包，二选一启用。
+本分支只适用于 Minecraft 1.21.11。Iris、Sodium 和 EMF/ETF 请使用对应 1.21.11 的版本，不要使用 1.21.1 的兼容包或 JAR。Fresh Moves 与 FA+Player 都是玩家 CEM 包，建议二选一启用。
 
 ## 1. 安装
 
-- Minecraft 1.21.1、Fabric Loader >= 0.16、Java 21、Fabric API。
+- Minecraft 1.21.11、Fabric Loader >= 0.18.4、Java 21、对应 1.21.11 的 Fabric API。
 - jar 放进 `mods/`。服务端也放同一个 jar 可同步其他玩家模型。
 - 首次进游戏执行 `/pmodel template`。
 
