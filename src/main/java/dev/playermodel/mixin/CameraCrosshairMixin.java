@@ -19,20 +19,22 @@ public abstract class CameraCrosshairMixin {
     private void playermodel$opticalPick(float delta, Operation<Void> original) {
         MinecraftClient client = MinecraftClient.getInstance();
         var manager = PlayerModelClient.appearanceManager();
-        Entity player = client.player;
-        var model = player == null ? null : manager.preparedFor(player.getUuid());
+        Entity player = client.getCameraEntity();
+        var model = player == null || player != client.player ? null : manager.preparedFor(player.getUuid());
         if (model == null || !model.usesModelPivots() || !manager.viewEnabled()
                 || !client.gameRenderer.getCamera().isReady()) {
             original.call(delta);
             return;
         }
-        Entity previous = CameraPickContext.ENTITY.get();
-        CameraPickContext.ENTITY.set(player);
+        CameraPickContext.Pick previous = CameraPickContext.CURRENT.get();
+        var camera = client.gameRenderer.getCamera();
+        CameraPickContext.CURRENT.set(CameraPickContext.create(player, camera.getPos(), camera.getRotation(),
+                player.getCameraPosVec(delta), client.options.getPerspective().isFirstPerson()));
         try {
             original.call(delta);
         } finally {
-            if (previous == null) CameraPickContext.ENTITY.remove();
-            else CameraPickContext.ENTITY.set(previous);
+            if (previous == null) CameraPickContext.CURRENT.remove();
+            else CameraPickContext.CURRENT.set(previous);
         }
     }
 }
