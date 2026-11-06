@@ -1,0 +1,164 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.148'
+}
+
+group = 'dev.playermodel'
+version = "${mod_version}-mc1.21.1"
+base.archivesName = 'playermodel-neoforge'
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+repositories {
+    mavenCentral()
+}
+
+sourceSets {
+    core {
+        java {
+            srcDir '../src/main/java'
+            include 'dev/playermodel/jpm/**'
+            include 'dev/playermodel/model/**'
+            include 'dev/playermodel/importing/**'
+            include 'dev/playermodel/util/AngularMotion.java'
+            include 'dev/playermodel/util/SecondaryForces.java'
+            include 'dev/playermodel/util/ModelCameraHeight.java'
+            include 'dev/playermodel/util/JsonComments.java'
+            include 'dev/playermodel/net/Chunking.java'
+        }
+    }
+    coreTest {
+        java {
+            srcDir '../src/test/java'
+            srcDir 'src/test/java'
+            include 'dev/playermodel/AngularMotionTest.java'
+            include 'dev/playermodel/SecondaryForcesTest.java'
+            include 'dev/playermodel/ModelCameraHeightTest.java'
+            include 'dev/playermodel/PhysicsSettingsTest.java'
+            include 'dev/playermodel/RawModelXAxisTest.java'
+            include 'dev/playermodel/JpmParserTest.java'
+            include 'dev/playermodel/JpmEvalContextTest.java'
+            include 'dev/playermodel/JemInlineModelTest.java'
+            include 'dev/playermodel/neoforge/AngleExpressionTest.java'
+        }
+    }
+    test {
+        java {
+            include 'dev/playermodel/neoforge/NativeEntrypointTest.java'
+        }
+    }
+}
+
+neoForge {
+    version = project.neo_version
+    addModdingDependenciesTo sourceSets.test
+    runs {
+        client {
+            client()
+            gameDirectory = project.file('run/client')
+        }
+        server {
+            server()
+            gameDirectory = project.file('run/server')
+            programArgument '--nogui'
+        }
+    }
+    mods {
+        playermodel {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.core
+        }
+    }
+}
+
+dependencies {
+    coreImplementation 'com.google.code.gson:gson:2.10.1'
+    coreImplementation 'org.joml:joml:1.10.5'
+    implementation sourceSets.core.output
+    coreTestImplementation sourceSets.core.output
+    coreTestImplementation 'com.google.code.gson:gson:2.10.1'
+    coreTestImplementation 'org.joml:joml:1.10.5'
+    coreTestImplementation platform('org.junit:junit-bom:5.10.2')
+    coreTestImplementation 'org.junit.jupiter:junit-jupiter'
+    coreTestRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation sourceSets.core.output
+    testImplementation 'com.google.code.gson:gson:2.10.1'
+    testImplementation 'org.joml:joml:1.10.5'
+    testImplementation platform('org.junit:junit-bom:5.10.2')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand version: project.version, neo_version: project.neo_version
+    }
+}
+
+jar {
+    from sourceSets.core.output
+    from('../LICENSE')
+    manifest.attributes('Implementation-Version': project.version)
+}
+
+tasks.register('verifyPortJar') {
+    dependsOn jar
+    inputs.file tasks.named('jar').flatMap { it.archiveFile }
+    doLast {
+        def artifact = tasks.named('jar').get().archiveFile.get().asFile
+        if (!artifact.name.contains('neoforge') || !artifact.name.contains('mc1.21.1') || !artifact.name.contains('dev')) {
+            throw new GradleException("Not a clearly labeled NeoForge development jar: ${artifact.name}")
+        }
+        new java.util.zip.ZipFile(artifact).withCloseable { archive ->
+            ['META-INF/neoforge.mods.toml', 'dev/playermodel/neoforge/PlayerModelNeoForge.class',
+             'dev/playermodel/jpm/JpmParser.class'].each { required ->
+                if (archive.getEntry(required) == null) {
+                    throw new GradleException("Missing native port entry: ${required}")
+                }
+            }
+            archive.entries().each { entry ->
+                def path = entry.name
+                if (path == 'fabric.mod.json' || path.endsWith('.accesswidener') || path.contains('mixins.json')
+                        || path.startsWith('dev/playermodel/client/') || path.startsWith('dev/playermodel/mixin/')
+                        || path.startsWith('dev/playermodel/runtime/') || path.startsWith('dev/playermodel/server/')
+                        || path == 'dev/playermodel/PlayerModelMod.class' || path == 'dev/playermodel/net/Networking.class'
+                        || path.startsWith('dev/playermodel/net/Payloads')) {
+                    throw new GradleException("Unported Fabric content in NeoForge jar: ${path}")
+                }
+                if (path.endsWith('.class')) {
+                    def bytecode = archive.getInputStream(entry).withCloseable { input ->
+                        new String(input.readAllBytes(), java.nio.charset.StandardCharsets.ISO_8859_1)
+                    }
+                    if (bytecode.contains('net/fabricmc/') || bytecode.contains('net/minecraft/')) {
+                        throw new GradleException("Unexpected loader/game dependency in bootstrap or pure core: ${path}")
+                    }
+                }
+            }
+        }
+        logger.lifecycle("Verified isolated development jar: ${artifact.name}")
+    }
+}
+
+tasks.register('coreTest', Test) {
+    testClassesDirs = sourceSets.coreTest.output.classesDirs
+    classpath = sourceSets.coreTest.runtimeClasspath
+    useJUnitPlatform()
+    workingDir = rootProject.projectDir.parentFile
+    testLogging.events 'passed', 'skipped', 'failed'
+}
+
+tasks.named('check') {
+    dependsOn 'verifyPortJar', 'coreTest'
+}
+
+test {
+    useJUnitPlatform()
+    workingDir = rootProject.projectDir.parentFile
+    testLogging.events 'passed', 'skipped', 'failed'
+}

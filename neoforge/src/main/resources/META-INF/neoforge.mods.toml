@@ -1,0 +1,27 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="MIT"
+
+[[mods]]
+modId="playermodel"
+version="${version}"
+displayName="Player Model Importer (NeoForge Development Port)"
+description='''
+Development bootstrap for the native NeoForge 1.21.1 port.
+Custom player models, rendering, UI and multiplayer synchronization are NOT implemented.
+Not a feature-complete release and not a Fabric compatibility layer.
+'''
+
+[[dependencies.playermodel]]
+modId="neoforge"
+type="required"
+versionRange="[${neo_version},21.2)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.playermodel]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1]"
+ordering="NONE"
+side="BOTH"

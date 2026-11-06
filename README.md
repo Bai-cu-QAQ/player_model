@@ -1,5 +1,10 @@
 # Player Model Importer（玩家模型工坊）
 
+> **当前分支 `neoforge-1.21.1`：NeoForge 1.21.1 原生移植开发中，尚不替换玩家模型，不是可发布版本。**
+> 请使用 `neoforge/` 独立构建（`gradle -p neoforge build`，Java 21）；根 `build.gradle` 仍是保留的 Fabric 构建参考。
+> 原生启动骨架、共享核心测试、构建指令和未迁移范围见 [NeoForge 移植记录](NEOFORGE_PORT.md)。
+> 以下安装与功能说明是 **Fabric 原版参考**，不代表本分支 NeoForge dev jar 已具备这些功能；`dist/` 中原有 jar 也是 Fabric 历史产物。
+
 Minecraft **1.21.1 / Fabric** 的玩家模型替换模组：文件夹加载 Blockbench 玩家模型，保留原版 14 骨骼与动作包动画。
 
 `main` 为 1.21.1 主版本；Minecraft 1.21.11 请使用 `1.21.11` 分支。分支职责与验证步骤见 [仓库维护说明](REPOSITORY.md)。

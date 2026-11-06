@@ -331,15 +331,15 @@ public final class JpmExpressionParser {
                 }
                 case "frac" -> unaryMath(name, args, position, value -> value - Math.floor(value));
                 case "signum" -> unaryMath(name, args, position, Math::signum);
-                case "wrapdeg" -> unaryMath(name, args, position, value -> net.minecraft.util.math.MathHelper.wrapDegrees((float) value));
-                case "wraprad" -> unaryMath(name, args, position, value -> org.joml.Math.toRadians(net.minecraft.util.math.MathHelper.wrapDegrees((float) org.joml.Math.toDegrees(value))));
+                case "wrapdeg" -> unaryMath(name, args, position, value -> wrapDegrees((float) value));
+                case "wraprad" -> unaryMath(name, args, position, value -> org.joml.Math.toRadians(wrapDegrees((float) org.joml.Math.toDegrees(value))));
                 case "degdiff" -> {
                     require(name, args, 2, position);
-                    yield context -> net.minecraft.util.math.MathHelper.wrapDegrees((float) (args.get(0).eval(context) - args.get(1).eval(context)));
+                    yield context -> wrapDegrees((float) (args.get(0).eval(context) - args.get(1).eval(context)));
                 }
                 case "raddiff" -> {
                     require(name, args, 2, position);
-                    yield context -> org.joml.Math.toRadians(net.minecraft.util.math.MathHelper.wrapDegrees(
+                    yield context -> org.joml.Math.toRadians(wrapDegrees(
                             (float) org.joml.Math.toDegrees(args.get(0).eval(context) - args.get(1).eval(context))));
                 }
                 case "in" -> {
@@ -383,6 +383,13 @@ public final class JpmExpressionParser {
                 }
                 default -> throw new JpmException("JPM 表达式不支持函数 '" + rawName + "'，位置 " + position);
             };
+        }
+
+        private static float wrapDegrees(float value) {
+            float wrapped = value % 360.0F;
+            if (wrapped >= 180.0F) wrapped -= 360.0F;
+            if (wrapped < -180.0F) wrapped += 360.0F;
+            return wrapped;
         }
 
         private JpmExpression unaryMath(String name, List<JpmExpression> args, int position,
