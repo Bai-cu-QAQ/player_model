@@ -20,13 +20,16 @@ public abstract class CameraCrosshairMixin {
         var model = cameraEntity == client.player ? manager.preparedFor(cameraEntity.getUuid()) : null;
         if (model == null || !model.usesModelPivots() || !manager.viewEnabled()
                 || !client.gameRenderer.getCamera().isReady()) return original.call(delta, cameraEntity);
-        Entity previous = CameraPickContext.ENTITY.get();
-        CameraPickContext.ENTITY.set(cameraEntity);
+        CameraPickContext.Pick previous = CameraPickContext.CURRENT.get();
+        var camera = client.gameRenderer.getCamera();
+        CameraPickContext.CURRENT.set(CameraPickContext.create(cameraEntity, camera.getCameraPos(),
+                camera.getRotation(), cameraEntity.getCameraPosVec(delta),
+                client.options.getPerspective().isFirstPerson()));
         try {
             return original.call(delta, cameraEntity);
         } finally {
-            if (previous == null) CameraPickContext.ENTITY.remove();
-            else CameraPickContext.ENTITY.set(previous);
+            if (previous == null) CameraPickContext.CURRENT.remove();
+            else CameraPickContext.CURRENT.set(previous);
         }
     }
 }
